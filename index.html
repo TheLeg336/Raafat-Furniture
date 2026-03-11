@@ -3,12 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval';" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <title>Raafat Furniture - Luxury Furniture</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('themeMode');
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var root = document.documentElement;
+          if (theme === 'dark') {
+            root.style.setProperty('--color-primary', '#F0B429');
+            root.style.setProperty('--color-primary-hsl-values', '42, 87%, 54%');
+            root.style.setProperty('--color-secondary', '#14213D');
+            root.style.setProperty('--color-background', '#1A202C');
+            root.style.setProperty('--color-text-primary', '#E5E5E5');
+            root.style.setProperty('--color-text-secondary', '#A9A9A9');
+            root.style.setProperty('--color-success', '#F0B429');
+          } else {
+            root.style.setProperty('--color-primary', '#E8C547');
+            root.style.setProperty('--color-primary-hsl-values', '47, 81%, 60%');
+            root.style.setProperty('--color-secondary', '#14213D');
+            root.style.setProperty('--color-background', '#FFFFFF');
+            root.style.setProperty('--color-text-primary', '#1A202C');
+            root.style.setProperty('--color-text-secondary', '#4A5568');
+            root.style.setProperty('--color-success', '#DAB449');
+          }
+          root.style.backgroundColor = theme === 'dark' ? '#1A202C' : '#FFFFFF';
+        } catch (e) {}
+      })();
+    </script>
     <style>
       .font-body-luxe { font-family: 'Inter', sans-serif; }
       .font-heading-luxe h1, .font-heading-luxe h2, .font-heading-luxe h3, .font-heading-luxe h4, .font-heading-luxe h5, .font-heading-luxe h6, .font-heading-luxe .font-heading { font-family: 'Cormorant Garamond', serif; }
@@ -95,6 +126,7 @@
           background-color: var(--color-primary);
           transform-origin: center;
           transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          border-radius: 99px;
       }
       .nav-link:hover::after {
           transform: scaleX(1);

@@ -1,0 +1,848 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { db, storage } from '../lib/firebase';
+import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { differenceInDays, parseISO } from 'date-fns';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { GoogleGenAI, Type } from '@google/genai';
+import { CATEGORIES } from '../constants';
+import { LanguageOption, type TFunction } from '../types';
+
+const TEST_IMAGES = [
+  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=800&q=80'
+];
+
+// Safety limit to prevent exceeding Firebase Spark free tier limits
+const MAX_LISTINGS = 100;
+
+interface AdminProps {
+  t: TFunction;
+  language: LanguageOption;
+}
+
+const Admin: React.FC<AdminProps> = ({ t, language }) => {
+  const { user, isAdmin, isDeveloper, loading, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const activeTab = (searchParams.get('tab') as 'categories' | 'archive' | 'logs') || 'categories';
+  const selectedCategory = searchParams.get('category');
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
+
+  const setSelectedCategory = (category: string | null) => {
+    if (category) {
+      setSearchParams({ tab: 'categories', category });
+    } else {
+      setSearchParams({ tab: 'categories' });
+    }
+  };
+
+  const [listings, setListings] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [listingToDelete, setListingToDelete] = useState<any | null>(null);
+
+  // Form State
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nameEn, setNameEn] = useState('');
+  const [nameAr, setNameAr] = useState('');
+  const [descEn, setDescEn] = useState('');
+  const [descAr, setDescAr] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isTestListing, setIsTestListing] = useState(false);
+
+  useEffect(() => {
+    if (!db || !isAdmin) return;
+    const unsubscribeProducts = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        const allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setListings(allProducts);
+      },
+      (error) => {
+        console.error("Error fetching products:", error);
+      }
+    );
+
+    let unsubscribeLogs = () => {};
+    if (isDeveloper) {
+      unsubscribeLogs = onSnapshot(
+        collection(db, 'admin_logs'),
+        (snapshot) => {
+          const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          setLogs(allLogs);
+        },
+        (error) => {
+          console.error("Error fetching admin logs:", error);
+        }
+      );
+    }
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeLogs();
+    };
+  }, [isAdmin, isDeveloper]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-background)] p-6">
+        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X size={32} />
+          </div>
+          <h1 className="text-2xl font-bold mb-4 text-[var(--color-text-primary)]">{t('admin_access_denied')}</h1>
+          <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_not_authorized').replace('{email}', user.email || '')}</p>
+          <button 
+            onClick={logout}
+            className="w-full py-3 px-4 bg-[var(--color-primary)] text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+          >
+            {t('account_signout')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const activeListings = listings.filter(l => !l.archivedAt);
+  const archivedListings = listings.filter(l => l.archivedAt);
+  
+  const displayedListings = activeTab === 'categories' && selectedCategory
+    ? activeListings.filter(l => l.categoryKey === selectedCategory)
+    : archivedListings;
+
+  const logActivity = async (action: string, details: string) => {
+    if (!db || !user) return;
+    try {
+      await addDoc(collection(db, 'admin_logs'), {
+        adminEmail: user.email,
+        action,
+        details,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  };
+
+  const handleArchive = async (id: string) => {
+    if (!db) return;
+    const product = listings.find(l => l.id === id);
+    await updateDoc(doc(db, 'products', id), {
+      archivedAt: new Date().toISOString()
+    });
+    await logActivity('ARCHIVE', `Archived product: ${product?.name?.en || id}`);
+    setListingToDelete(null);
+  };
+
+  const handleRecover = async (id: string) => {
+    if (!db) return;
+    const product = listings.find(l => l.id === id);
+    await updateDoc(doc(db, 'products', id), {
+      archivedAt: null
+    });
+    await logActivity('RECOVER', `Recovered product: ${product?.name?.en || id}`);
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    if (!db) return;
+    try {
+      const productToDelete = listings.find(l => l.id === id);
+      
+      // Only attempt Firebase Storage deletion if it's a Firebase URL
+      if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.includes('firebasestorage')) {
+        if (storage) {
+          try {
+            const imageRef = ref(storage, productToDelete.imageUrl);
+            await deleteObject(imageRef);
+          } catch (imgError) {
+            console.error("Failed to delete image from storage:", imgError);
+          }
+        }
+      }
+      
+      // Note: Deleting from Cloudinary client-side requires a signed request.
+      // For now, we just remove the Firestore document.
+      
+      await deleteDoc(doc(db, 'products', id));
+      await logActivity('DELETE', `Permanently deleted product: ${productToDelete?.name?.en || id}`);
+    } catch (error) {
+      console.error("Error permanently deleting product:", error);
+      alert(t('admin_alert_delete_failed'));
+    }
+  };
+
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Max dimensions to ensure high quality but low storage
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to WebP format with 80% quality (excellent balance of quality and size)
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Canvas to Blob failed'));
+            }
+          }, 'image/webp', 0.8);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleCreateListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !storage || (!imageFile && !isTestListing)) return;
+    
+    // Safety check: Prevent exceeding free tier limits
+    if (listings.length >= MAX_LISTINGS) {
+      alert(`Safety Limit Reached: You cannot add more than ${MAX_LISTINGS} products to stay within the free tier. Please delete some existing products first.`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    let finalNameEn = nameEn.trim();
+    let finalNameAr = nameAr.trim();
+    let finalDescEn = descEn.trim();
+    let finalDescAr = descAr.trim();
+
+    if (!finalNameEn && !finalNameAr) {
+      alert(t('admin_alert_name_required'));
+      setIsSubmitting(false);
+      return;
+    }
+    if (!finalDescEn && !finalDescAr) {
+      alert(t('admin_alert_desc_required'));
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      if (isTestListing && isDeveloper && !finalNameEn && !finalNameAr && !finalDescEn && !finalDescAr) {
+        // Default test listing
+        finalNameEn = `Test Product ${listings.length + 1}`;
+        finalNameAr = `منتج تجريبي ${listings.length + 1}`;
+        finalDescEn = "This is a default test listing created by a developer for system verification.";
+        finalDescAr = "هذا إدراج تجريبي افتراضي تم إنشاؤه بواسطة مطور للتحقق من النظام.";
+      } else if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          const prompt = `Translate the missing fields for a furniture product.
+          If English is missing, translate the Arabic to English.
+          If Arabic is missing, translate the English to Arabic.
+          
+          Current Data:
+          nameEn: "${finalNameEn}"
+          nameAr: "${finalNameAr}"
+          descEn: "${finalDescEn}"
+          descAr: "${finalDescAr}"
+          `;
+          
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  nameEn: { type: Type.STRING },
+                  nameAr: { type: Type.STRING },
+                  descEn: { type: Type.STRING },
+                  descAr: { type: Type.STRING }
+                },
+                required: ["nameEn", "nameAr", "descEn", "descAr"]
+              }
+            }
+          });
+          
+          const result = JSON.parse(response.text || "{}");
+          finalNameEn = result.nameEn || finalNameEn;
+          finalNameAr = result.nameAr || finalNameAr;
+          finalDescEn = result.descEn || finalDescEn;
+          finalDescAr = result.descAr || finalDescAr;
+        } catch (err) {
+          console.error("Translation error:", err);
+          alert(t('admin_alert_translate_failed'));
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      let imageUrl = '';
+      if (isTestListing && isDeveloper && !imageFile) {
+        // Use one of the test images
+        imageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
+      } else if (imageFile) {
+        // Compress and convert image to WebP
+        const compressedBlob = await compressImage(imageFile);
+        
+        // Try Cloudinary first, fallback to Firebase Storage if configured
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+        if (cloudName && uploadPreset) {
+          // Upload to Cloudinary (Unsigned)
+          const formData = new FormData();
+          formData.append('file', compressedBlob);
+          formData.append('upload_preset', uploadPreset);
+          formData.append('folder', 'raafat_furniture');
+
+          const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+            { method: 'POST', body: formData }
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Cloudinary Upload Failed: ${errorData.error?.message || 'Unknown error'}`);
+          }
+
+          const data = await response.json();
+          // Use Cloudinary's auto-optimization parameters in the URL
+          imageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
+        } else if (storage) {
+          // Fallback to Firebase Storage if Cloudinary is not set up
+          const imageRef = ref(storage, `products/${Date.now()}_${imageFile.name.split('.')[0]}.webp`);
+          await uploadBytes(imageRef, compressedBlob);
+          imageUrl = await getDownloadURL(imageRef);
+        } else {
+          throw new Error("No image hosting service configured. Please set up Cloudinary or Firebase Storage.");
+        }
+      } else {
+        alert(t('admin_alert_image_required') || 'Image is required');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Save to Firestore
+      const selectedCatId = category;
+      await addDoc(collection(db, 'products'), {
+        name: { en: finalNameEn, ar: finalNameAr },
+        description: { en: finalDescEn, ar: finalDescAr },
+        category: { en: selectedCatId.replace('_', ' '), ar: selectedCatId.replace('_', ' ') }, // Simplified for demo
+        nameKey: finalNameEn.toLowerCase().replace(/\s+/g, '_'),
+        categoryKey: category,
+        imageUrl,
+        createdAt: new Date().toISOString(),
+        archivedAt: null,
+        isTest: isTestListing
+      });
+
+      await logActivity(isTestListing ? 'TEST_CREATE' : 'CREATE', `Created ${isTestListing ? 'test ' : ''}product: ${finalNameEn} in category ${selectedCatId}`);
+
+      // Reset form
+      setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
+      setCategory(CATEGORIES[0].id); setImageFile(null);
+      setIsTestListing(false);
+      setIsCreateModalOpen(false);
+    } catch (error: any) {
+      console.error("Error creating listing:", error);
+      alert(`${t('admin_alert_create_failed')}${error.message || 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--color-background)] flex flex-col md:flex-row pb-20 md:pb-0">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 border-r border-[var(--color-secondary)]/10 flex-col bg-[var(--color-background)] z-10">
+        <div className="p-6 border-b border-[var(--color-secondary)]/10">
+          <h2 className="text-xl font-bold text-[var(--color-text-primary)]">{t('admin_panel')}</h2>
+          <p className="text-sm text-[var(--color-text-secondary)] truncate mt-1">{user.email}</p>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+          <button 
+            onClick={() => setActiveTab('categories')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'categories' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+          >
+            <Folder size={20} />
+            {t('admin_tab_categories')}
+          </button>
+          <button 
+            onClick={() => setActiveTab('archive')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'archive' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+          >
+            <Archive size={20} />
+            {t('admin_tab_archive')}
+            {archivedListings.length > 0 && (
+              <span className="ms-auto bg-[var(--color-primary)] text-white text-xs py-0.5 px-2 rounded-full">
+                {archivedListings.length}
+              </span>
+            )}
+          </button>
+          {isDeveloper && (
+            <button 
+              onClick={() => setActiveTab('logs')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'logs' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+            >
+              <Activity size={20} />
+              {t('admin_tab_logs')}
+            </button>
+          )}
+        </nav>
+        <div className="p-4 border-t border-[var(--color-secondary)]/10 space-y-2">
+          <Link 
+            to="/"
+            className="w-full flex items-center gap-3 px-4 py-3 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-xl font-medium transition-colors"
+          >
+            <Home size={20} />
+            {t('admin_back_to_site')}
+          </Link>
+          <button 
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl font-medium transition-colors"
+          >
+            <LogOut size={20} />
+            {t('account_signout')}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--color-secondary)]/10 bg-[var(--color-background)] sticky top-0 z-20">
+        <div>
+          <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('admin_panel')}</h2>
+          <p className="text-xs text-[var(--color-text-secondary)] truncate">{user.email}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-full">
+            <Home size={20} />
+          </Link>
+          <button onClick={logout} className="p-2 text-red-500 hover:bg-red-500/10 rounded-full">
+            <LogOut size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] border-t border-[var(--color-secondary)]/10 z-40 flex justify-around p-2 pb-safe">
+        <button onClick={() => { setActiveTab('categories'); setSelectedCategory(null); }} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'categories' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+          <Folder size={20} />
+          <span className="text-[10px] mt-1 font-medium">{t('admin_tab_categories')}</span>
+        </button>
+        <button onClick={() => setActiveTab('archive')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'archive' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+          <div className="relative">
+            <Archive size={20} />
+            {archivedListings.length > 0 && (
+              <span className="absolute -top-1 -end-2 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">
+                {archivedListings.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] mt-1 font-medium">{t('admin_tab_archive')}</span>
+        </button>
+        {isDeveloper && (
+          <button onClick={() => setActiveTab('logs')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'logs' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+            <Activity size={20} />
+            <span className="text-[10px] mt-1 font-medium">{t('admin_tab_logs')}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-8 relative overflow-y-auto">
+        {activeTab === 'categories' && !selectedCategory && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_tab_categories')}</h1>
+              <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+              {CATEGORIES.map((cat, index) => (
+                <motion.div 
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                  whileHover={{ scale: 1.03, y: -8 }}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className="relative group text-center flex flex-col h-full cursor-pointer"
+                >
+                  <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative">
+                    <img 
+                      src={cat.imageUrl} 
+                      alt={cat.id} 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                  </div>
+                  <div className="p-4 flex flex-col items-center">
+                    <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                      {t(cat.labelKey)}
+                    </h3>
+                    <p className="text-md text-[var(--color-text-secondary)]">
+                      {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'categories' && selectedCategory && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSelectedCategory(null)}
+                  className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
+                >
+                  <span className="block"><ArrowLeft size={20} /></span>
+                </button>
+                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                  {t(CATEGORIES.find(c => c.id === selectedCategory)?.labelKey || '')} {t('admin_listings')}
+                </h1>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+              {displayedListings.map(listing => (
+                <motion.div 
+                  key={listing.id} 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative group text-center flex flex-col h-full"
+                >
+                  <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative">
+                    <img 
+                      src={listing.imageUrl} 
+                      alt={listing.name.en} 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <button 
+                      onClick={() => setListingToDelete(listing)}
+                      className="absolute top-3 end-3 p-2 bg-white/90 backdrop-blur-sm text-red-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-sm z-10"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                  <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                    {language === 'ar' ? listing.name.ar : listing.name.en}
+                  </h3>
+                  <p className="text-md text-[var(--color-text-secondary)] capitalize">
+                    {t(CATEGORIES.find(c => c.id === listing.categoryKey)?.labelKey || '')}
+                  </p>
+                </motion.div>
+              ))}
+              {displayedListings.length === 0 && (
+                <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/10">
+                  {t('admin_no_listings')}
+                </div>
+              )}
+            </div>
+
+            {/* FAB */}
+            <button 
+              onClick={() => {
+                setCategory(selectedCategory);
+                setIsCreateModalOpen(true);
+              }}
+              className="fixed bottom-24 md:bottom-8 end-6 md:end-8 w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all z-30"
+            >
+              <Plus size={24} />
+            </button>
+          </motion.div>
+        )}
+
+        {activeTab === 'archive' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_archived')}</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {displayedListings.map(listing => {
+                const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
+                const daysLeft = Math.max(0, 14 - daysSinceArchived);
+                const isExpired = daysLeft === 0;
+
+                return (
+                  <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
+                    <div className="aspect-[4/3] relative opacity-60 grayscale">
+                      <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{language === 'ar' ? listing.name.ar : listing.name.en}</h3>
+                      <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
+                        {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
+                        <button 
+                          onClick={() => handleRecover(listing.id)}
+                          className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw size={16} /> {t('admin_recover')}
+                        </button>
+                        {isExpired && (
+                          <button 
+                            onClick={() => handlePermanentDelete(listing.id)}
+                            className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {displayedListings.length === 0 && (
+                <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/20">
+                  {t('admin_no_archived')}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'logs' && isDeveloper && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_tab_logs')}</h1>
+            <div className="bg-[var(--color-secondary)]/5 rounded-2xl border border-[var(--color-secondary)]/10 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--color-secondary)]/10 text-[var(--color-text-secondary)] text-sm">
+                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_time')}</th>
+                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_admin')}</th>
+                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_action')}</th>
+                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_details')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map(log => (
+                      <tr key={log.id} className="border-b border-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/5 transition-colors">
+                        <td className="p-4 text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="p-4 text-sm text-[var(--color-text-primary)] font-medium">
+                          {log.adminEmail}
+                        </td>
+                        <td className="p-4 text-sm">
+                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${
+                            log.action === 'CREATE' ? 'bg-green-500/10 text-green-500' :
+                            log.action === 'DELETE' ? 'bg-red-500/10 text-red-500' :
+                            log.action === 'ARCHIVE' ? 'bg-orange-500/10 text-orange-500' :
+                            'bg-blue-500/10 text-blue-500'
+                          }`}>
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-[var(--color-text-secondary)]">
+                          {log.details}
+                        </td>
+                      </tr>
+                    ))}
+                    {logs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-[var(--color-text-secondary)]">
+                          {t('admin_no_logs')}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </main>
+
+      {/* Create Listing Modal */}
+      <AnimatePresence>
+      {isCreateModalOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
+            <div className="p-4 md:p-6 border-b border-[var(--color-secondary)]/10 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
+              <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">{t('admin_create_new')}</h2>
+              <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateListing} className="p-4 md:p-6 space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_en')}</label>
+                  <input type="text" value={nameEn} onChange={e => setNameEn(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_name_en')} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_ar')}</label>
+                  <input type="text" value={nameAr} onChange={e => setNameAr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right" placeholder={t('admin_placeholder_name_ar')} dir="rtl" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_desc_en')}</label>
+                  <textarea value={descEn} onChange={e => setDescEn(e.target.value)} rows={3} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none" placeholder={t('admin_placeholder_desc_en')}></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_desc_ar')}</label>
+                  <textarea value={descAr} onChange={e => setDescAr(e.target.value)} rows={3} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none text-right" placeholder={t('admin_placeholder_desc_ar')} dir="rtl"></textarea>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_category')}</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none">
+                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{t(c.labelKey)}</option>)}
+                </select>
+              </div>
+
+              {isDeveloper && (
+                <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
+                  <input 
+                    type="checkbox" 
+                    id="test-listing" 
+                    checked={isTestListing} 
+                    onChange={e => setIsTestListing(e.target.checked)}
+                    className="w-5 h-5 accent-[var(--color-primary)]"
+                  />
+                  <label htmlFor="test-listing" className="text-sm font-medium text-[var(--color-text-primary)] flex items-center gap-2">
+                    <Beaker size={16} className="text-blue-500" />
+                    Create as Test Listing
+                  </label>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_photo_min')}</label>
+                <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && !imageFile ? 'opacity-50' : ''}`}>
+                  <input 
+                    type="file" 
+                    required={!isTestListing}
+                    accept="image/*"
+                    onChange={e => setImageFile(e.target.files?.[0] || null)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={isTestListing && !imageFile && false} // Allow change if they want
+                  />
+                  {imageFile ? (
+                    <div className="flex flex-col items-center">
+                      <ImageIcon size={32} className="text-[var(--color-primary)] mb-2" />
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{imageFile.name}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t('admin_click_to_change')}</p>
+                    </div>
+                  ) : isTestListing ? (
+                    <div className="flex flex-col items-center">
+                      <Beaker size={32} className="text-blue-500 mb-2" />
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">Using Random Test Image</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">Click or drag to override with custom image</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Plus size={32} className="text-[var(--color-text-secondary)] mb-2" />
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('admin_click_to_upload')}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t('admin_photo_format')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
+                  {t('admin_cancel')}
+                </button>
+                <button type="submit" disabled={isSubmitting} className="px-6 md:px-8 py-3 bg-[var(--color-primary)] text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70 flex items-center gap-2">
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : t('admin_post_listing')}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+      {listingToDelete && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center border border-white/10"
+          >
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={32} />
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)] mb-3">{t('admin_remove_listing')}</h2>
+            <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_archived_auto_remove')}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setListingToDelete(null)} className="flex-1 py-3 text-[var(--color-text-primary)] font-medium bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors">
+                {t('admin_cancel')}
+              </button>
+              <button onClick={() => handleArchive(listingToDelete.id)} className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors">
+                {t('admin_archive')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Admin;

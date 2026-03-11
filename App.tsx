@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { LayoutOption, ColorSchemeOption, LanguageOption, TypographyOption, type TFunction } from './types';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { ColorSchemeOption, LanguageOption, TypographyOption, type TFunction } from './types';
 import { COLOR_SCHEMES, TEXTS } from './constants';
 import Header from './components/Header';
-import Hero from './components/Hero';
-import ProductSection from './components/ProductSection';
-import VisitUsSection from './components/VisitUsSection';
 import Footer from './components/Footer';
-import ThemeToggle from './components/ThemeToggle';
+import Home from './pages/Home';
+import Shop from './pages/Shop';
+import ProductDetails from './pages/ProductDetails';
+import Admin from './pages/Admin';
+import Login from './pages/Login';
+import UserAccount from './pages/UserAccount';
+import { AuthProvider } from './contexts/AuthContext';
+import { db } from './lib/firebase';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -37,28 +43,66 @@ const getInitialLanguage = (): LanguageOption => {
 };
 
 const App: React.FC = () => {
-  const layout = LayoutOption.ModernSleek;
   const colorScheme = ColorSchemeOption.BlackGold;
   const typography = TypographyOption.LuxeModern;
 
   const [language, setLanguage] = useState<LanguageOption>(getInitialLanguage);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
   const [isShineAnimating, setIsShineAnimating] = useState(true);
+  const [dynamicTexts, setDynamicTexts] = useState<any>(null);
   const headerRef = useRef<HTMLElement>(null);
 
-  const texts = TEXTS;
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   useLayoutEffect(() => {
     const headerElement = headerRef.current;
     if (!headerElement) return;
 
+    let lastHeight = 0;
     const observer = new ResizeObserver(() => {
-      document.documentElement.style.setProperty('--header-height', `${headerElement.offsetHeight}px`);
+      requestAnimationFrame(() => {
+        const newHeight = headerElement.offsetHeight;
+        if (newHeight !== lastHeight) {
+          lastHeight = newHeight;
+          document.documentElement.style.setProperty('--header-height', `${newHeight}px`);
+          setHeaderHeight(newHeight);
+        }
+      });
     });
 
     observer.observe(headerElement);
 
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!db) return;
+    const unsubscribe = onSnapshot(
+      doc(db, 'content', 'live'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const parsedData: any = {};
+          // Handle case where Firestore data might be stored as JSON strings
+          for (const key in data) {
+            if (typeof data[key] === 'string') {
+              try {
+                parsedData[key] = JSON.parse(data[key]);
+              } catch (e) {
+                parsedData[key] = data[key];
+              }
+            } else {
+              parsedData[key] = data[key];
+            }
+          }
+          setDynamicTexts(parsedData);
+        }
+      },
+      (error) => {
+        console.error("Error fetching dynamic content:", error);
+      }
+    );
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -72,12 +116,6 @@ const App: React.FC = () => {
     root.style.setProperty('--color-text-primary', scheme.textPrimary);
     root.style.setProperty('--color-text-secondary', scheme.textSecondary);
     root.style.setProperty('--color-success', scheme.success);
-
-    root.style.scrollBehavior = 'smooth';
-    
-    return () => {
-      root.style.scrollBehavior = 'auto';
-    };
   }, [colorScheme, themeMode]);
 
   useEffect(() => {
@@ -94,7 +132,7 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('language', language);
     document.documentElement.lang = language;
-    document.documentElement.dir = language === LanguageOption.Arabic ? 'rtl' : 'ltr';
+    document.documentElement.dir = 'ltr';
 
     setIsShineAnimating(false);
     const timer = setTimeout(() => {
@@ -104,9 +142,15 @@ const App: React.FC = () => {
   }, [language]);
   
   const t: TFunction = useCallback((key: string): string => {
-    const langTexts = texts[language] || TEXTS[LanguageOption.English];
-    return langTexts[key] || key;
-  }, [language, texts]);
+    let text;
+    if (dynamicTexts && dynamicTexts[language]) {
+      text = dynamicTexts[language][key];
+    }
+    if (!text) {
+      text = TEXTS[language]?.[key] || TEXTS[LanguageOption.English][key];
+    }
+    return text || key;
+  }, [language, dynamicTexts]);
   
   const getFontClasses = () => {
     if (language === 'ar') return 'font-arabic';
@@ -119,34 +163,40 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500`}>
-      <Header 
-        ref={headerRef} 
-        layout={layout} 
-        language={language} 
-        setLanguage={setLanguage} 
-        t={t} 
-        isShineAnimating={isShineAnimating}
-      />
-      <main>
-        <Hero
-          layout={layout}
-          t={t}
-        />
-        <ProductSection
-          layout={layout}
-          t={t}
-        />
-        <VisitUsSection 
-          t={t}
-        />
-      </main>
-      <Footer 
-        layout={layout} 
-        t={t}
-      />
-      <ThemeToggle themeMode={themeMode} setThemeMode={setThemeMode} />
-    </div>
+    <AuthProvider>
+      <Router>
+        <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
+          <Routes>
+            <Route path="/admin" element={<Admin t={t} language={language} />} />
+            <Route path="/login" element={<Login t={t} />} />
+            <Route path="/account" element={<UserAccount t={t} />} />
+            <Route path="*" element={
+              <>
+                <Header 
+                  ref={headerRef} 
+                  language={language} 
+                  setLanguage={setLanguage} 
+                  t={t} 
+                  isShineAnimating={isShineAnimating}
+                  themeMode={themeMode}
+                  setThemeMode={setThemeMode}
+                />
+                <div className="flex-grow">
+                  <Routes>
+                    <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
+                    <Route path="/shop" element={<Shop t={t} />} />
+                    <Route path="/product/:id" element={<ProductDetails t={t} />} />
+                  </Routes>
+                </div>
+                <Footer 
+                  t={t}
+                />
+              </>
+            } />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 

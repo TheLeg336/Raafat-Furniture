@@ -26,7 +26,11 @@ const letterVariants: Variants = {
   },
 };
 
-const Logo: React.FC = () => {
+interface LogoProps {
+  t?: (key: string) => string;
+}
+
+const Logo: React.FC<LogoProps> = ({ t }) => {
   const raafatLetters = Array.from("RAAFAT");
   const furnitureLetters = Array.from("FURNITURE");
 
@@ -40,7 +44,8 @@ const Logo: React.FC = () => {
       variants={logoVariants}
       initial="hidden"
       animate="visible"
-      aria-label="Raafat Furniture Logo"
+      aria-label={t ? t('aria_logo') : "Raafat Furniture Logo"}
+      dir="ltr"
     >
       {/* RAAFAT word */}
       <motion.div

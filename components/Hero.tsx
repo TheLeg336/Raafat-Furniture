@@ -1,16 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, Variants, useScroll, useTransform } from 'framer-motion';
-import { LayoutOption } from '../types';
 import type { TFunction } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import CloseIcon from './icons/CloseIcon';
 
 interface HeroProps {
-  layout: LayoutOption;
   t: TFunction;
 }
 
-const Hero: React.FC<HeroProps> = ({ layout, t }) => {
+const Hero: React.FC<HeroProps> = ({ t }) => {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -51,7 +49,7 @@ const Hero: React.FC<HeroProps> = ({ layout, t }) => {
     };
   }, [isSearchVisible]);
 
-  const defaultBgImage = 'https://picsum.photos/seed/sleek/1920/1080';
+  const defaultBgImage = 'https://picsum.photos/seed/sleek/1280/720';
 
   const currentConfig = {
       bgImage: defaultBgImage,
@@ -99,7 +97,7 @@ const Hero: React.FC<HeroProps> = ({ layout, t }) => {
             y: backgroundY
           }}
         />
-        <div className="absolute inset-0 z-[1] bg-black/20" /> {/* Optional overlay for text readability */}
+        <div className="absolute inset-0 z-[1] bg-black/40" /> {/* Improved contrast overlay */}
         
         <div className="relative z-[2] h-full container mx-auto px-6 flex flex-col items-center justify-center text-center">
           <motion.div
@@ -155,17 +153,18 @@ const Hero: React.FC<HeroProps> = ({ layout, t }) => {
                         }}
                         style={{ pointerEvents: isSearchVisible ? 'auto' : 'none' }}
                     >
-                        <SearchIcon className="text-white/80 shrink-0 mr-3" />
+                        <SearchIcon className="text-white/80 shrink-0 me-3" />
                         <input
                             ref={searchInputRef}
                             type="text"
+                            maxLength={100}
                             placeholder={t('search_placeholder')}
                             className="w-full bg-transparent text-white placeholder-white/70 outline-none"
                         />
                         <motion.button
                             onClick={(e) => { e.stopPropagation(); setIsSearchVisible(false); }}
-                            className="ml-3 text-white/80 hover:text-white shrink-0"
-                            aria-label="Close search"
+                            className="ms-3 text-white/80 hover:text-white shrink-0"
+                            aria-label={t('aria_close_search')}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                         >

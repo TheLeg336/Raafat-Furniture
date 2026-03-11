@@ -32,11 +32,23 @@ export interface ColorScheme {
 }
 
 
+export interface LocalizedString {
+  en: string;
+  ar: string;
+}
+
 export interface Product {
-  id: number;
-  nameKey: string;
-  categoryKey: string;
+  id: number | string; // Sanity uses string IDs
+  nameKey?: string; // Legacy fallback
+  categoryKey?: string; // Legacy fallback
+  name?: LocalizedString; // CMS data
+  category?: LocalizedString; // CMS data
+  description?: LocalizedString; // CMS data
   imageUrl: string;
+  price?: number;
+  dimensions?: string;
+  materials?: string[];
+  colors?: string[];
 }
 
 export type TFunction = (key: string) => string;

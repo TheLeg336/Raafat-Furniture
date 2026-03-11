@@ -1,14 +1,12 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
-import { LayoutOption } from '../types';
 import type { TFunction } from '../types';
 
 interface FooterProps {
-    layout: LayoutOption;
     t: TFunction;
 }
 
-const Footer: React.FC<FooterProps> = ({ layout, t }) => {
+const Footer: React.FC<FooterProps> = ({ t }) => {
     const containerVariants: Variants = {
         hidden: {},
         visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
@@ -41,7 +39,7 @@ const Footer: React.FC<FooterProps> = ({ layout, t }) => {
                     {t('footer_locations_title')}
                 </motion.h2>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 text-center sm:text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 text-center sm:text-start">
                     <motion.div variants={itemVariants}>
                         <h3 className="text-xl font-bold text-[var(--color-primary)] mb-3">
                             {t('footer_cairo_branch_title')}
@@ -94,7 +92,7 @@ const Footer: React.FC<FooterProps> = ({ layout, t }) => {
 
                 <motion.div 
                     variants={itemVariants} 
-                    className="text-center text-sm text-[var(--color-text-secondary)] mt-16 pt-8 border-t border-[var(--color-secondary)]/30"
+                    className="text-center text-sm text-[var(--color-text-secondary)] mt-16 pt-8 border-t border-[var(--color-secondary)]/30 flex flex-col sm:flex-row justify-between items-center gap-4"
                 >
                     <p>
                         {t('footer_copyright')}
