@@ -85,7 +85,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
           on page load, preventing animation jank on the first click.
         */}
         <div
-          className="search-gloss backdrop-blur-lg shadow-lg"
+          className="search-gloss backdrop-blur-lg shadow-lg rounded-full"
           style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }}
           aria-hidden="true"
         />
@@ -119,12 +119,11 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                 layout
                 onClick={() => !isSearchVisible && setIsSearchVisible(true)}
                 className={`
-                  relative flex items-center justify-center origin-center
+                  relative flex items-center justify-center origin-center rounded-full overflow-hidden
                   ${isSearchVisible 
                     ? 'w-full max-w-lg h-14 search-gloss backdrop-blur-lg shadow-lg' 
                     : 'h-14 px-8 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
                 `}
-                style={{ borderRadius: 999 }}
                 transition={{ type: "spring", stiffness: 180, damping: 26, mass: 0.9 }}
               >
                 <div className="relative w-full h-full flex items-center justify-center">

@@ -82,7 +82,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   };
 
   const headerClass = 'sticky top-0 z-20 bg-[var(--color-background)] bg-opacity-80 backdrop-blur-xl shadow-sm';
-  const navClass = 'text-sm font-medium tracking-wide font-heading';
+  const navClass = 'text-lg font-medium tracking-wide font-heading';
 
   const NavLinks: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (
     <ul className={`flex ${isMobile ? 'flex-col text-xl gap-10 items-center' : `items-center ${navClass} gap-8`}`}>
@@ -91,7 +91,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
           <Link 
             to={link.href} 
             onClick={(e) => handleNavClick(e, link.href)} 
-            className={`nav-link text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors duration-300 ${isMobile ? 'leading-loose' : ''}`}
+            className={`nav-link text-[var(--color-text-primary)] hover:text-[var(--color-primary)] transition-colors duration-300 ${isMobile ? 'leading-loose' : ''}`}
           >
             {t(link.key)}
           </Link>
@@ -112,7 +112,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       <div className="flex items-center">
         <motion.button 
           onClick={() => setLanguage(LanguageOption.English)}
-          className={`text-sm font-semibold font-heading ${language === LanguageOption.English ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
+          className={`text-base font-semibold font-heading ${language === LanguageOption.English ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -121,7 +121,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
         <span className="text-[var(--color-text-secondary)] mx-2">/</span>
         <motion.button 
           onClick={() => setLanguage(LanguageOption.Arabic)}
-          className={`text-sm font-semibold font-heading ${language === LanguageOption.Arabic ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
+          className={`text-base font-semibold font-heading ${language === LanguageOption.Arabic ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >

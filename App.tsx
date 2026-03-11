@@ -116,6 +116,8 @@ const App: React.FC = () => {
     root.style.setProperty('--color-text-primary', scheme.textPrimary);
     root.style.setProperty('--color-text-secondary', scheme.textSecondary);
     root.style.setProperty('--color-success', scheme.success);
+    root.style.backgroundColor = scheme.background;
+    root.style.color = scheme.textPrimary;
   }, [colorScheme, themeMode]);
 
   useEffect(() => {

@@ -49,7 +49,7 @@ const Logo: React.FC<LogoProps> = ({ t }) => {
     >
       {/* RAAFAT word */}
       <motion.div
-        className="flex text-lg font-light tracking-[0.3em] mb-[-0.1rem] mr-[-0.3em]"
+        className="flex text-xl font-light tracking-[0.3em] mb-[-0.1rem] mr-[-0.3em]"
         style={{ fontFamily: "'Inter', sans-serif" }}
         aria-hidden="true"
       >
@@ -69,7 +69,7 @@ const Logo: React.FC<LogoProps> = ({ t }) => {
         className="flex font-semibold"
         style={{
           fontFamily: "'Cormorant Garamond', serif",
-          fontSize: '0.55rem',
+          fontSize: '0.7rem',
           letterSpacing: '0.2em',
           marginRight: '-0.2em',
         }}

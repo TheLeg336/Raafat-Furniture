@@ -133,11 +133,22 @@
       }
 
       .search-gloss {
+        border-radius: 9999px;
         background: linear-gradient(135deg,
             hsla(var(--color-primary-hsl-values), 0.15) 0%,
             hsla(var(--color-primary-hsl-values), 0.05) 50%,
             hsla(var(--color-primary-hsl-values), 0.15) 100%
         );
+      }
+
+      /* Global Theme Transition */
+      html, body {
+        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+      }
+      
+      /* Ensure smooth transitions for all themed elements */
+      .transition-theme {
+        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
       }
     </style>
 <script type="importmap">

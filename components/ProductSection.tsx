@@ -54,11 +54,11 @@ const ProductSection: React.FC<ProductSectionProps> = ({ t, headerHeight }) => {
     }, [headerHeight]);
 
     return (
-        <section id="shop" className="bg-[var(--color-background)]">
+        <section id="shop" className="bg-[var(--color-background)] transition-colors duration-500">
             <div className="relative">
                 <div ref={sentinelRef} className="absolute w-full h-px pointer-events-none" />
                 
-                <div className={`sticky ${STICKY_HEADER_OFFSET} z-10 bg-[var(--color-background)]/90 backdrop-blur-xl transition-all duration-300 ${isSticky ? 'shadow-md rounded-b-3xl' : ''}`}>
+                <div className={`sticky ${STICKY_HEADER_OFFSET} z-10 bg-[var(--color-background)]/90 backdrop-blur-xl transition-all duration-300 ${isSticky ? 'shadow-md' : ''}`}>
                     <div className="container mx-auto px-6 pt-12 pb-6 md:pt-20 md:pb-10">
                         <ProductSectionHeader t={t} />
                     </div>

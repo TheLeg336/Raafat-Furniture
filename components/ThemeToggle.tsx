@@ -56,6 +56,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ themeMode, setThemeMode, t })
       >
         <motion.div
           className="w-6 h-6 rounded-full flex items-center justify-center"
+          initial={false}
           animate={{ x: isDark ? 24 : 0 }}
           style={{
             backgroundColor: 'var(--color-background)',

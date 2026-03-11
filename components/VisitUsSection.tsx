@@ -25,7 +25,7 @@ const VisitUsSection: React.FC<VisitUsSectionProps> = ({ t }) => {
   };
 
   return (
-    <section id="visit-us" className="bg-[var(--color-background)] py-16 sm:py-20 md:py-28">
+    <section id="visit-us" className="bg-[var(--color-background)] py-16 sm:py-20 md:py-28 transition-colors duration-500">
       <motion.div
         className="container mx-auto px-6 text-center max-w-4xl"
         variants={containerVariants}
