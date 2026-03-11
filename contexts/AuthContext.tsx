@@ -5,12 +5,15 @@ import { auth, googleProvider, db } from '../lib/firebase';
 
 interface AuthContextType {
   user: User | null;
+  firstName: string | null;
+  lastName: string | null;
   isAdmin: boolean;
   isDeveloper: boolean;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   signupWithEmail: (email: string, pass: string) => Promise<void>;
+  updateProfile: (firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -18,6 +21,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,8 +37,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         let adminStatus = false;
         let developerStatus = false;
+        let fName = null;
+        let lName = null;
+
         if (currentUser.email && db) {
           try {
+            // Fetch User Profile
+            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              fName = userData.firstName || null;
+              lName = userData.lastName || null;
+            }
+
             // Check if user is in 'admins' collection
             const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
             adminStatus = adminDoc.exists();
@@ -42,29 +58,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
             if (!adminStatus) {
-              // Save non-admin emails to a single list
+              // Save non-admin emails to a single list for marketing/personalization
               try {
-                await updateDoc(doc(db, 'users', 'all_users'), {
-                  emails: arrayUnion(currentUser.email)
+                await updateDoc(doc(db, 'users', 'all_users_list'), {
+                  users: arrayUnion({
+                    email: currentUser.email,
+                    uid: currentUser.uid,
+                    firstName: fName,
+                    lastName: lName,
+                    joinedAt: new Date().toISOString()
+                  })
                 });
               } catch (error: any) {
                 if (error.code === 'not-found') {
-                  await setDoc(doc(db, 'users', 'all_users'), {
-                    emails: [currentUser.email]
+                  await setDoc(doc(db, 'users', 'all_users_list'), {
+                    users: [{
+                      email: currentUser.email,
+                      uid: currentUser.uid,
+                      firstName: fName,
+                      lastName: lName,
+                      joinedAt: new Date().toISOString()
+                    }]
                   });
                 }
               }
             }
           } catch (error) {
-            console.error("Error checking admin status:", error);
+            console.error("Error checking user status:", error);
           }
         }
+        setFirstName(fName);
+        setLastName(lName);
         setIsAdmin(adminStatus);
         setIsDeveloper(developerStatus);
         setUser(currentUser);
         setLoading(false);
       } else {
         setUser(null);
+        setFirstName(null);
+        setLastName(null);
         setIsAdmin(false);
         setIsDeveloper(false);
         setLoading(false);
@@ -88,13 +120,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await createUserWithEmailAndPassword(auth, email, pass);
   };
 
+  const updateProfile = async (fName: string, lName: string) => {
+    if (!user || !db) return;
+    await setDoc(doc(db, 'users', user.uid), {
+      firstName: fName,
+      lastName: lName,
+      email: user.email,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    setFirstName(fName);
+    setLastName(lName);
+  };
+
   const logout = async () => {
     if (!auth) return;
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isDeveloper, loading, loginWithGoogle, loginWithEmail, signupWithEmail, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      firstName, 
+      lastName, 
+      isAdmin, 
+      isDeveloper, 
+      loading, 
+      loginWithGoogle, 
+      loginWithEmail, 
+      signupWithEmail, 
+      updateProfile,
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

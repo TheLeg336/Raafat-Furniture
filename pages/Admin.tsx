@@ -49,8 +49,12 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
   const [listings, setListings] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [listingToDelete, setListingToDelete] = useState<any | null>(null);
+
+  // Archived Tab State
+  const [selectedArchivedCategory, setSelectedArchivedCategory] = useState<string | null>(null);
 
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,9 +93,24 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       );
     }
 
+    // Fetch user profiles for logs
+    const unsubscribeUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        const profiles: Record<string, any> = {};
+        snapshot.docs.forEach(doc => {
+          if (doc.id !== 'all_users_list') {
+            profiles[doc.data().email] = doc.data();
+          }
+        });
+        setUserProfiles(profiles);
+      }
+    );
+
     return () => {
       unsubscribeProducts();
       unsubscribeLogs();
+      unsubscribeUsers();
     };
   }, [isAdmin, isDeveloper]);
 
@@ -260,19 +279,25 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     let finalDescEn = descEn.trim();
     let finalDescAr = descAr.trim();
 
-    if (!finalNameEn && !finalNameAr) {
-      alert(t('admin_alert_name_required'));
-      setIsSubmitting(false);
-      return;
-    }
-    if (!finalDescEn && !finalDescAr) {
-      alert(t('admin_alert_desc_required'));
-      setIsSubmitting(false);
-      return;
+    // Validation
+    const isActuallyEmpty = !finalNameEn && !finalNameAr && !finalDescEn && !finalDescAr;
+    const isDeveloperTest = isTestListing && isDeveloper;
+
+    if (!isDeveloperTest || !isActuallyEmpty) {
+      if (!finalNameEn && !finalNameAr) {
+        alert(t('admin_alert_name_required'));
+        setIsSubmitting(false);
+        return;
+      }
+      if (!finalDescEn && !finalDescAr) {
+        alert(t('admin_alert_desc_required'));
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
-      if (isTestListing && isDeveloper && !finalNameEn && !finalNameAr && !finalDescEn && !finalDescAr) {
+      if (isDeveloperTest && isActuallyEmpty) {
         // Default test listing
         finalNameEn = `Test Product ${listings.length + 1}`;
         finalNameAr = `منتج تجريبي ${listings.length + 1}`;
@@ -281,16 +306,22 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       } else if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
         try {
           const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-          const prompt = `Translate the missing fields for a furniture product.
-          If English is missing, translate the Arabic to English.
-          If Arabic is missing, translate the English to Arabic.
+          const prompt = `You are a professional translator for a luxury furniture brand. 
+          Translate the missing fields between English and Arabic.
+          
+          Rules:
+          1. Return ONLY a valid JSON object.
+          2. Do not include any markdown formatting (no \`\`\`json).
+          3. If a field is already provided, keep it as is.
+          4. Ensure the Arabic translation is elegant and professional.
           
           Current Data:
-          nameEn: "${finalNameEn}"
-          nameAr: "${finalNameAr}"
-          descEn: "${finalDescEn}"
-          descAr: "${finalDescAr}"
-          `;
+          {
+            "nameEn": "${finalNameEn}",
+            "nameAr": "${finalNameAr}",
+            "descEn": "${finalDescEn}",
+            "descAr": "${finalDescAr}"
+          }`;
           
           const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -310,7 +341,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             }
           });
           
-          const result = JSON.parse(response.text || "{}");
+          const rawText = response.text || "{}";
+          const cleanText = rawText.replace(/```json|```/g, '').trim();
+          const result = JSON.parse(cleanText || "{}");
+          
           finalNameEn = result.nameEn || finalNameEn;
           finalNameAr = result.nameAr || finalNameAr;
           finalDescEn = result.descEn || finalDescEn;
@@ -543,7 +577,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               <div className="flex items-center gap-4">
                 <button 
                   onClick={() => setSelectedCategory(null)}
-                  className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
+                  className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)] relative z-10"
                 >
                   <span className="block"><ArrowLeft size={20} /></span>
                 </button>
@@ -588,65 +622,120 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
               )}
             </div>
-
-            {/* FAB */}
-            <button 
-              onClick={() => {
-                setCategory(selectedCategory);
-                setIsCreateModalOpen(true);
-              }}
-              className="fixed bottom-24 md:bottom-8 end-6 md:end-8 w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all z-30"
-            >
-              <Plus size={24} />
-            </button>
           </motion.div>
+        )}
+
+        {/* FAB - Stable placement */}
+        {activeTab === 'categories' && selectedCategory && (
+          <button 
+            onClick={() => {
+              setCategory(selectedCategory);
+              setIsCreateModalOpen(true);
+            }}
+            className="fixed bottom-24 md:bottom-8 end-6 md:end-8 w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all z-30"
+          >
+            <Plus size={24} />
+          </button>
         )}
 
         {activeTab === 'archive' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_archived')}</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-              {displayedListings.map(listing => {
-                const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
-                const daysLeft = Math.max(0, 14 - daysSinceArchived);
-                const isExpired = daysLeft === 0;
-
-                return (
-                  <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
-                    <div className="aspect-[4/3] relative opacity-60 grayscale">
-                      <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{language === 'ar' ? listing.name.ar : listing.name.en}</h3>
-                      <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
-                        {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
-                        <button 
-                          onClick={() => handleRecover(listing.id)}
-                          className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <RefreshCw size={16} /> {t('admin_recover')}
-                        </button>
-                        {isExpired && (
-                          <button 
-                            onClick={() => handlePermanentDelete(listing.id)}
-                            className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {displayedListings.length === 0 && (
-                <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/20">
-                  {t('admin_no_archived')}
+            {!selectedArchivedCategory ? (
+              <>
+                <div className="mb-6 md:mb-8">
+                  <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_archived')}</h1>
+                  <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
                 </div>
-              )}
-            </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+                  {CATEGORIES.map((cat, index) => (
+                    <motion.div 
+                      key={cat.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                      whileHover={{ scale: 1.03, y: -8 }}
+                      onClick={() => setSelectedArchivedCategory(cat.id)}
+                      className="relative group text-center flex flex-col h-full cursor-pointer"
+                    >
+                      <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
+                        <img 
+                          src={cat.imageUrl} 
+                          alt={cat.id} 
+                          className="absolute inset-0 w-full h-full object-cover" 
+                        />
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                      </div>
+                      <div className="p-4 flex flex-col items-center">
+                        <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                          {t(cat.labelKey)}
+                        </h3>
+                        <p className="text-md text-[var(--color-text-secondary)]">
+                          {archivedListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-4 mb-6 md:mb-8">
+                  <button 
+                    onClick={() => setSelectedArchivedCategory(null)}
+                    className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)] relative z-10"
+                  >
+                    <span className="block"><ArrowLeft size={20} /></span>
+                  </button>
+                  <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                    {t('admin_archived')}: {t(CATEGORIES.find(c => c.id === selectedArchivedCategory)?.labelKey || '')}
+                  </h1>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                  {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).map(listing => {
+                    const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
+                    const daysLeft = Math.max(0, 14 - daysSinceArchived);
+                    const isExpired = daysLeft === 0;
+
+                    return (
+                      <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
+                        <div className="aspect-[4/3] relative opacity-60 grayscale">
+                          <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="p-4 flex-1 flex flex-col">
+                          <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{language === 'ar' ? listing.name.ar : listing.name.en}</h3>
+                          <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
+                            {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
+                            <button 
+                              onClick={() => handleRecover(listing.id)}
+                              className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <RefreshCw size={16} /> {t('admin_recover')}
+                            </button>
+                            {isExpired && (
+                              <button 
+                                onClick={() => handlePermanentDelete(listing.id)}
+                                className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).length === 0 && (
+                    <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/20">
+                      {t('admin_no_archived')}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </motion.div>
         )}
 
@@ -654,40 +743,52 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_tab_logs')}</h1>
             <div className="bg-[var(--color-secondary)]/5 rounded-2xl border border-[var(--color-secondary)]/10 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="w-full text-left border-collapse table-fixed">
                   <thead>
                     <tr className="bg-[var(--color-secondary)]/10 text-[var(--color-text-secondary)] text-sm">
-                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_time')}</th>
-                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_admin')}</th>
-                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_action')}</th>
-                      <th className="p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_details')}</th>
+                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-32 md:w-40">{t('admin_time')}</th>
+                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-40 md:w-48">{t('admin_admin')}</th>
+                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-28 md:w-32">{t('admin_action')}</th>
+                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-64 md:w-auto">{t('admin_details')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.map(log => (
-                      <tr key={log.id} className="border-b border-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/5 transition-colors">
-                        <td className="p-4 text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </td>
-                        <td className="p-4 text-sm text-[var(--color-text-primary)] font-medium">
-                          {log.adminEmail}
-                        </td>
-                        <td className="p-4 text-sm">
-                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${
-                            log.action === 'CREATE' ? 'bg-green-500/10 text-green-500' :
-                            log.action === 'DELETE' ? 'bg-red-500/10 text-red-500' :
-                            log.action === 'ARCHIVE' ? 'bg-orange-500/10 text-orange-500' :
-                            'bg-blue-500/10 text-blue-500'
-                          }`}>
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm text-[var(--color-text-secondary)]">
-                          {log.details}
-                        </td>
-                      </tr>
-                    ))}
+                    {logs.map(log => {
+                      const profile = userProfiles[log.adminEmail];
+                      const displayName = profile ? `${profile.firstName} ${profile.lastName}` : log.adminEmail;
+                      const formattedTime = new Date(log.timestamp).toLocaleString([], { 
+                        year: 'numeric', 
+                        month: 'numeric', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      });
+
+                      return (
+                        <tr key={log.id} className="border-b border-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/5 transition-colors">
+                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+                            {formattedTime}
+                          </td>
+                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-primary)] font-medium truncate" title={log.adminEmail}>
+                            {displayName}
+                          </td>
+                          <td className="p-3 md:p-4 text-xs md:text-sm">
+                            <span className={`px-2 py-0.5 md:py-1 rounded-md text-[10px] md:text-xs font-bold ${
+                              log.action === 'CREATE' ? 'bg-green-500/10 text-green-500' :
+                              log.action === 'DELETE' ? 'bg-red-500/10 text-red-500' :
+                              log.action === 'ARCHIVE' ? 'bg-orange-500/10 text-orange-500' :
+                              'bg-blue-500/10 text-blue-500'
+                            }`}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] break-words">
+                            {log.details}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {logs.length === 0 && (
                       <tr>
                         <td colSpan={4} className="p-8 text-center text-[var(--color-text-secondary)]">

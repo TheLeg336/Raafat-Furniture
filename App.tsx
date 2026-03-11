@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ColorSchemeOption, LanguageOption, TypographyOption, type TFunction } from './types';
 import { COLOR_SCHEMES, TEXTS } from './constants';
@@ -11,7 +11,8 @@ import ProductDetails from './pages/ProductDetails';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import UserAccount from './pages/UserAccount';
-import { AuthProvider } from './contexts/AuthContext';
+import Onboarding from './pages/Onboarding';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { db } from './lib/firebase';
 
 type ThemeMode = 'light' | 'dark';
@@ -42,9 +43,13 @@ const getInitialLanguage = (): LanguageOption => {
   return LanguageOption.English;
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const colorScheme = ColorSchemeOption.BlackGold;
   const typography = TypographyOption.LuxeModern;
+
+  const { user, firstName, lastName, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [language, setLanguage] = useState<LanguageOption>(getInitialLanguage);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
@@ -53,6 +58,13 @@ const App: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Redirection logic for onboarding
+  useEffect(() => {
+    if (!authLoading && user && (!firstName || !lastName) && location.pathname !== '/onboarding') {
+      navigate('/onboarding');
+    }
+  }, [user, firstName, lastName, authLoading, navigate, location.pathname]);
 
   useLayoutEffect(() => {
     const headerElement = headerRef.current;
@@ -165,38 +177,45 @@ const App: React.FC = () => {
   };
 
   return (
+    <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
+      <Routes>
+        <Route path="/admin" element={<Admin t={t} language={language} />} />
+        <Route path="/login" element={<Login t={t} />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/account" element={<UserAccount t={t} />} />
+        <Route path="*" element={
+          <>
+            <Header 
+              ref={headerRef} 
+              language={language} 
+              setLanguage={setLanguage} 
+              t={t} 
+              isShineAnimating={isShineAnimating}
+              themeMode={themeMode}
+              setThemeMode={setThemeMode}
+            />
+            <div className="flex-grow">
+              <Routes>
+                <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
+                <Route path="/shop" element={<Shop t={t} />} />
+                <Route path="/product/:id" element={<ProductDetails t={t} />} />
+              </Routes>
+            </div>
+            <Footer 
+              t={t}
+            />
+          </>
+        } />
+      </Routes>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <AuthProvider>
       <Router>
-        <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
-          <Routes>
-            <Route path="/admin" element={<Admin t={t} language={language} />} />
-            <Route path="/login" element={<Login t={t} />} />
-            <Route path="/account" element={<UserAccount t={t} />} />
-            <Route path="*" element={
-              <>
-                <Header 
-                  ref={headerRef} 
-                  language={language} 
-                  setLanguage={setLanguage} 
-                  t={t} 
-                  isShineAnimating={isShineAnimating}
-                  themeMode={themeMode}
-                  setThemeMode={setThemeMode}
-                />
-                <div className="flex-grow">
-                  <Routes>
-                    <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
-                    <Route path="/shop" element={<Shop t={t} />} />
-                    <Route path="/product/:id" element={<ProductDetails t={t} />} />
-                  </Routes>
-                </div>
-                <Footer 
-                  t={t}
-                />
-              </>
-            } />
-          </Routes>
-        </div>
+        <AppContent />
       </Router>
     </AuthProvider>
   );

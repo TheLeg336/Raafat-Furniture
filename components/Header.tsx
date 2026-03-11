@@ -81,7 +81,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     }
   };
 
-  const headerClass = 'sticky top-0 z-20 bg-[var(--color-background)] bg-opacity-80 backdrop-blur-xl shadow-sm';
+  const headerClass = 'sticky top-0 z-[100] bg-[var(--color-background)] bg-opacity-80 backdrop-blur-xl shadow-sm';
   const navClass = 'text-lg font-medium tracking-wide font-heading';
 
   const NavLinks: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (

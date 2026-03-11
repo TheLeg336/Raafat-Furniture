@@ -10,7 +10,7 @@ interface UserAccountProps {
 }
 
 const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
-  const { user, isAdmin, loading, logout } = useAuth();
+  const { user, firstName, lastName, isAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -28,6 +28,8 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
   }
+
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center bg-[var(--color-background)] p-6">
@@ -48,7 +50,9 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
           )}
         </div>
         
-        <h1 className="text-2xl font-bold mb-2 text-[var(--color-text-primary)]">{t('account_title')}</h1>
+        <h1 className="text-2xl font-bold mb-1 text-[var(--color-text-primary)]">
+          {fullName || t('account_title')}
+        </h1>
         <p className="text-[var(--color-text-secondary)] mb-8">{user.email}</p>
         
         <button 
