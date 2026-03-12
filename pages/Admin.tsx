@@ -5,11 +5,12 @@ import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'fireb
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { GoogleGenAI, Type } from '@google/genai';
 import { CATEGORIES } from '../constants';
+import LogoIcon from '../components/LogoIcon';
 import { LanguageOption, type TFunction } from '../types';
 
 const TEST_IMAGES = [
@@ -29,7 +30,7 @@ interface AdminProps {
 }
 
 const Admin: React.FC<AdminProps> = ({ t, language }) => {
-  const { user, isAdmin, isDeveloper, loading, logout } = useAuth();
+  const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
   const activeTab = (searchParams.get('tab') as 'categories' | 'archive' | 'logs') || 'categories';
@@ -65,6 +66,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isTestListing, setIsTestListing] = useState(false);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!db || !isAdmin) return;
@@ -452,66 +455,108 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] flex flex-col md:flex-row pb-20 md:pb-0">
+    <div className="h-screen bg-[var(--color-background)] flex flex-col md:flex-row overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 border-r border-[var(--color-secondary)]/10 flex-col bg-[var(--color-background)] z-10">
-        <div className="p-6 border-b border-[var(--color-secondary)]/10">
-          <h2 className="text-xl font-bold text-[var(--color-text-primary)]">{t('admin_panel')}</h2>
-          <p className="text-sm text-[var(--color-text-secondary)] truncate mt-1">{user.email}</p>
+      <aside 
+        className={`hidden md:flex flex-col border-r border-[var(--color-secondary)]/5 bg-[var(--color-background)] z-30 transition-all duration-300 ease-in-out relative ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+      >
+        <button 
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="absolute -right-3 top-10 w-6 h-6 bg-[var(--color-primary)] text-white rounded-full flex items-center justify-center shadow-lg z-40 hover:scale-110 transition-transform"
+        >
+          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        <div className={`p-6 border-b border-[var(--color-secondary)]/5 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-4'}`}>
+          {!isSidebarCollapsed && (
+            <>
+              <LogoIcon size={48} className="shrink-0 shadow-lg rounded-xl" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="overflow-hidden">
+                <p className="text-sm font-bold text-[var(--color-text-primary)] truncate leading-tight">
+                  {firstName && lastName ? `${firstName} ${lastName}` : t('account_admin')}
+                </p>
+                <p className="text-[10px] text-[var(--color-text-secondary)] truncate opacity-70">{user.email}</p>
+              </motion.div>
+            </>
+          )}
+          {isSidebarCollapsed && (
+            <LogoIcon size={40} className="shadow-md rounded-lg" />
+          )}
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
           <button 
             onClick={() => setActiveTab('categories')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'categories' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+            title={isSidebarCollapsed ? t('admin_tab_categories') : ''}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'categories' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Folder size={20} />
-            {t('admin_tab_categories')}
+            <Folder size={20} className="shrink-0" />
+            {!isSidebarCollapsed && <span className="truncate">{t('admin_tab_categories')}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('archive')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'archive' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+            title={isSidebarCollapsed ? t('admin_tab_archive') : ''}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'archive' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Archive size={20} />
-            {t('admin_tab_archive')}
-            {archivedListings.length > 0 && (
-              <span className="ms-auto bg-[var(--color-primary)] text-white text-xs py-0.5 px-2 rounded-full">
-                {archivedListings.length}
-              </span>
+            <div className="relative shrink-0">
+              <Archive size={20} />
+              {archivedListings.length > 0 && isSidebarCollapsed && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-[var(--color-primary)] rounded-full border border-[var(--color-background)]"></span>
+              )}
+            </div>
+            {!isSidebarCollapsed && (
+              <>
+                <span className="truncate">{t('admin_tab_archive')}</span>
+                {archivedListings.length > 0 && (
+                  <span className="ms-auto bg-[var(--color-primary)] text-white text-xs py-0.5 px-2 rounded-full">
+                    {archivedListings.length}
+                  </span>
+                )}
+              </>
             )}
           </button>
           {isDeveloper && (
             <button 
               onClick={() => setActiveTab('logs')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'logs' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'}`}
+              title={isSidebarCollapsed ? t('admin_tab_logs') : ''}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'logs' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
             >
-              <Activity size={20} />
-              {t('admin_tab_logs')}
+              <Activity size={20} className="shrink-0" />
+              {!isSidebarCollapsed && <span className="truncate">{t('admin_tab_logs')}</span>}
             </button>
           )}
         </nav>
-        <div className="p-4 border-t border-[var(--color-secondary)]/10 space-y-2">
+
+        <div className="p-4 border-t border-[var(--color-secondary)]/5 space-y-2">
           <Link 
             to="/"
-            className="w-full flex items-center gap-3 px-4 py-3 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-xl font-medium transition-colors"
+            title={isSidebarCollapsed ? t('admin_back_to_site') : ''}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-xl font-medium transition-colors ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <Home size={20} />
-            {t('admin_back_to_site')}
+            <Home size={20} className="shrink-0" />
+            {!isSidebarCollapsed && <span className="truncate">{t('admin_back_to_site')}</span>}
           </Link>
           <button 
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl font-medium transition-colors"
+            title={isSidebarCollapsed ? t('account_signout') : ''}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl font-medium transition-colors ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
           >
-            <LogOut size={20} />
-            {t('account_signout')}
+            <LogOut size={20} className="shrink-0" />
+            {!isSidebarCollapsed && <span className="truncate">{t('account_signout')}</span>}
           </button>
         </div>
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--color-secondary)]/10 bg-[var(--color-background)] sticky top-0 z-20">
-        <div>
-          <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('admin_panel')}</h2>
-          <p className="text-xs text-[var(--color-text-secondary)] truncate">{user.email}</p>
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--color-secondary)]/5 bg-[var(--color-background)] sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <LogoIcon size={32} className="rounded-lg shadow-sm" />
+          <div className="overflow-hidden max-w-[150px]">
+            <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
+              {firstName && lastName ? `${firstName} ${lastName}` : t('account_admin')}
+            </p>
+            <p className="text-[9px] text-[var(--color-text-secondary)] truncate opacity-70">{user.email}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/" className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-full">
@@ -524,7 +569,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] border-t border-[var(--color-secondary)]/10 z-40 flex justify-around p-2 pb-safe">
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] border-t border-[var(--color-secondary)]/5 z-40 flex justify-around p-2 pb-safe">
         <button onClick={() => { setActiveTab('categories'); setSelectedCategory(null); }} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'categories' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
           <Folder size={20} />
           <span className="text-[10px] mt-1 font-medium">{t('admin_tab_categories')}</span>
@@ -549,7 +594,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 relative overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 relative overflow-y-auto h-full pb-24 md:pb-8">
         {activeTab === 'categories' && !selectedCategory && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-6 md:mb-8">
