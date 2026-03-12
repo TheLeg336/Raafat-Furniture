@@ -339,12 +339,18 @@ export const TEXTS: Record<string, Record<string, string>> = {
 };
 
 export const CATEGORIES = [
-  { id: 'living_room', labelKey: 'cat_living_room', imageUrl: 'https://picsum.photos/seed/livingroom/800/600' },
-  { id: 'sofa_sets', labelKey: 'cat_sofa_sets', imageUrl: 'https://picsum.photos/seed/sofaset/800/600' },
-  { id: 'sectionals', labelKey: 'cat_sectionals', imageUrl: 'https://picsum.photos/seed/sectional/800/600' },
-  { id: 'sofas', labelKey: 'cat_sofas', imageUrl: 'https://picsum.photos/seed/sofa/800/600' },
-  { id: 'armchairs', labelKey: 'cat_armchairs', imageUrl: 'https://picsum.photos/seed/armchair/800/600' },
-  { id: 'recliners', labelKey: 'cat_recliners', imageUrl: 'https://picsum.photos/seed/recliner/800/600' },
+  { 
+    id: 'living_room', 
+    labelKey: 'cat_living_room', 
+    imageUrl: 'https://picsum.photos/seed/livingroom/800/600',
+    subCategories: [
+      { id: 'sofa_sets', labelKey: 'cat_sofa_sets', imageUrl: 'https://picsum.photos/seed/sofaset/800/600' },
+      { id: 'sectionals', labelKey: 'cat_sectionals', imageUrl: 'https://picsum.photos/seed/sectional/800/600' },
+      { id: 'sofas', labelKey: 'cat_sofas', imageUrl: 'https://picsum.photos/seed/sofa/800/600' },
+      { id: 'armchairs', labelKey: 'cat_armchairs', imageUrl: 'https://picsum.photos/seed/armchair/800/600' },
+      { id: 'recliners', labelKey: 'cat_recliners', imageUrl: 'https://picsum.photos/seed/recliner/800/600' },
+    ]
+  },
   { id: 'bedroom', labelKey: 'cat_bedroom', imageUrl: 'https://picsum.photos/seed/bedroom/800/600' },
   { id: 'dining_room', labelKey: 'cat_dining_room', imageUrl: 'https://picsum.photos/seed/dining/800/600' },
   { id: 'kids_youth', labelKey: 'cat_kids_youth', imageUrl: 'https://picsum.photos/seed/kidsroom/800/600' },

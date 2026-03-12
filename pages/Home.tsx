@@ -14,6 +14,21 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
   const location = useLocation();
 
   useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          window.scrollTo({
+            top: element.offsetTop - headerHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
+    }
+  }, [location.hash, headerHeight]);
+
+  useEffect(() => {
     const sections = ['hero', 'shop', 'visit-us', 'contact'];
     const observerOptions = {
       root: null,

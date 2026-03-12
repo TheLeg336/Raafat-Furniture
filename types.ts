@@ -37,6 +37,13 @@ export interface LocalizedString {
   ar: string;
 }
 
+export interface Category {
+  id: string;
+  labelKey: string;
+  imageUrl: string;
+  subCategories?: Category[];
+}
+
 export interface Product {
   id: number | string; // Sanity uses string IDs
   nameKey?: string; // Legacy fallback

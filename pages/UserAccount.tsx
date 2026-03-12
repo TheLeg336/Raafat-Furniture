@@ -36,7 +36,7 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
       <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-10 rounded-3xl shadow-2xl max-w-md w-full text-center relative">
         <button 
           onClick={() => navigate('/')}
-          className="absolute top-6 left-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
+          className="absolute top-6 start-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
           title="Go Back"
         >
           <span className="block"><ArrowLeft size={20} /></span>

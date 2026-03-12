@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { TFunction } from '../types';
 import { useProducts } from '../hooks/useProducts';
+import { CATEGORIES } from '../constants';
 
 interface ProductDetailsProps {
   t: TFunction;
@@ -41,7 +42,20 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
 
   const name = getLocalizedText(product.name, product.nameKey);
-  const category = getLocalizedText(product.category, product.categoryKey);
+  const getCategoryObj = (catId?: string) => {
+    if (!catId) return null;
+    for (const cat of CATEGORIES) {
+      if (cat.id === catId) return cat;
+      if (cat.subCategories) {
+        const sub = cat.subCategories.find(s => s.id === catId);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  };
+
+  const categoryObj = getCategoryObj(product.categoryKey);
+  const category = getLocalizedText(product.category, categoryObj?.labelKey);
   const description = getLocalizedText(product.description, undefined) || t('product_fallback_desc').replace('{name}', name);
 
   return (

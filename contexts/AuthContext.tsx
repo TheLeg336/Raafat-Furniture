@@ -48,6 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const userData = userDoc.data();
               fName = userData.firstName || null;
               lName = userData.lastName || null;
+            } else {
+              // If we already have a name in state and the doc doesn't exist, keep it (though this shouldn't happen)
+              // But more importantly, if the fetch fails, we don't want to clear it.
             }
 
             // Check if user is in 'admins' collection
@@ -83,14 +86,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               }
             }
+            
+            setFirstName(fName);
+            setLastName(lName);
+            setIsAdmin(adminStatus);
+            setIsDeveloper(developerStatus);
           } catch (error) {
             console.error("Error checking user status:", error);
+            // If there's an error (e.g., network), don't overwrite existing state with nulls
+            // Just let the existing state persist if it's a token refresh
           }
         }
-        setFirstName(fName);
-        setLastName(lName);
-        setIsAdmin(adminStatus);
-        setIsDeveloper(developerStatus);
+        
         setUser(currentUser);
         setLoading(false);
       } else {

@@ -149,6 +149,21 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const activeListings = listings.filter(l => !l.archivedAt);
   const archivedListings = listings.filter(l => l.archivedAt);
   
+  const getCategoryObj = (catId: string | null) => {
+    if (!catId) return null;
+    for (const cat of CATEGORIES) {
+      if (cat.id === catId) return cat;
+      if (cat.subCategories) {
+        const sub = cat.subCategories.find(s => s.id === catId);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  };
+
+  const currentCategory = getCategoryObj(selectedCategory);
+  const hasSubCategories = currentCategory?.subCategories && currentCategory.subCategories.length > 0;
+
   const displayedListings = activeTab === 'categories' && selectedCategory
     ? activeListings.filter(l => l.categoryKey === selectedCategory)
     : archivedListings;
@@ -571,7 +586,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           </motion.div>
         )}
 
-        {activeTab === 'categories' && selectedCategory && (
+        {activeTab === 'categories' && selectedCategory && hasSubCategories && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
               <div className="flex items-center gap-4">
@@ -582,7 +597,65 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <span className="block"><ArrowLeft size={20} /></span>
                 </button>
                 <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                  {t(CATEGORIES.find(c => c.id === selectedCategory)?.labelKey || '')} {t('admin_listings')}
+                  {t(currentCategory?.labelKey || '')}
+                </h1>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+              {currentCategory?.subCategories?.map((cat, index) => (
+                <motion.div 
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                  whileHover={{ scale: 1.03, y: -8 }}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className="relative group text-center flex flex-col h-full cursor-pointer"
+                >
+                  <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative">
+                    <img 
+                      src={cat.imageUrl} 
+                      alt={cat.id} 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                  </div>
+                  <div className="p-4 flex flex-col items-center">
+                    <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                      {t(cat.labelKey)}
+                    </h3>
+                    <p className="text-md text-[var(--color-text-secondary)]">
+                      {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'categories' && selectedCategory && !hasSubCategories && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    let parentId = null;
+                    for (const cat of CATEGORIES) {
+                      if (cat.subCategories?.some(s => s.id === selectedCategory)) {
+                        parentId = cat.id;
+                        break;
+                      }
+                    }
+                    setSelectedCategory(parentId);
+                  }}
+                  className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)] relative z-10"
+                >
+                  <span className="block"><ArrowLeft size={20} /></span>
+                </button>
+                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                  {t(currentCategory?.labelKey || '')} {t('admin_listings')}
                 </h1>
               </div>
             </div>
@@ -612,7 +685,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     {language === 'ar' ? listing.name.ar : listing.name.en}
                   </h3>
                   <p className="text-md text-[var(--color-text-secondary)] capitalize">
-                    {t(CATEGORIES.find(c => c.id === listing.categoryKey)?.labelKey || '')}
+                    {t(currentCategory?.labelKey || '')}
                   </p>
                 </motion.div>
               ))}
@@ -626,7 +699,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         )}
 
         {/* FAB - Stable placement */}
-        {activeTab === 'categories' && selectedCategory && (
+        {activeTab === 'categories' && selectedCategory && !hasSubCategories && (
           <button 
             onClick={() => {
               setCategory(selectedCategory);
@@ -648,34 +721,47 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
-                  {CATEGORIES.map((cat, index) => (
-                    <motion.div 
-                      key={cat.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
-                      whileHover={{ scale: 1.03, y: -8 }}
-                      onClick={() => setSelectedArchivedCategory(cat.id)}
-                      className="relative group text-center flex flex-col h-full cursor-pointer"
-                    >
-                      <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
-                        <img 
-                          src={cat.imageUrl} 
-                          alt={cat.id} 
-                          className="absolute inset-0 w-full h-full object-cover" 
-                        />
-                        <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
-                      </div>
-                      <div className="p-4 flex flex-col items-center">
-                        <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
-                          {t(cat.labelKey)}
-                        </h3>
-                        <p className="text-md text-[var(--color-text-secondary)]">
-                          {archivedListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {archivedListings.length === 0 ? (
+                    <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/10">
+                      {t('admin_no_listings')}
+                    </div>
+                  ) : (
+                    CATEGORIES.reduce((acc, cat) => {
+                      acc.push(cat);
+                      if (cat.subCategories) acc.push(...cat.subCategories);
+                      return acc;
+                    }, [] as any[]).map((cat, index) => {
+                      const count = archivedListings.filter(l => l.categoryKey === cat.id).length;
+                      if (count === 0) return null;
+                      return (
+                      <motion.div 
+                        key={cat.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                        whileHover={{ scale: 1.03, y: -8 }}
+                        onClick={() => setSelectedArchivedCategory(cat.id)}
+                        className="relative group text-center flex flex-col h-full cursor-pointer"
+                      >
+                        <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
+                          <img 
+                            src={cat.imageUrl} 
+                            alt={cat.id} 
+                            className="absolute inset-0 w-full h-full object-cover" 
+                          />
+                          <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                        </div>
+                        <div className="p-4 flex flex-col items-center">
+                          <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                            {t(cat.labelKey)}
+                          </h3>
+                          <p className="text-md text-[var(--color-text-secondary)]">
+                            {count} {t('admin_items')}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )})
+                  )}
                 </div>
               </>
             ) : (
@@ -688,7 +774,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     <span className="block"><ArrowLeft size={20} /></span>
                   </button>
                   <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                    {t('admin_archived')}: {t(CATEGORIES.find(c => c.id === selectedArchivedCategory)?.labelKey || '')}
+                    {t('admin_archived')}: {t(getCategoryObj(selectedArchivedCategory)?.labelKey || '')}
                   </h1>
                 </div>
 
@@ -744,13 +830,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_tab_logs')}</h1>
             <div className="bg-[var(--color-secondary)]/5 rounded-2xl border border-[var(--color-secondary)]/10 overflow-hidden">
               <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse table-fixed">
+                <table className="w-full min-w-[600px] text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--color-secondary)]/10 text-[var(--color-text-secondary)] text-sm">
-                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-32 md:w-40">{t('admin_time')}</th>
-                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-40 md:w-48">{t('admin_admin')}</th>
-                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-28 md:w-32">{t('admin_action')}</th>
-                      <th className="p-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-64 md:w-auto">{t('admin_details')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-32 md:w-40">{t('admin_time')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-40 md:w-48">{t('admin_admin')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-24 md:w-32">{t('admin_action')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_details')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -767,13 +853,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
                       return (
                         <tr key={log.id} className="border-b border-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/5 transition-colors">
-                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+                          <td className="py-2 px-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
                             {formattedTime}
                           </td>
-                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-primary)] font-medium truncate" title={log.adminEmail}>
+                          <td className="py-2 px-3 md:p-4 text-xs md:text-sm text-[var(--color-text-primary)] font-medium truncate max-w-[120px] md:max-w-none" title={log.adminEmail}>
                             {displayName}
                           </td>
-                          <td className="p-3 md:p-4 text-xs md:text-sm">
+                          <td className="py-2 px-3 md:p-4 text-xs md:text-sm">
                             <span className={`px-2 py-0.5 md:py-1 rounded-md text-[10px] md:text-xs font-bold ${
                               log.action === 'CREATE' ? 'bg-green-500/10 text-green-500' :
                               log.action === 'DELETE' ? 'bg-red-500/10 text-red-500' :
@@ -783,7 +869,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                               {log.action}
                             </span>
                           </td>
-                          <td className="p-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] break-words">
+                          <td className="py-2 px-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] break-words">
                             {log.details}
                           </td>
                         </tr>
@@ -842,13 +928,6 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_desc_ar')}</label>
                   <textarea value={descAr} onChange={e => setDescAr(e.target.value)} rows={3} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none text-right" placeholder={t('admin_placeholder_desc_ar')} dir="rtl"></textarea>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_category')}</label>
-                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none">
-                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{t(c.labelKey)}</option>)}
-                </select>
               </div>
 
               {isDeveloper && (

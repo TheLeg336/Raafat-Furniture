@@ -16,7 +16,20 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const categoryId = searchParams.get('category');
   const { products, loading } = useProducts();
 
-  const category = CATEGORIES.find(c => c.id === categoryId);
+  const getCategoryObj = (catId: string | null) => {
+    if (!catId) return null;
+    for (const cat of CATEGORIES) {
+      if (cat.id === catId) return cat;
+      if (cat.subCategories) {
+        const sub = cat.subCategories.find(s => s.id === catId);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  };
+
+  const category = getCategoryObj(categoryId);
+  const hasSubCategories = category?.subCategories && category.subCategories.length > 0;
   const filteredProducts = products.filter(p => p.categoryKey === categoryId);
 
   React.useEffect(() => {
@@ -52,8 +65,21 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
         
         {/* Back Button */}
         <button 
-          onClick={() => navigate('/#shop')}
-          className="absolute top-6 left-6 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors z-50"
+          onClick={() => {
+            let parentId = null;
+            for (const cat of CATEGORIES) {
+              if (cat.subCategories?.some(s => s.id === categoryId)) {
+                parentId = cat.id;
+                break;
+              }
+            }
+            if (parentId) {
+              navigate(`/shop?category=${parentId}`);
+            } else {
+              navigate('/#shop');
+            }
+          }}
+          className="absolute top-6 start-6 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors z-50"
           title={t('nav_go_back')}
         >
           <span className="block"><ArrowLeft size={20} /></span>
@@ -82,6 +108,32 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
           </div>
+        ) : hasSubCategories ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+            {category.subCategories?.map((subCat, index) => (
+              <motion.div
+                key={subCat.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.03, y: -8 }}
+                onClick={() => navigate(`/shop?category=${subCat.id}`)}
+                className="relative group text-center flex flex-col h-full cursor-pointer"
+              >
+                <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative">
+                  <img 
+                    src={subCat.imageUrl} 
+                    alt={t(subCat.labelKey)} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                  />
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                </div>
+                <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                  {t(subCat.labelKey)}
+                </h3>
+              </motion.div>
+            ))}
+          </div>
         ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
             {filteredProducts.map((product, index) => (
@@ -91,7 +143,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ scale: 1.03, y: -8 }}
-                className="relative group text-center flex flex-col h-full"
+                onClick={() => navigate(`/product/${product.id}`)}
+                className="relative group text-center flex flex-col h-full cursor-pointer"
               >
                 <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative">
                   <img 

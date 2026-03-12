@@ -187,10 +187,10 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               aria-hidden="true"
             />
             <motion.div
-              className={`fixed top-0 h-full w-[80vw] max-w-sm z-50 bg-[var(--color-background)] shadow-2xl left-0 border-r border-white/10 rounded-r-3xl`}
-              initial={{ x: '-100%' }}
+              className={`fixed top-0 h-full w-[80vw] max-w-sm z-50 bg-[var(--color-background)] shadow-2xl start-0 border-e border-white/10 rounded-e-3xl`}
+              initial={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
+              exit={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <div className="p-8 h-full flex flex-col items-center relative overflow-hidden">
