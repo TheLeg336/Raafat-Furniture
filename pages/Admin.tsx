@@ -320,7 +320,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         finalDescAr = "هذا إدراج تجريبي افتراضي تم إنشاؤه بواسطة مطور للتحقق من النظام.";
       } else if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
         try {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+          if (!apiKey) {
+            throw new Error("Gemini API Key is not configured. Please add VITE_GEMINI_API_KEY to your environment variables.");
+          }
+          const ai = new GoogleGenAI({ apiKey });
           const prompt = `You are a professional translator for a luxury furniture brand. 
           Translate the missing fields between English and Arabic.
           
@@ -331,12 +335,12 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           4. Ensure the Arabic translation is elegant and professional.
           
           Current Data:
-          {
-            "nameEn": "${finalNameEn}",
-            "nameAr": "${finalNameAr}",
-            "descEn": "${finalDescEn}",
-            "descAr": "${finalDescAr}"
-          }`;
+          ${JSON.stringify({
+            nameEn: finalNameEn,
+            nameAr: finalNameAr,
+            descEn: finalDescEn,
+            descAr: finalDescAr
+          }, null, 2)}`;
           
           const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",

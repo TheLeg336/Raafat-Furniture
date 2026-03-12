@@ -1,4 +1,4 @@
-import { LayoutOption, ColorSchemeOption, TypographyOption, ColorScheme, Product } from './types';
+import { LayoutOption, ColorSchemeOption, TypographyOption, ColorScheme, Product, Category } from './types';
 
 export const COLOR_SCHEMES: Record<ColorSchemeOption, ColorScheme> = {
   [ColorSchemeOption.BlackGold]: {
@@ -179,6 +179,8 @@ export const TEXTS: Record<string, Record<string, string>> = {
     shop_return_home: 'Return Home',
     shop_artisans_work: 'Artisans at Work',
     shop_curating_desc: 'We are currently curating excellence for this collection. Check back soon for masterpieces in progress.',
+    search_results_for: 'Search Results for',
+    search_no_results: 'No results found for',
     product_not_found: 'Product Not Found',
     product_return_home: 'Return to Home',
     product_inquire_now: 'Inquire Now',
@@ -324,6 +326,8 @@ export const TEXTS: Record<string, Record<string, string>> = {
     shop_return_home: 'العودة للرئيسية',
     shop_artisans_work: 'الحرفيون يعملون',
     shop_curating_desc: 'نحن نعمل حالياً على تنسيق التميز لهذه المجموعة. ترقبوا روائعنا قيد التنفيذ قريباً.',
+    search_results_for: 'نتائج البحث عن',
+    search_no_results: 'لم يتم العثور على نتائج لـ',
     product_not_found: 'المنتج غير موجود',
     product_return_home: 'العودة للرئيسية',
     product_inquire_now: 'استفسر الآن',
@@ -338,7 +342,7 @@ export const TEXTS: Record<string, Record<string, string>> = {
   }
 };
 
-export const CATEGORIES = [
+export const CATEGORIES: Category[] = [
   { 
     id: 'living_room', 
     labelKey: 'cat_living_room', 

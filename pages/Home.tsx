@@ -13,17 +13,26 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
   const location = useLocation();
 
+  const hasScrolledOnMount = React.useRef(false);
+
   useEffect(() => {
-    if (location.hash) {
+    if (location.hash && !hasScrolledOnMount.current) {
       const id = location.hash.replace('#', '');
       const element = document.getElementById(id);
       if (element) {
-        setTimeout(() => {
-          window.scrollTo({
-            top: element.offsetTop - headerHeight,
-            behavior: 'smooth'
-          });
-        }, 100);
+        // If it's hero, we just want to be at the top
+        const targetTop = id === 'hero' ? 0 : element.offsetTop - headerHeight;
+        
+        // Only scroll if we are not already at the target (with some tolerance)
+        if (Math.abs(window.scrollY - targetTop) > 10) {
+          setTimeout(() => {
+            window.scrollTo({
+              top: targetTop,
+              behavior: 'smooth'
+            });
+          }, 100);
+        }
+        hasScrolledOnMount.current = true;
       }
     }
   }, [location.hash, headerHeight]);

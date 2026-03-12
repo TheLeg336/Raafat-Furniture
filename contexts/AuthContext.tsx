@@ -35,32 +35,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setLoading(true);
-        let adminStatus = false;
-        let developerStatus = false;
-        let fName = null;
-        let lName = null;
-
         if (currentUser.email && db) {
           try {
+            let fName = null;
+            let lName = null;
+            let currentAdminStatus = false;
+            let currentDeveloperStatus = false;
+
             // Fetch User Profile
             const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
               fName = userData.firstName || null;
               lName = userData.lastName || null;
-            } else {
-              // If we already have a name in state and the doc doesn't exist, keep it (though this shouldn't happen)
-              // But more importantly, if the fetch fails, we don't want to clear it.
             }
 
             // Check if user is in 'admins' collection
             const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
-            adminStatus = adminDoc.exists();
-            if (adminStatus) {
-              developerStatus = adminDoc.data()?.role === 'developer';
+            currentAdminStatus = adminDoc.exists();
+            if (currentAdminStatus) {
+              currentDeveloperStatus = adminDoc.data()?.role === 'developer';
             }
             
-            if (!adminStatus) {
+            if (!currentAdminStatus) {
               // Save non-admin emails to a single list for marketing/personalization
               try {
                 await updateDoc(doc(db, 'users', 'all_users_list'), {
@@ -87,14 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
             
+            // Only update state if the fetch was successful
             setFirstName(fName);
             setLastName(lName);
-            setIsAdmin(adminStatus);
-            setIsDeveloper(developerStatus);
+            setIsAdmin(currentAdminStatus);
+            setIsDeveloper(currentDeveloperStatus);
           } catch (error) {
             console.error("Error checking user status:", error);
-            // If there's an error (e.g., network), don't overwrite existing state with nulls
-            // Just let the existing state persist if it's a token refresh
+            // On error, do not update the state variables so we don't wipe out existing profile data
           }
         }
         

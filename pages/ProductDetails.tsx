@@ -91,7 +91,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             {name}
           </h1>
           <p className="text-xl text-[var(--color-primary)] mb-8 font-medium">
-            {category}
+            {category} {product.price && <span className="ms-4">• ${product.price}</span>}
           </p>
           <p className="text-lg text-[var(--color-text-secondary)] leading-relaxed mb-10">
             {description}

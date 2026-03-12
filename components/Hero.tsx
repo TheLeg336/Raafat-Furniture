@@ -1,15 +1,18 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, Variants, useScroll, useTransform } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import type { TFunction } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import CloseIcon from './icons/CloseIcon';
 
 interface HeroProps {
   t: TFunction;
+  headerHeight?: number;
 }
 
 const Hero: React.FC<HeroProps> = ({ t }) => {
   const heroRef = useRef(null);
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
@@ -17,6 +20,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
   const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +33,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
       }
     };
     
+    // Do not close on blur (when keyboard hides on mobile), only on click outside
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
           setIsSearchVisible(false);
@@ -48,6 +53,13 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isSearchVisible]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   const defaultBgImage = 'https://picsum.photos/seed/sleek/1280/720';
 
@@ -112,14 +124,16 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
 
             <motion.div
               variants={itemVariants}
-              className="relative flex items-center justify-center mt-8"
+              className="relative flex items-center justify-center mt-4"
             >
               <motion.div
                 ref={searchContainerRef}
                 layout
+                initial={{ borderRadius: 56 }}
+                animate={{ borderRadius: 56 }}
                 onClick={() => !isSearchVisible && setIsSearchVisible(true)}
                 className={`
-                  relative flex items-center justify-center origin-center rounded-full overflow-hidden
+                  relative flex items-center justify-center origin-center overflow-hidden
                   ${isSearchVisible 
                     ? 'w-full max-w-lg h-14 search-gloss backdrop-blur-lg shadow-lg' 
                     : 'h-14 px-8 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
@@ -137,7 +151,8 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                     </motion.span>
 
                     {/* Search Input Container */}
-                    <motion.div
+                    <motion.form
+                        onSubmit={handleSearchSubmit}
                         className="absolute inset-0 flex items-center px-5"
                         initial={false}
                         animate={{ 
@@ -156,11 +171,14 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                         <input
                             ref={searchInputRef}
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             maxLength={100}
-                            placeholder={t('search_placeholder')}
+                            placeholder="Search for furniture, styles, and more..."
                             className="w-full bg-transparent text-white placeholder-white/70 outline-none"
                         />
                         <motion.button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); setIsSearchVisible(false); }}
                             className="ms-3 text-white/80 hover:text-white shrink-0"
                             aria-label={t('aria_close_search')}
@@ -169,7 +187,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                         >
                             <CloseIcon />
                         </motion.button>
-                    </motion.div>
+                    </motion.form>
                 </div>
               </motion.div>
             </motion.div>
