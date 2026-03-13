@@ -884,7 +884,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       setSortBy('relevance');
                       setSelectedColor('all');
                       setPriceRange([0, 10000]);
-                      if (searchResultsBeforeFilters.length === 0) {
+                      if (isSearchMode) {
+                        setSearchParams({ q: searchQuery });
+                      } else {
                         setSearchParams({});
                       }
                     }}
