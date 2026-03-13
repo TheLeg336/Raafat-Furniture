@@ -3,7 +3,7 @@ import { motion, Variants } from 'framer-motion';
 import type { TFunction } from '../types';
 import ProductSectionHeader from './ProductSectionHeader';
 import { Link } from 'react-router-dom';
-import { CATEGORIES } from '../constants';
+import { useCategories } from '../hooks/useCategories';
 
 interface ProductSectionProps {
   t: TFunction;
@@ -32,6 +32,7 @@ const CategoryCardSleek: React.FC<{ category: any; t: TFunction; }> = ({ categor
 };
 
 const ProductSection: React.FC<ProductSectionProps> = ({ t, headerHeight }) => {
+    const { categories, loading } = useCategories();
     const itemVariants: Variants = {
         hidden: { opacity: 0, y: 30 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] } }
@@ -59,32 +60,38 @@ const ProductSection: React.FC<ProductSectionProps> = ({ t, headerHeight }) => {
                 <div ref={sentinelRef} className="absolute w-full h-px pointer-events-none" />
                 
                 <div className={`sticky ${STICKY_HEADER_OFFSET} z-10 bg-[var(--color-background)]/90 backdrop-blur-xl transition-all duration-300 ${isSticky ? 'shadow-md' : ''}`}>
-                    <div className="container mx-auto px-6 pt-12 pb-6 md:pt-20 md:pb-10">
+                    <div className="container mx-auto px-6 pt-6 pb-4 md:pt-20 md:pb-10">
                         <ProductSectionHeader t={t} />
                     </div>
                 </div>
 
-                <div className="container mx-auto px-6 mt-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pb-16 sm:pb-20 md:pb-28">
-                        {CATEGORIES.map((cat) => {
-                            return (
-                                <motion.div 
-                                    key={cat.id} 
-                                    variants={itemVariants}
-                                    initial="hidden"
-                                    whileInView="visible"
-                                    viewport={{ once: true, amount: 0.3 }}
-                                    whileHover={{ scale: 1.03, y: -8 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                >
-                                    <CategoryCardSleek 
-                                      category={cat} 
-                                      t={t}
-                                    />
-                                </motion.div>
-                            )
-                        })}
-                    </div>
+                <div className="container mx-auto px-6 mt-4 md:mt-8">
+                    {loading ? (
+                        <div className="flex justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 pb-16 sm:pb-20 md:pb-28">
+                            {categories.map((cat) => {
+                                return (
+                                    <motion.div 
+                                        key={cat.id} 
+                                        variants={itemVariants}
+                                        initial="hidden"
+                                        whileInView="visible"
+                                        viewport={{ once: true, amount: 0.3 }}
+                                        whileHover={{ scale: 1.03, y: -8 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                    >
+                                        <CategoryCardSleek 
+                                          category={cat} 
+                                          t={t}
+                                        />
+                                    </motion.div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         </section>

@@ -40,6 +40,7 @@ export interface LocalizedString {
 export interface Category {
   id: string;
   labelKey: string;
+  name?: LocalizedString;
   imageUrl: string;
   subCategories?: Category[];
 }

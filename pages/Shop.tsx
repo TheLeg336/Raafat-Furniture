@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, SlidersHorizontal, X, Heart } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
-import { CATEGORIES, TEXTS } from '../constants';
+import { useCategories } from '../hooks/useCategories';
+import { TEXTS } from '../constants';
 import type { TFunction } from '../types';
 import { useStore } from '../contexts/StoreContext';
 
@@ -17,7 +18,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const categoryId = searchParams.get('category');
   const searchQuery = searchParams.get('q') || '';
   const { products, loading } = useProducts();
-  const { wishlist, toggleWishlist, addToCart, setIsCartOpen } = useStore();
+  const { categories } = useCategories();
+  const { wishlist, toggleWishlist, addToCart } = useStore();
   
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);
@@ -29,7 +31,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
 
   const getCategoryObj = (catId: string | null) => {
     if (!catId) return null;
-    for (const cat of CATEGORIES) {
+    for (const cat of categories) {
       if (cat.id === catId) return cat;
       if (cat.subCategories) {
         const sub = cat.subCategories.find(s => s.id === catId);
@@ -39,12 +41,19 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     return null;
   };
 
+  const getCategoryLabel = (cat: any) => {
+    if (!cat) return '';
+    const lang = document.documentElement.lang as 'en' | 'ar';
+    if (cat.name && cat.name[lang]) return cat.name[lang];
+    return t(cat.labelKey);
+  };
+
   const category = getCategoryObj(categoryId);
   const hasSubCategories = category?.subCategories && category.subCategories.length > 0;
   
   let parentCategory = null;
   if (category && !hasSubCategories) {
-    parentCategory = CATEGORIES.find(c => c.subCategories?.some(s => s.id === category.id));
+    parentCategory = categories.find(c => c.subCategories?.some(s => s.id === category.id));
   }
   
   const isSearchMode = !!searchQuery;
@@ -56,7 +65,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     }
   };
 
-  const filteredProducts = useMemo(() => {
+  const searchResultsBeforeFilters = useMemo(() => {
     let result = [];
 
     if (isSearchMode) {
@@ -77,7 +86,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
         
         let parentCatLabelEn = '';
         let parentCatLabelAr = '';
-        for (const cat of CATEGORIES) {
+        for (const cat of categories) {
           if (cat.subCategories?.some(s => s.id === p.categoryKey)) {
             parentCatLabelEn = (TEXTS.en[cat.labelKey] || '').toLowerCase();
             parentCatLabelAr = (TEXTS.ar[cat.labelKey] || '').toLowerCase();
@@ -108,9 +117,16 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
           return (a.categoryKey || '').localeCompare(b.categoryKey || '');
         });
       }
-    } else {
+    } else if (categoryId) {
       result = products.filter(p => p.categoryKey === categoryId);
+    } else {
+      result = [...products];
     }
+    return result;
+  }, [products, isSearchMode, searchQuery, categoryId, sortBy]);
+
+  const filteredProducts = useMemo(() => {
+    let result = [...searchResultsBeforeFilters];
 
     // Apply Price Filter
     if (priceRange[1] < 10000) {
@@ -130,36 +146,20 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     }
 
     return result;
-  }, [products, isSearchMode, searchQuery, categoryId, sortBy, priceRange, selectedColor]);
+  }, [searchResultsBeforeFilters, sortBy, priceRange, selectedColor]);
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
     setSearchInput(searchQuery || '');
   }, [categoryId, searchQuery]);
 
-  if (!category && !isSearchMode) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <div className="text-center">
-          <p className="text-[var(--color-text-secondary)] mb-6">{t('shop_not_found')}</p>
-          <button 
-            onClick={() => navigate('/')}
-            className="px-6 py-3 bg-[var(--color-primary)] text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-          >
-            {t('shop_return_home')}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
       {/* Category or Search Header */}
       {isSearchMode ? (
-        <div className="container mx-auto px-6 mb-4 md:mb-8 pt-6 md:pt-12">
+        <div className="container mx-auto px-6 mb-4 md:mb-8 pt-4 md:pt-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-lg md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
+            <h1 className="text-base md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
               {t('search_results_for')} <span className="text-[var(--color-primary)]">{searchQuery}</span>
             </h1>
             
@@ -295,44 +295,316 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="relative h-[30vh] md:h-[40vh] overflow-hidden mb-12">
-          <img 
-            src={category?.imageUrl} 
-            alt={category ? t(category.labelKey) : ''} 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
-          
-          {/* Back Button */}
-          <button 
-            onClick={() => {
-              if (parentCategory) {
-                navigate(`/shop?category=${parentCategory.id}`);
-              } else {
-                navigate('/#shop');
-              }
-            }}
-            className="absolute top-6 start-6 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors z-50"
-            title={t('nav_go_back')}
-          >
-            <span className="block"><ArrowLeft size={20} /></span>
-          </button>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-bold text-white mb-4 font-heading"
-            >
-              {category ? t(category.labelKey) : ''}
-            </motion.h1>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="w-24 h-1 bg-[var(--color-primary)] rounded-full"
+      ) : category ? (
+        <>
+          <div className="relative h-[30vh] md:h-[40vh] overflow-hidden mb-12">
+            <img 
+              src={category.imageUrl} 
+              alt={t(category.labelKey)} 
+              className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+            
+            {/* Back Button */}
+            <button 
+              onClick={() => {
+                if (parentCategory) {
+                  navigate(`/shop?category=${parentCategory.id}`);
+                } else {
+                  navigate('/#shop');
+                }
+              }}
+              className="absolute top-6 start-6 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors z-50"
+              title={t('nav_go_back')}
+            >
+              <span className="block"><ArrowLeft size={20} /></span>
+            </button>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-4xl md:text-6xl font-bold text-white mb-4 font-heading"
+              >
+                {t(category.labelKey)}
+              </motion.h1>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="w-24 h-1 bg-[var(--color-primary)] rounded-full mb-6"
+              />
+              
+              {/* Mobile Filter Toggle for Category */}
+              {!hasSubCategories && (
+                <div className="lg:hidden">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors backdrop-blur-md ${showFilters ? 'bg-[var(--color-primary)] text-white' : 'bg-black/30 text-white hover:bg-black/50 border border-white/20'}`}
+                  >
+                    <SlidersHorizontal size={18} />
+                    <span className="text-sm font-medium">Filters</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Mobile Expandable Filters for Category */}
+          {category && !hasSubCategories && (
+            <div className="container mx-auto px-6 lg:hidden">
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden border-b border-[var(--color-secondary)]/10 mb-8"
+                  >
+                    <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      {/* Sort By */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Sort By</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['relevance', 'price_asc', 'price_desc'].map((option) => (
+                            <button
+                              key={option}
+                              onClick={() => setSortBy(option)}
+                              className={`px-4 py-2 rounded-xl text-xs transition-all ${sortBy === option ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-[var(--color-secondary)]/5 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
+                            >
+                              {option === 'relevance' ? 'Relevance' : option === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Color Filter */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Color</label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => setSelectedColor('all')}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                          >
+                            All
+                          </button>
+                          {MOCK_COLORS.map(color => (
+                            <button
+                              key={color}
+                              onClick={() => setSelectedColor(color)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            >
+                              {color}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Price Range */}
+                      <div className="space-y-3 sm:col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
+                          <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                        </div>
+                        <div className="relative h-6 flex items-center">
+                          <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
+                          <div 
+                            className="absolute h-1.5 bg-[var(--color-primary)] rounded-lg"
+                            style={{ 
+                              left: `${(priceRange[0] / 10000) * 100}%`, 
+                              right: `${100 - (priceRange[1] / 10000) * 100}%` 
+                            }}
+                          ></div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10000" 
+                            step="100"
+                            value={priceRange[0]}
+                            onChange={(e) => {
+                              const val = Math.min(parseInt(e.target.value), priceRange[1] - 100);
+                              setPriceRange([val, priceRange[1]]);
+                            }}
+                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
+                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
+                          />
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10000" 
+                            step="100"
+                            value={priceRange[1]}
+                            onChange={(e) => {
+                              const val = Math.max(parseInt(e.target.value), priceRange[0] + 100);
+                              setPriceRange([priceRange[0], val]);
+                            }}
+                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
+                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
+                          <span>$0</span>
+                          <span>$10,000+</span>
+                        </div>
+                      </div>
+
+                      {/* Reset Filters */}
+                      {(sortBy !== 'relevance' || selectedColor !== 'all' || priceRange[1] < 10000) && (
+                        <button 
+                          onClick={() => {
+                            setSortBy('relevance');
+                            setSelectedColor('all');
+                            setPriceRange([0, 10000]);
+                          }}
+                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-primary)]/5 transition-colors"
+                        >
+                          Reset All Filters
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="container mx-auto px-6 mb-4 md:mb-8 pt-4 md:pt-8">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-base md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
+              {t('nav_shop')}
+            </h1>
+            
+            {/* Mobile Filter Toggle */}
+            <div className="lg:hidden flex justify-end mb-4">
+               <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${showFilters ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] hover:bg-[var(--color-secondary)]/20'}`}
+              >
+                <SlidersHorizontal size={18} />
+                <span className="text-sm font-medium">Filters</span>
+              </button>
+            </div>
+            
+            {/* Mobile Expandable Filters */}
+            <div className="lg:hidden">
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden border-b border-[var(--color-secondary)]/10 mb-8"
+                  >
+                    <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      {/* Sort By */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Sort By</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['relevance', 'price_asc', 'price_desc'].map((option) => (
+                            <button
+                              key={option}
+                              onClick={() => setSortBy(option)}
+                              className={`px-4 py-2 rounded-xl text-xs transition-all ${sortBy === option ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-[var(--color-secondary)]/5 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
+                            >
+                              {option === 'relevance' ? 'Relevance' : option === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Color Filter */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Color</label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => setSelectedColor('all')}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                          >
+                            All
+                          </button>
+                          {MOCK_COLORS.map(color => (
+                            <button
+                              key={color}
+                              onClick={() => setSelectedColor(color)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            >
+                              {color}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Price Range */}
+                      <div className="space-y-3 sm:col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
+                          <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                        </div>
+                        <div className="relative h-6 flex items-center">
+                          <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
+                          <div 
+                            className="absolute h-1.5 bg-[var(--color-primary)] rounded-lg"
+                            style={{ 
+                              left: `${(priceRange[0] / 10000) * 100}%`, 
+                              right: `${100 - (priceRange[1] / 10000) * 100}%` 
+                            }}
+                          ></div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10000" 
+                            step="100"
+                            value={priceRange[0]}
+                            onChange={(e) => {
+                              const val = Math.min(parseInt(e.target.value), priceRange[1] - 100);
+                              setPriceRange([val, priceRange[1]]);
+                            }}
+                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
+                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
+                          />
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10000" 
+                            step="100"
+                            value={priceRange[1]}
+                            onChange={(e) => {
+                              const val = Math.max(parseInt(e.target.value), priceRange[0] + 100);
+                              setPriceRange([priceRange[0], val]);
+                            }}
+                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
+                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
+                          <span>$0</span>
+                          <span>$10,000+</span>
+                        </div>
+                      </div>
+
+                      {/* Reset Filters */}
+                      {(sortBy !== 'relevance' || selectedColor !== 'all' || priceRange[1] < 10000) && (
+                        <button 
+                          onClick={() => {
+                            setSortBy('relevance');
+                            setSelectedColor('all');
+                            setPriceRange([0, 10000]);
+                          }}
+                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-primary)]/5 transition-colors"
+                        >
+                          Reset All Filters
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       )}
@@ -345,35 +617,22 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             <div className="lg:sticky lg:top-32 max-h-[calc(100vh-160px)] overflow-y-auto pr-4 custom-scrollbar">
               
               {/* Navigation Links (Categories / Subcategories) */}
-              {!isSearchMode && (
+              {!isSearchMode && !hasSubCategories && (
                 <div className="mb-10">
                   <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4 font-heading">
-                    {hasSubCategories ? 'Categories' : (parentCategory ? t(parentCategory.labelKey) : 'Categories')}
+                    {parentCategory ? getCategoryLabel(parentCategory) : 'Categories'}
                   </h2>
                   <div className="flex flex-col gap-2">
-                    {hasSubCategories ? (
-                      // Show other parent categories
-                      CATEGORIES.map(cat => (
-                        <button
-                          key={cat.id}
-                          onClick={() => navigate(`/shop?category=${cat.id}`)}
-                          className={`text-left px-4 py-2 rounded-xl text-sm transition-all ${category?.id === cat.id ? 'bg-[var(--color-primary)] text-white shadow-md font-bold' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
-                        >
-                          {t(cat.labelKey)}
-                        </button>
-                      ))
-                    ) : (
-                      // Show sibling subcategories
-                      parentCategory?.subCategories?.map(sub => (
-                        <button
-                          key={sub.id}
-                          onClick={() => navigate(`/shop?category=${sub.id}`)}
-                          className={`text-left px-4 py-2 rounded-xl text-sm transition-all ${category?.id === sub.id ? 'bg-[var(--color-primary)] text-white shadow-md font-bold' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
-                        >
-                          {t(sub.labelKey)}
-                        </button>
-                      ))
-                    )}
+                    {/* Show sibling subcategories */}
+                    {parentCategory?.subCategories?.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={() => navigate(`/shop?category=${sub.id}`)}
+                        className={`text-left px-4 py-2 rounded-xl text-sm transition-all ${category?.id === sub.id ? 'bg-[var(--color-primary)] text-white shadow-md font-bold' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
+                      >
+                        {getCategoryLabel(sub)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -518,7 +777,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500">
                       <img 
                         src={subCat.imageUrl} 
-                        alt={t(subCat.labelKey)} 
+                        alt={getCategoryLabel(subCat)} 
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-8">
@@ -528,7 +787,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading">
-                      {t(subCat.labelKey)}
+                      {getCategoryLabel(subCat)}
                     </h3>
                   </motion.div>
                 ))}
@@ -563,11 +822,12 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           className={`transition-colors ${wishlist.includes(String(product.id)) ? 'text-[var(--color-primary)] fill-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'}`} 
                         />
                       </button>
-                      {product.price && (
+                      {/* Price removed as requested */}
+                      {/* {product.price && (
                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[var(--color-secondary)] px-4 py-2 rounded-full font-bold text-sm shadow-lg">
                           ${product.price}
                         </div>
-                      )}
+                      )} */}
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading leading-tight">
@@ -585,27 +845,24 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           </div>
                         )}
                       </div>
-                      {product.price !== undefined && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Quick add to cart with default options
-                            addToCart({
-                              productId: product.id,
-                              name: document.documentElement.lang === 'ar' ? product.name?.ar || '' : product.name?.en || '',
-                              price: product.price || 0,
-                              imageUrl: product.imageUrl,
-                              quantity: 1,
-                              color: product.colors?.[0],
-                              material: product.materials?.[0],
-                            });
-                            setIsCartOpen(true);
-                          }}
-                          className="w-full mt-4 py-2 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0"
-                        >
-                          Add to Cart
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Quick add to cart with default options
+                          addToCart({
+                            productId: product.id,
+                            name: document.documentElement.lang === 'ar' ? product.name?.ar || '' : product.name?.en || '',
+                            price: product.price,
+                            imageUrl: product.imageUrl,
+                            quantity: 1,
+                            color: product.colors?.[0],
+                            material: product.materials?.[0],
+                          });
+                        }}
+                        className="w-full mt-4 py-2 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0"
+                      >
+                        {t('add_to_cart') || 'Add to Cart'}
+                      </button>
                     </div>
                   </motion.div>
                 ))}
@@ -627,7 +884,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       setSortBy('relevance');
                       setSelectedColor('all');
                       setPriceRange([0, 10000]);
-                      setSearchParams({});
+                      if (searchResultsBeforeFilters.length === 0) {
+                        setSearchParams({});
+                      }
                     }}
                     className="mt-8 px-8 py-3 bg-[var(--color-primary)] text-white rounded-full font-bold hover:shadow-lg transition-all"
                   >

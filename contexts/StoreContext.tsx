@@ -7,7 +7,7 @@ export interface CartItem {
   id: string; // unique id for the cart item (productId + color + material)
   productId: string | number;
   name: string;
-  price: number;
+  price?: number;
   imageUrl: string;
   quantity: number;
   color?: string;

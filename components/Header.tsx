@@ -113,26 +113,28 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       >
         <UserIcon size={20} />
       </Link>
-      <button
-        onClick={() => setIsCartOpen(true)}
-        className="relative text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
-        aria-label={t('cart')}
-      >
-        <ShoppingBag size={20} />
-        <AnimatePresence>
-          {cartCount > 0 && (
-            <motion.span
-              key={cartCount}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute top-0 right-0 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
-            >
-              {cartCount}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
+      {!isMobile && (
+        <button
+          onClick={() => setIsCartOpen(true)}
+          className="relative text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+          aria-label={t('cart')}
+        >
+          <ShoppingBag size={20} />
+          <AnimatePresence>
+            {cartCount > 0 && (
+              <motion.span
+                key={cartCount}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute top-0 right-0 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+              >
+                {cartCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+      )}
       <div className="flex items-center">
         <motion.button 
           onClick={() => setLanguage(LanguageOption.English)}

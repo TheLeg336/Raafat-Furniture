@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { GoogleGenAI, Type } from '@google/genai';
-import { CATEGORIES } from '../constants';
+import { useCategories } from '../hooks/useCategories';
+import { Edit, PlusCircle } from 'lucide-react';
 import LogoIcon from '../components/LogoIcon';
-import { LanguageOption, type TFunction } from '../types';
+import { LanguageOption, type TFunction, LocalizedString } from '../types';
 
 const TEST_IMAGES = [
   'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
@@ -48,6 +48,16 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     }
   };
 
+  const { categories } = useCategories();
+  const [editingListing, setEditingListing] = useState<any | null>(null);
+  const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState<LocalizedString>({ en: '', ar: '' });
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isHeroModalOpen, setIsHeroModalOpen] = useState(false);
+  const [newCategoryNames, setNewCategoryNames] = useState<string[]>(['']);
+  const [listingsToRedistribute, setListingsToRedistribute] = useState<any[]>([]);
+  const [redistributionMap, setRedistributionMap] = useState<Record<string, string>>({});
+
   const [listings, setListings] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
@@ -63,11 +73,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [nameAr, setNameAr] = useState('');
   const [descEn, setDescEn] = useState('');
   const [descAr, setDescAr] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [category, setCategory] = useState('');
+  const [price, setPrice] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isTestListing, setIsTestListing] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState('');
 
   useEffect(() => {
     if (!db || !isAdmin) return;
@@ -154,7 +166,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   
   const getCategoryObj = (catId: string | null) => {
     if (!catId) return null;
-    for (const cat of CATEGORIES) {
+    for (const cat of categories) {
       if (cat.id === catId) return cat;
       if (cat.subCategories) {
         const sub = cat.subCategories.find(s => s.id === catId);
@@ -162,6 +174,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       }
     }
     return null;
+  };
+
+  const getCategoryLabel = (cat: any) => {
+    if (!cat) return '';
+    const lang = language as 'en' | 'ar';
+    if (cat.name && cat.name[lang]) return cat.name[lang];
+    return t(cat.labelKey);
   };
 
   const currentCategory = getCategoryObj(selectedCategory);
@@ -208,18 +227,6 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     if (!db) return;
     try {
       const productToDelete = listings.find(l => l.id === id);
-      
-      // Only attempt Firebase Storage deletion if it's a Firebase URL
-      if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.includes('firebasestorage')) {
-        if (storage) {
-          try {
-            const imageRef = ref(storage, productToDelete.imageUrl);
-            await deleteObject(imageRef);
-          } catch (imgError) {
-            console.error("Failed to delete image from storage:", imgError);
-          }
-        }
-      }
       
       // Note: Deleting from Cloudinary client-side requires a signed request.
       // For now, we just remove the Firestore document.
@@ -280,12 +287,12 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     });
   };
 
-  const handleCreateListing = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !storage || (!imageFile && !isTestListing)) return;
+    if (!db || !storage || (!imageFile && !isTestListing && !editingListing)) return;
     
     // Safety check: Prevent exceeding free tier limits
-    if (listings.length >= MAX_LISTINGS) {
+    if (!editingListing && listings.length >= MAX_LISTINGS) {
       alert(`Safety Limit Reached: You cannot add more than ${MAX_LISTINGS} products to stay within the free tier. Please delete some existing products first.`);
       return;
     }
@@ -379,10 +386,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         }
       }
 
-      let imageUrl = '';
-      if (isTestListing && isDeveloper && !imageFile) {
+      let finalImageUrl = editingListing?.imageUrl || '';
+      if (isTestListing && isDeveloper && !imageFile && !editingListing) {
         // Use one of the test images
-        imageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
+        finalImageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
       } else if (imageFile) {
         // Compress and convert image to WebP
         const compressedBlob = await compressImage(imageFile);
@@ -410,45 +417,163 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
           const data = await response.json();
           // Use Cloudinary's auto-optimization parameters in the URL
-          imageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
-        } else if (storage) {
-          // Fallback to Firebase Storage if Cloudinary is not set up
-          const imageRef = ref(storage, `products/${Date.now()}_${imageFile.name.split('.')[0]}.webp`);
-          await uploadBytes(imageRef, compressedBlob);
-          imageUrl = await getDownloadURL(imageRef);
+          finalImageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
         } else {
-          throw new Error("No image hosting service configured. Please set up Cloudinary or Firebase Storage.");
+          throw new Error("No image hosting service configured. Please set up Cloudinary.");
         }
-      } else {
+      } else if (!editingListing) {
         alert(t('admin_alert_image_required') || 'Image is required');
         setIsSubmitting(false);
         return;
       }
 
-      // Save to Firestore
-      const selectedCatId = category;
-      await addDoc(collection(db, 'products'), {
-        name: { en: finalNameEn, ar: finalNameAr },
-        description: { en: finalDescEn, ar: finalDescAr },
-        category: { en: selectedCatId.replace('_', ' '), ar: selectedCatId.replace('_', ' ') }, // Simplified for demo
-        nameKey: finalNameEn.toLowerCase().replace(/\s+/g, '_'),
-        categoryKey: category,
-        imageUrl,
-        createdAt: new Date().toISOString(),
-        archivedAt: null,
-        isTest: isTestListing
-      });
+      const parsedPrice = price ? parseFloat(price) : undefined;
+      
+      if (editingListing) {
+        // Update existing listing
+        await updateDoc(doc(db, 'products', editingListing.id), {
+          name: { en: finalNameEn, ar: finalNameAr },
+          description: { en: finalDescEn, ar: finalDescAr },
+          categoryKey: category,
+          imageUrl: finalImageUrl,
+          price: parsedPrice,
+          updatedAt: new Date().toISOString()
+        });
 
-      await logActivity(isTestListing ? 'TEST_CREATE' : 'CREATE', `Created ${isTestListing ? 'test ' : ''}product: ${finalNameEn} in category ${selectedCatId}`);
+        await logActivity('UPDATE_LISTING', `Updated listing: ${finalNameEn}`);
+      } else {
+        // Create new listing
+        await addDoc(collection(db, 'products'), {
+          name: { en: finalNameEn, ar: finalNameAr },
+          description: { en: finalDescEn, ar: finalDescAr },
+          categoryKey: category,
+          imageUrl: finalImageUrl,
+          price: parsedPrice,
+          createdAt: new Date().toISOString(),
+          archivedAt: null,
+          isTest: isTestListing
+        });
+
+        await logActivity('CREATE_LISTING', `Created new listing: ${finalNameEn}`);
+      }
 
       // Reset form
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
-      setCategory(CATEGORIES[0].id); setImageFile(null);
+      setCategory(categories[0]?.id || ''); setImageFile(null); setPrice('');
       setIsTestListing(false);
       setIsCreateModalOpen(false);
+      setEditingListing(null);
     } catch (error: any) {
-      console.error("Error creating listing:", error);
-      alert(`${t('admin_alert_create_failed')}${error.message || 'Unknown error'}`);
+      console.error("Error submitting listing:", error);
+      alert(error.message || "An error occurred while saving the listing.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !isDeveloper) return;
+
+    setIsSubmitting(true);
+    try {
+      if (editingCategory) {
+        // Update category image
+        let finalImageUrl = editingCategory.imageUrl;
+        if (imageFile) {
+          const compressedBlob = await compressImage(imageFile);
+          const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+          const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+          if (cloudName && uploadPreset) {
+            const formData = new FormData();
+            formData.append('file', compressedBlob);
+            formData.append('upload_preset', uploadPreset);
+            formData.append('folder', 'raafat_furniture/categories');
+
+            const response = await fetch(
+              `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+              { method: 'POST', body: formData }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              finalImageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
+            }
+          }
+        }
+
+        // Check if it's a top-level category or a subcategory
+        const parentCat = categories.find(c => c.subCategories?.some(s => s.id === editingCategory.id));
+        
+        if (parentCat) {
+          // Update subcategory in parent
+          const updatedSubCategories = parentCat.subCategories?.map(s => 
+            s.id === editingCategory.id ? { ...s, imageUrl: finalImageUrl, name: editingCategoryName } : s
+          );
+          await updateDoc(doc(db, 'categories', parentCat.id), {
+            subCategories: updatedSubCategories
+          });
+        } else {
+          // Update top-level category
+          await updateDoc(doc(db, 'categories', editingCategory.id), {
+            imageUrl: finalImageUrl,
+            name: editingCategoryName
+          });
+        }
+
+        await logActivity('UPDATE_CATEGORY', `Updated category: ${editingCategory.id}`);
+      } else if (selectedCategory) {
+        // Add subcategories to existing category
+        const parentCat = categories.find(c => c.id === selectedCategory);
+        if (!parentCat) throw new Error("Parent category not found");
+
+        const newSubs = newCategoryNames.filter(n => n.trim()).map(name => ({
+          id: name.toLowerCase().replace(/\s+/g, '_'),
+          labelKey: `cat_${name.toLowerCase().replace(/\s+/g, '_')}`,
+          name: { en: name, ar: name }, // Use same name for both for now
+          imageUrl: 'https://picsum.photos/seed/' + name + '/800/1000'
+        }));
+
+        const updatedSubCategories = [...(parentCat.subCategories || []), ...newSubs];
+        await updateDoc(doc(db, 'categories', parentCat.id), {
+          subCategories: updatedSubCategories
+        });
+
+        // Redistribute listings
+        for (const [listingId, subCatId] of Object.entries(redistributionMap)) {
+          if (subCatId) {
+            await updateDoc(doc(db, 'products', listingId), {
+              categoryKey: subCatId
+            });
+          }
+        }
+
+        await logActivity('ADD_SUBCATEGORIES', `Added ${newSubs.length} subcategories to ${selectedCategory}`);
+      } else {
+        // Add new top-level categories
+        for (const name of newCategoryNames.filter(n => n.trim())) {
+          const id = name.toLowerCase().replace(/\s+/g, '_');
+          await addDoc(collection(db, 'categories'), {
+            id,
+            labelKey: `cat_${id}`,
+            name: { en: name, ar: name },
+            imageUrl: 'https://picsum.photos/seed/' + id + '/800/1000',
+            subCategories: []
+          });
+        }
+        await logActivity('ADD_CATEGORIES', `Added ${newCategoryNames.length} new categories`);
+      }
+
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+      setNewCategoryNames(['']);
+      setImageFile(null);
+      setRedistributionMap({});
+      setListingsToRedistribute([]);
+    } catch (error) {
+      console.error("Error managing categories:", error);
+      alert("Failed to update categories");
     } finally {
       setIsSubmitting(false);
     }
@@ -597,13 +722,24 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       <main className="flex-1 p-4 md:p-8 relative overflow-y-auto h-full pb-24 md:pb-8">
         {activeTab === 'categories' && !selectedCategory && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="mb-6 md:mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_tab_categories')}</h1>
-              <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
+            <div className="mb-6 md:mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_tab_categories')}</h1>
+                <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
+              </div>
+              {isDeveloper && (
+                <button 
+                  onClick={() => setIsHeroModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors text-[var(--color-text-primary)] font-medium"
+                >
+                  <ImageIcon size={18} />
+                  Edit Hero
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
-              {CATEGORIES.map((cat, index) => (
+              {categories.map((cat, index) => (
                 <motion.div 
                   key={cat.id}
                   initial={{ opacity: 0, y: 30 }}
@@ -620,10 +756,23 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       className="absolute inset-0 w-full h-full object-cover" 
                     />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                    
+                    {isDeveloper && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCategory(cat);
+                          setEditingCategoryName(cat.name || { en: t(cat.labelKey), ar: t(cat.labelKey) });
+                        }}
+                        className="absolute top-3 end-3 p-2 bg-white/90 backdrop-blur-sm text-blue-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-blue-50 shadow-sm z-10"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
                   </div>
                   <div className="p-4 flex flex-col items-center">
                     <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
-                      {t(cat.labelKey)}
+                      {getCategoryLabel(cat)}
                     </h3>
                     <p className="text-md text-[var(--color-text-secondary)]">
                       {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
@@ -646,7 +795,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <span className="block"><ArrowLeft size={20} /></span>
                 </button>
                 <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                  {t(currentCategory?.labelKey || '')}
+                  {getCategoryLabel(currentCategory)}
                 </h1>
               </div>
             </div>
@@ -669,10 +818,23 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       className="absolute inset-0 w-full h-full object-cover" 
                     />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                    
+                    {isDeveloper && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCategory(cat);
+                          setEditingCategoryName(cat.name || { en: t(cat.labelKey), ar: t(cat.labelKey) });
+                        }}
+                        className="absolute top-3 end-3 p-2 bg-white/90 backdrop-blur-sm text-blue-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-blue-50 shadow-sm z-10"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
                   </div>
                   <div className="p-4 flex flex-col items-center">
                     <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
-                      {t(cat.labelKey)}
+                      {getCategoryLabel(cat)}
                     </h3>
                     <p className="text-md text-[var(--color-text-secondary)]">
                       {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
@@ -691,7 +853,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 <button 
                   onClick={() => {
                     let parentId = null;
-                    for (const cat of CATEGORIES) {
+                    for (const cat of categories) {
                       if (cat.subCategories?.some(s => s.id === selectedCategory)) {
                         parentId = cat.id;
                         break;
@@ -704,7 +866,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <span className="block"><ArrowLeft size={20} /></span>
                 </button>
                 <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                  {t(currentCategory?.labelKey || '')} {t('admin_listings')}
+                  {getCategoryLabel(currentCategory)} {t('admin_listings')}
                 </h1>
               </div>
             </div>
@@ -729,12 +891,27 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     >
                       <Trash2 size={18} />
                     </button>
+                    <button 
+                      onClick={() => {
+                        setEditingListing(listing);
+                        setNameEn(listing.name.en);
+                        setNameAr(listing.name.ar);
+                        setDescEn(listing.description.en);
+                        setDescAr(listing.description.ar);
+                        setCategory(listing.categoryKey);
+                        setPrice(listing.price?.toString() || '');
+                        setIsCreateModalOpen(true);
+                      }}
+                      className="absolute top-3 start-3 p-2 bg-white/90 backdrop-blur-sm text-blue-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-blue-50 shadow-sm z-10"
+                    >
+                      <Edit size={18} />
+                    </button>
                   </div>
                   <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
                     {language === 'ar' ? listing.name.ar : listing.name.en}
                   </h3>
                   <p className="text-md text-[var(--color-text-secondary)] capitalize">
-                    {t(currentCategory?.labelKey || '')}
+                    {getCategoryLabel(currentCategory)}
                   </p>
                 </motion.div>
               ))}
@@ -747,17 +924,40 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           </motion.div>
         )}
 
-        {/* FAB - Stable placement */}
-        {activeTab === 'categories' && selectedCategory && !hasSubCategories && (
-          <button 
-            onClick={() => {
-              setCategory(selectedCategory);
-              setIsCreateModalOpen(true);
-            }}
-            className="fixed bottom-24 md:bottom-8 end-6 md:end-8 w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all z-30"
-          >
-            <Plus size={24} />
-          </button>
+        {/* FABs */}
+        {activeTab === 'categories' && (
+          <div className="fixed bottom-24 md:bottom-8 end-6 md:end-8 flex flex-col gap-4 z-30">
+            {isDeveloper && (
+              <button 
+                onClick={() => {
+                  setNewCategoryNames(['']);
+                  setIsCategoryModalOpen(true);
+                  if (selectedCategory) {
+                    const catListings = activeListings.filter(l => l.categoryKey === selectedCategory);
+                    setListingsToRedistribute(catListings);
+                    setRedistributionMap({});
+                  } else {
+                    setListingsToRedistribute([]);
+                  }
+                }}
+                className="w-10 h-10 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all"
+                title={selectedCategory ? "Add Sub-categories" : "Add Category"}
+              >
+                <Plus size={20} />
+              </button>
+            )}
+            {selectedCategory && !hasSubCategories && (
+              <button 
+                onClick={() => {
+                  setCategory(selectedCategory);
+                  setIsCreateModalOpen(true);
+                }}
+                className="w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all"
+              >
+                <Plus size={24} />
+              </button>
+            )}
+          </div>
         )}
 
         {activeTab === 'archive' && (
@@ -775,7 +975,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       {t('admin_no_listings')}
                     </div>
                   ) : (
-                    CATEGORIES.reduce((acc, cat) => {
+                    categories.reduce((acc, cat) => {
                       acc.push(cat);
                       if (cat.subCategories) acc.push(...cat.subCategories);
                       return acc;
@@ -802,7 +1002,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         </div>
                         <div className="p-4 flex flex-col items-center">
                           <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
-                            {t(cat.labelKey)}
+                            {getCategoryLabel(cat)}
                           </h3>
                           <p className="text-md text-[var(--color-text-secondary)]">
                             {count} {t('admin_items')}
@@ -823,7 +1023,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     <span className="block"><ArrowLeft size={20} /></span>
                   </button>
                   <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                    {t('admin_archived')}: {t(getCategoryObj(selectedArchivedCategory)?.labelKey || '')}
+                    {t('admin_archived')}: {getCategoryLabel(getCategoryObj(selectedArchivedCategory))}
                   </h1>
                 </div>
 
@@ -951,12 +1151,22 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
             <div className="p-4 md:p-6 border-b border-[var(--color-secondary)]/10 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
-              <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">{t('admin_create_new')}</h2>
-              <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]">
+              <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
+                {editingListing ? t('admin_edit_listing') || 'Edit Listing' : t('admin_create_new')}
+              </h2>
+              <button 
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setEditingListing(null);
+                  setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
+                  setCategory(categories[0]?.id || ''); setPrice(''); setImageFile(null);
+                }} 
+                className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
+              >
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleCreateListing} className="p-4 md:p-6 space-y-4 md:space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_en')}</label>
@@ -979,7 +1189,27 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
               </div>
 
-              {isDeveloper && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_category')}</label>
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none appearance-none">
+                    {categories.map(cat => (
+                      <optgroup key={cat.id} label={t(cat.labelKey)}>
+                        <option value={cat.id}>{t(cat.labelKey)} (Main)</option>
+                        {cat.subCategories?.map(sub => (
+                          <option key={sub.id} value={sub.id}>-- {t(sub.labelKey)}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_price')} ({t('admin_optional')})</label>
+                  <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_price')} />
+                </div>
+              </div>
+
+              {isDeveloper && !editingListing && (
                 <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
                   <input 
                     type="checkbox" 
@@ -996,15 +1226,16 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_photo_min')}</label>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  {editingListing ? t('admin_change_photo') || 'Change Photo' : t('admin_photo_min')}
+                </label>
                 <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && !imageFile ? 'opacity-50' : ''}`}>
                   <input 
                     type="file" 
-                    required={!isTestListing}
+                    required={!isTestListing && !editingListing}
                     accept="image/*"
                     onChange={e => setImageFile(e.target.files?.[0] || null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    disabled={isTestListing && !imageFile && false} // Allow change if they want
                   />
                   {imageFile ? (
                     <div className="flex flex-col items-center">
@@ -1018,6 +1249,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">Using Random Test Image</p>
                       <p className="text-xs text-[var(--color-text-secondary)] mt-1">Click or drag to override with custom image</p>
                     </div>
+                  ) : editingListing ? (
+                    <div className="flex flex-col items-center">
+                      <img src={editingListing.imageUrl} alt="Current" className="w-20 h-20 object-cover rounded-lg mb-2 opacity-50" />
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('admin_click_to_change')}</p>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center">
                       <Plus size={32} className="text-[var(--color-text-secondary)] mb-2" />
@@ -1029,11 +1265,20 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               </div>
 
               <div className="pt-4 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setEditingListing(null);
+                    setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
+                    setCategory(categories[0]?.id || ''); setPrice(''); setImageFile(null);
+                  }} 
+                  className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors"
+                >
                   {t('admin_cancel')}
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-6 md:px-8 py-3 bg-[var(--color-primary)] text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70 flex items-center gap-2">
-                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : t('admin_post_listing')}
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (editingListing ? t('admin_update_listing') || 'Update Listing' : t('admin_post_listing'))}
                 </button>
               </div>
             </form>
@@ -1042,36 +1287,248 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       )}
       </AnimatePresence>
 
-      {/* Delete Confirm Modal */}
+      {/* Category Management Modal */}
       <AnimatePresence>
-      {listingToDelete && (
+      {(isCategoryModalOpen || editingCategory) && (
         <motion.div 
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center border border-white/10"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10"
           >
-            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Trash2 size={32} />
-            </div>
-            <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)] mb-3">{t('admin_remove_listing')}</h2>
-            <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_archived_auto_remove')}</p>
-            <div className="flex gap-3">
-              <button onClick={() => setListingToDelete(null)} className="flex-1 py-3 text-[var(--color-text-primary)] font-medium bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors">
-                {t('admin_cancel')}
+            <div className="p-4 md:p-6 border-b border-[var(--color-secondary)]/10 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
+              <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
+                {editingCategory ? 'Edit Category' : (selectedCategory ? 'Add Sub-categories' : 'Add New Category')}
+              </h2>
+              <button 
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  setEditingCategory(null);
+                  setEditingCategoryName({ en: '', ar: '' });
+                  setNewCategoryNames(['']);
+                  setImageFile(null);
+                }} 
+                className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
+              >
+                <X size={24} />
               </button>
-              <button onClick={() => handleArchive(listingToDelete.id)} className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors">
-                {t('admin_archive')}
-              </button>
             </div>
+            <form onSubmit={handleCategorySubmit} className="p-4 md:p-6 space-y-6">
+              {editingCategory ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Name (English)</label>
+                      <input 
+                        type="text" 
+                        value={editingCategoryName.en} 
+                        onChange={e => setEditingCategoryName({ ...editingCategoryName, en: e.target.value })}
+                        className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)] text-right">الاسم (العربية)</label>
+                      <input 
+                        type="text" 
+                        value={editingCategoryName.ar} 
+                        onChange={e => setEditingCategoryName({ ...editingCategoryName, ar: e.target.value })}
+                        className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right"
+                        dir="rtl"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Category Image</label>
+                    <div className="border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative">
+                      <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      {imageFile ? (
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">{imageFile.name}</p>
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Plus size={32} className="text-[var(--color-text-secondary)] mb-2" />
+                          <p className="text-sm font-medium text-[var(--color-text-primary)]">Click to upload new picture</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Category Names</label>
+                    {newCategoryNames.map((name, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={name} 
+                          onChange={e => {
+                            const updated = [...newCategoryNames];
+                            updated[idx] = e.target.value;
+                            setNewCategoryNames(updated);
+                          }}
+                          className="flex-1 bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                          placeholder="Enter name..."
+                        />
+                        {newCategoryNames.length > 1 && (
+                          <button type="button" onClick={() => setNewCategoryNames(newCategoryNames.filter((_, i) => i !== idx))} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setNewCategoryNames([...newCategoryNames, ''])} className="flex items-center gap-2 text-blue-600 font-medium hover:underline">
+                      <PlusCircle size={18} /> Add another
+                    </button>
+                  </div>
+
+                  {selectedCategory && listingsToRedistribute.length > 0 && (
+                    <div className="space-y-4 pt-6 border-t border-[var(--color-secondary)]/10">
+                      <h3 className="font-bold text-[var(--color-text-primary)]">Distribute Existing Listings</h3>
+                      <p className="text-sm text-[var(--color-text-secondary)]">Choose which sub-category each listing should move to.</p>
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                        {listingsToRedistribute.map(listing => (
+                          <div key={listing.id} className="flex items-center justify-between p-3 bg-[var(--color-secondary)]/5 rounded-xl border border-[var(--color-secondary)]/10">
+                            <span className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[200px]">
+                              {language === 'ar' ? listing.name.ar : listing.name.en}
+                            </span>
+                            <select 
+                              value={redistributionMap[listing.id] || ''} 
+                              onChange={e => setRedistributionMap({...redistributionMap, [listing.id]: e.target.value})}
+                              className="bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg px-2 py-1 text-xs outline-none"
+                            >
+                              <option value="">Keep in Main</option>
+                              {newCategoryNames.filter(n => n.trim()).map(name => (
+                                <option key={name} value={name.toLowerCase().replace(/\s+/g, '_')}>{name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-6 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
+                <button type="button" onClick={() => { setIsCategoryModalOpen(false); setEditingCategory(null); setEditingCategoryName({ en: '', ar: '' }); }} className="px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting} className="px-8 py-3 bg-blue-600 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70">
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </motion.div>
       )}
       </AnimatePresence>
-    </div>
-  );
-};
+
+              {/* Delete Confirm Modal */}
+              <AnimatePresence>
+              {listingToDelete && (
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                >
+                  <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center border border-white/10"
+                  >
+                    <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <Trash2 size={32} />
+                    </div>
+                    <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)] mb-3">{t('admin_remove_listing')}</h2>
+                    <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_archived_auto_remove')}</p>
+                    <div className="flex gap-3">
+                      <button onClick={() => setListingToDelete(null)} className="flex-1 py-3 text-[var(--color-text-primary)] font-medium bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors">
+                        {t('admin_cancel')}
+                      </button>
+                      <button onClick={() => handleArchive(listingToDelete.id)} className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors">
+                        {t('admin_archive')}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+              </AnimatePresence>
+
+              {/* Hero Image Modal */}
+              <AnimatePresence>
+              {isHeroModalOpen && (
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                >
+                  <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 border border-white/10"
+                  >
+                    <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)] mb-6">Update Hero Image</h2>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          try {
+                            // Compress and convert image to WebP
+                            const compressedBlob = await compressImage(file);
+                            
+                            // Upload to Cloudinary
+                            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+                            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+                            if (!cloudName || !uploadPreset) {
+                                throw new Error("Cloudinary not configured.");
+                            }
+
+                            const formData = new FormData();
+                            formData.append('file', compressedBlob);
+                            formData.append('upload_preset', uploadPreset);
+                            formData.append('folder', 'raafat_furniture/hero');
+
+                            const response = await fetch(
+                                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                                { method: 'POST', body: formData }
+                            );
+
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(`Cloudinary Upload Failed: ${errorData.error?.message || 'Unknown error'}`);
+                            }
+
+                            const data = await response.json();
+                            const url = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
+                            
+                            // Update Firestore with new URL
+                            console.log("Saving hero image:", url);
+                            // TODO: Implement Firestore update logic here
+                            setHeroImageUrl(url);
+                            setIsHeroModalOpen(false);
+                          } catch (error) {
+                            console.error("Error uploading hero image:", error);
+                            alert("Failed to upload hero image.");
+                          }
+                      }}
+                      className="w-full text-sm text-[var(--color-text-primary)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                    />
+                    <button 
+                      onClick={() => setIsHeroModalOpen(false)}
+                      className="w-full mt-6 py-3 text-[var(--color-text-primary)] font-medium bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+              </AnimatePresence>
+
+            </div>
+          );
+        };
 
 export default Admin;

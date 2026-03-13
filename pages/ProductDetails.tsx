@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Check, ShoppingCart } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useProducts } from '../hooks/useProducts';
-import { CATEGORIES } from '../constants';
+import { useCategories } from '../hooks/useCategories';
 import { useStore } from '../contexts/StoreContext';
 
 interface ProductDetailsProps {
@@ -15,7 +15,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { products, loading } = useProducts();
-  const { addToCart, toggleWishlist, wishlist, setIsCartOpen } = useStore();
+  const { categories } = useCategories();
+  const { addToCart, toggleWishlist, wishlist } = useStore();
   
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
@@ -63,7 +64,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const name = getLocalizedText(product.name, product.nameKey);
   const getCategoryObj = (catId?: string) => {
     if (!catId) return null;
-    for (const cat of CATEGORIES) {
+    for (const cat of categories) {
       if (cat.id === catId) return cat;
       if (cat.subCategories) {
         const sub = cat.subCategories.find(s => s.id === catId);
@@ -74,7 +75,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
 
   const categoryObj = getCategoryObj(product.categoryKey);
-  const category = getLocalizedText(product.category, categoryObj?.labelKey);
+  const category = getLocalizedText(product.category || categoryObj?.name, categoryObj?.labelKey);
   const description = getLocalizedText(product.description, undefined) || t('product_fallback_desc').replace('{name}', name);
   
   const isWishlisted = wishlist.includes(String(product.id));
@@ -84,22 +85,21 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
     addToCart({
       productId: product.id,
       name,
-      price: product.price || 0,
+      price: product.price,
       imageUrl: product.imageUrl,
       quantity: 1,
       color: selectedColor || undefined,
       material: selectedMaterial || undefined,
     });
     
-    // Show animation then open cart
+    // Show animation
     setTimeout(() => {
       setIsAdding(false);
-      setIsCartOpen(true);
     }, 600);
   };
 
   return (
-    <main className="container mx-auto px-6 py-24 md:py-32 min-h-[80vh]">
+    <main className="container mx-auto px-6 pt-12 pb-24 md:pt-32 md:pb-32 min-h-[80vh]">
       <button 
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-2 mb-8 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
@@ -113,12 +113,12 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
-          className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden aspect-[4/5] relative shadow-xl"
+          className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl"
         >
           <img 
             src={product.imageUrl} 
             alt={`Photo of ${name}`} 
-            className="absolute inset-0 w-full h-full object-cover"
+            className="w-full h-auto object-cover"
           />
           <button
             onClick={(e) => {
@@ -210,7 +210,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           <div className="flex flex-col sm:flex-row gap-4">
             <button 
               onClick={handleAddToCart}
-              disabled={isAdding || (product.price === undefined)}
+              disabled={isAdding}
               className="flex-1 relative overflow-hidden px-8 py-4 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
             >
               <AnimatePresence mode="wait">
@@ -234,7 +234,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
                     className="flex items-center gap-2"
                   >
                     <ShoppingCart className="w-5 h-5" />
-                    <span>{product.price ? 'Add to Cart' : t('product_inquire_now')}</span>
+                    <span>{t('add_to_cart') || 'Add to Cart'}</span>
                   </motion.div>
                 )}
               </AnimatePresence>

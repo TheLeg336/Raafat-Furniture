@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useStore } from '../contexts/StoreContext';
@@ -18,7 +18,18 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   } = useStore();
   const navigate = useNavigate();
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  useEffect(() => {
+    if (isCartOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isCartOpen]);
+
+  const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   return (
     <AnimatePresence>
@@ -79,7 +90,9 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                           <div>
                             <div className="flex justify-between items-start">
                               <h3 className="font-bold text-lg leading-tight">{item.name}</h3>
-                              <span className="font-bold text-[var(--color-primary)]">${item.price}</span>
+                              <span className="font-bold text-[var(--color-primary)]">
+                                {item.price ? `$${item.price.toLocaleString()}` : t('price_on_request')}
+                              </span>
                             </div>
                             <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex gap-2">
                               {item.color && <span>Color: {item.color}</span>}
@@ -136,7 +149,9 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                         <div className="flex-1 flex flex-col justify-between">
                           <div className="flex justify-between items-start">
                             <h4 className="font-semibold text-sm">{item.name}</h4>
-                            <span className="font-bold text-sm">${item.price}</span>
+                            <span className="font-bold text-sm">
+                              {item.price ? `$${item.price.toLocaleString()}` : t('price_on_request')}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between mt-1">
                             <button 
@@ -170,16 +185,24 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                 <p className="text-xs text-[var(--color-text-secondary)] mb-6">
                   {t('shipping_taxes_calculated') || 'Shipping and taxes calculated at checkout.'}
                 </p>
-                <button 
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    navigate('/checkout');
-                  }}
-                  className="w-full py-4 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg flex items-center justify-center gap-2 hover:bg-[var(--color-primary)]/90 transition-colors shadow-lg shadow-[var(--color-primary)]/20"
-                >
-                  {t('checkout') || 'Checkout'}
-                  <ArrowRight size={20} />
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      navigate('/checkout');
+                    }}
+                    className="w-full py-4 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg flex items-center justify-center gap-2 hover:bg-[var(--color-primary)]/90 transition-colors shadow-lg shadow-[var(--color-primary)]/20"
+                  >
+                    {t('checkout') || 'Checkout'}
+                    <ArrowRight size={20} />
+                  </button>
+                  <button 
+                    onClick={() => setIsCartOpen(false)}
+                    className="w-full py-3 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-full font-bold text-lg hover:bg-[var(--color-secondary)]/20 transition-colors"
+                  >
+                    {t('close') || 'Close'}
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>

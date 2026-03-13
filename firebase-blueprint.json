@@ -74,6 +74,47 @@
           }
         }
       }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A furniture product listing",
+      "type": "object",
+      "properties": {
+        "name": { "type": "object", "properties": { "en": { "type": "string" }, "ar": { "type": "string" } } },
+        "description": { "type": "object", "properties": { "en": { "type": "string" }, "ar": { "type": "string" } } },
+        "category": { "type": "object", "properties": { "en": { "type": "string" }, "ar": { "type": "string" } } },
+        "nameKey": { "type": "string" },
+        "categoryKey": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "archivedAt": { "type": "string", "format": "date-time" },
+        "isTest": { "type": "boolean" }
+      },
+      "required": ["name", "description", "categoryKey", "imageUrl", "createdAt"]
+    },
+    "AdminLog": {
+      "title": "Admin Log",
+      "description": "Activity log for admin actions",
+      "type": "object",
+      "properties": {
+        "adminEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Furniture category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "labelKey": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "subCategories": { "type": "array", "items": { "$ref": "Category" } }
+      },
+      "required": ["id", "labelKey", "imageUrl"]
     }
   },
   "firestore": {
@@ -92,6 +133,18 @@
     "/users/all_users_list": {
       "schema": "UserList",
       "description": "Global list of users"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Product listings"
+    },
+    "/admin_logs/{logId}": {
+      "schema": "AdminLog",
+      "description": "Admin activity logs"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Product categories"
     }
   }
 }
