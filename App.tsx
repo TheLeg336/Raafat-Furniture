@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import UserAccount from './pages/UserAccount';
 import Onboarding from './pages/Onboarding';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { StoreProvider } from './contexts/StoreContext';
 import { db } from './lib/firebase';
 
 type ThemeMode = 'light' | 'dark';
@@ -42,6 +43,9 @@ const getInitialLanguage = (): LanguageOption => {
   }
   return LanguageOption.English;
 };
+
+import { CartDrawer } from './components/CartDrawer';
+import { AuthModal } from './components/AuthModal';
 
 const AppContent: React.FC = () => {
   const colorScheme = ColorSchemeOption.BlackGold;
@@ -204,6 +208,8 @@ const AppContent: React.FC = () => {
             <Footer 
               t={t}
             />
+            <CartDrawer t={t} />
+            <AuthModal t={t} />
           </>
         } />
       </Routes>
@@ -214,9 +220,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <StoreProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </StoreProvider>
     </AuthProvider>
   );
 };

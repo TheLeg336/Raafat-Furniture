@@ -129,25 +129,26 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
               <motion.div
                 ref={searchContainerRef}
                 layout
-                initial={{ borderRadius: 56 }}
-                animate={{ borderRadius: 56 }}
                 onClick={() => !isSearchVisible && setIsSearchVisible(true)}
                 className={`
-                  relative flex items-center justify-center origin-center overflow-hidden
+                  relative flex items-center justify-center origin-center overflow-hidden rounded-full
                   ${isSearchVisible 
                     ? 'w-full max-w-lg h-14 search-gloss backdrop-blur-lg shadow-lg' 
-                    : 'h-14 px-8 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
+                    : 'h-14 px-10 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
                 `}
-                transition={{ type: "spring", stiffness: 180, damping: 26, mass: 0.9 }}
+                transition={{ 
+                  layout: { type: "spring", stiffness: 300, damping: 35, mass: 0.8 },
+                  opacity: { duration: 0.2 }
+                }}
               >
                 <div className="relative w-full h-full flex items-center justify-center">
                     {/* Explore Text */}
                     <motion.span
-                        className="font-semibold text-white whitespace-nowrap"
+                        className="font-bold text-white whitespace-nowrap uppercase tracking-widest text-sm"
                         animate={{ opacity: isSearchVisible ? 0 : 1 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.15 }}
                     >
-                        {t('hero_cta_learn_more')}
+                        {t('hero_cta_explore')}
                     </motion.span>
 
                     {/* Search Input Container */}

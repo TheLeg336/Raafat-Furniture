@@ -1,12 +1,13 @@
 import React, { useState, useEffect, forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, ShoppingBag } from 'lucide-react';
 import { LanguageOption } from '../types';
 import type { TFunction } from '../types';
 import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
+import { useStore } from '../contexts/StoreContext';
 
 interface HeaderProps {
   language: LanguageOption;
@@ -22,6 +23,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
+  const { cart, setIsCartOpen } = useStore();
+
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -109,6 +113,26 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       >
         <UserIcon size={20} />
       </Link>
+      <button
+        onClick={() => setIsCartOpen(true)}
+        className="relative text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+        aria-label={t('cart')}
+      >
+        <ShoppingBag size={20} />
+        <AnimatePresence>
+          {cartCount > 0 && (
+            <motion.span
+              key={cartCount}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute top-0 right-0 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+            >
+              {cartCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
       <div className="flex items-center">
         <motion.button 
           onClick={() => setLanguage(LanguageOption.English)}
@@ -169,7 +193,25 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                </Link>
             </div>
 
-            <div className="w-6"></div> {/* Spacer to balance hamburger */}
+            <div className="relative z-50 flex items-center min-w-[40px] justify-end">
+              {cartCount > 0 && (
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className="relative text-[var(--color-text-primary)] p-2 -mr-2"
+                  aria-label={t('cart')}
+                >
+                  <ShoppingBag size={24} />
+                  <motion.span
+                    key={cartCount}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-1 right-1 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                  >
+                    {cartCount}
+                  </motion.span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>

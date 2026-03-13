@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - firstName: string (optional)
+    //   - lastName: string (optional)
+    //   - email: string (required)
+    //   - updatedAt: string (ISO 8601)
+    //
+    // Collection: users/{userId}/store
+    // Document ID: data
+    // Fields:
+    //   - cart: list of maps (CartItem)
+    //   - savedForLater: list of maps (CartItem)
+    //   - wishlist: list of strings (product IDs)
+    //
+    // Collection: admins
+    // Document ID: {email}
+    // Fields:
+    //   - role: string ('admin' | 'developer')
+    //
+    // Collection: users
+    // Document ID: all_users_list
+    // Fields:
+    //   - users: list of maps (user info)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email']) &&
+             data.email is string &&
+             data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidStoreData(data) {
+      return (!('cart' in data) || data.cart is list) &&
+             (!('savedForLater' in data) || data.savedForLater is list) &&
+             (!('wishlist' in data) || data.wishlist is list);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      // Store data subcollection
+      match /store/data {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidStoreData(request.resource.data);
+      }
+    }
+
+    // Admin roles
+    match /admins/{email} {
+      allow read: if isAuthenticated(); // Allow users to check their own admin status
+      allow write: if isAdmin();
+    }
+
+    // Global user list
+    match /users/all_users_list {
+      allow read: if isAdmin();
+      // Allow users to add themselves to the list
+      allow create, update: if isAuthenticated(); 
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

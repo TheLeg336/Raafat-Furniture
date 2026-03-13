@@ -116,7 +116,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
 
       <div className="bg-white/5 backdrop-blur-2xl border border-white/10 px-6 md:px-10 py-6 md:py-12 rounded-3xl shadow-2xl max-w-md w-full text-center relative z-10">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
           className="absolute top-4 start-4 md:top-6 md:start-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
           title="Go Back"
         >

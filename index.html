@@ -159,13 +159,33 @@
         scrollbar-width: none;
       }
 
-      /* Global scrollbar hide */
-      * {
+      /* Global scrollbar hide - except for custom-scrollbar */
+      *:not(.custom-scrollbar):not(.custom-scrollbar *) {
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      *::-webkit-scrollbar {
+      *:not(.custom-scrollbar):not(.custom-scrollbar *)::-webkit-scrollbar {
         display: none;
+      }
+
+      /* Custom Scrollbar for Desktop Filters */
+      .custom-scrollbar {
+        scrollbar-width: thin !important;
+        scrollbar-color: var(--color-primary) transparent !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar {
+        display: block !important;
+        width: 4px !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: var(--color-primary) !important;
+        border-radius: 20px !important;
       }
     </style>
 <script type="importmap">

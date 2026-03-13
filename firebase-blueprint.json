@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    },
+    "StoreData": {
+      "title": "Store Data",
+      "description": "User's cart, saved items, and wishlist",
+      "type": "object",
+      "properties": {
+        "cart": {
+          "type": "array",
+          "items": { "$ref": "CartItem" }
+        },
+        "savedForLater": {
+          "type": "array",
+          "items": { "$ref": "CartItem" }
+        },
+        "wishlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "CartItem": {
+      "title": "Cart Item",
+      "description": "An item in the user's cart or saved list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "quantity": { "type": "number" },
+        "color": { "type": "string" },
+        "material": { "type": "string" }
+      },
+      "required": ["id", "productId", "name", "price", "imageUrl", "quantity"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin user record",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["admin", "developer"] }
+      }
+    },
+    "UserList": {
+      "title": "User List",
+      "description": "A list of all users for marketing",
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": { "type": "string" },
+              "uid": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" },
+              "joinedAt": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/store/data": {
+      "schema": "StoreData",
+      "description": "User's store data (cart, wishlist)"
+    },
+    "/admins/{email}": {
+      "schema": "Admin",
+      "description": "Admin role definitions"
+    },
+    "/users/all_users_list": {
+      "schema": "UserList",
+      "description": "Global list of users"
+    }
+  }
+}
