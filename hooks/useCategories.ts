@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { CATEGORIES as FALLBACK_CATEGORIES } from '../constants';
 import { Category } from '../types';
 
@@ -32,6 +33,11 @@ export const useCategories = () => {
       setLoading(false);
     }, (error) => {
       console.error('Error fetching categories from Firebase:', error);
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'categories');
+      } catch (e) {
+        // Error is already logged in handleFirestoreError
+      }
       setCategories(FALLBACK_CATEGORIES);
       setLoading(false);
     });

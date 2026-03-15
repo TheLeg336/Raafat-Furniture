@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 
 interface AuthContextType {
@@ -55,33 +55,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currentAdminStatus = adminDoc.exists();
             if (currentAdminStatus) {
               currentDeveloperStatus = adminDoc.data()?.role === 'developer';
-            }
-            
-            if (!currentAdminStatus) {
-              // Save non-admin emails to a single list for marketing/personalization
-              try {
-                await updateDoc(doc(db, 'users', 'all_users_list'), {
-                  users: arrayUnion({
-                    email: currentUser.email,
-                    uid: currentUser.uid,
-                    firstName: fName,
-                    lastName: lName,
-                    joinedAt: new Date().toISOString()
-                  })
-                });
-              } catch (error: any) {
-                if (error.code === 'not-found') {
-                  await setDoc(doc(db, 'users', 'all_users_list'), {
-                    users: [{
-                      email: currentUser.email,
-                      uid: currentUser.uid,
-                      firstName: fName,
-                      lastName: lName,
-                      joinedAt: new Date().toISOString()
-                    }]
-                  });
-                }
-              }
             }
             
             // Only update state if the fetch was successful

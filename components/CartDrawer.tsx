@@ -18,6 +18,8 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   } = useStore();
   const navigate = useNavigate();
 
+  const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
+
   useEffect(() => {
     if (isCartOpen) {
       document.body.style.overflow = 'hidden';
@@ -28,8 +30,6 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
       document.body.style.overflow = 'unset';
     };
   }, [isCartOpen]);
-
-  const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   return (
     <AnimatePresence>

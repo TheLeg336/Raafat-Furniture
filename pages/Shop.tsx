@@ -156,11 +156,15 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
       {/* Category or Search Header */}
-      {isSearchMode ? (
+      {(isSearchMode || !category) ? (
         <div className="container mx-auto px-6 mb-4 md:mb-8 pt-4 md:pt-8">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-base md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
-              {t('search_results_for')} <span className="text-[var(--color-primary)]">{searchQuery}</span>
+              {isSearchMode ? (
+                <>{t('search_results_for')} <span className="text-[var(--color-primary)]">{searchQuery}</span></>
+              ) : (
+                <>{t('nav_shop')}</>
+              )}
             </h1>
             
             <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full mb-4 md:mb-6 group">
@@ -623,8 +627,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     {parentCategory ? getCategoryLabel(parentCategory) : 'Categories'}
                   </h2>
                   <div className="flex flex-col gap-2">
-                    {/* Show sibling subcategories */}
-                    {parentCategory?.subCategories?.map(sub => (
+                    {/* Show sibling subcategories or top-level categories */}
+                    {(parentCategory ? parentCategory.subCategories : categories)?.map(sub => (
                       <button
                         key={sub.id}
                         onClick={() => navigate(`/shop?category=${sub.id}`)}
@@ -822,12 +826,6 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           className={`transition-colors ${wishlist.includes(String(product.id)) ? 'text-[var(--color-primary)] fill-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'}`} 
                         />
                       </button>
-                      {/* Price removed as requested */}
-                      {/* {product.price && (
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[var(--color-secondary)] px-4 py-2 rounded-full font-bold text-sm shadow-lg">
-                          ${product.price}
-                        </div>
-                      )} */}
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading leading-tight">
@@ -884,9 +882,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       setSortBy('relevance');
                       setSelectedColor('all');
                       setPriceRange([0, 10000]);
-                      if (isSearchMode) {
-                        setSearchParams({ q: searchQuery });
-                      } else {
+                      if (searchResultsBeforeFilters.length === 0) {
                         setSearchParams({});
                       }
                     }}

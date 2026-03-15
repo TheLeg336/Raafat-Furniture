@@ -14,6 +14,7 @@ import UserAccount from './pages/UserAccount';
 import Onboarding from './pages/Onboarding';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StoreProvider } from './contexts/StoreContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { db } from './lib/firebase';
 
 type ThemeMode = 'light' | 'dark';
@@ -65,8 +66,16 @@ const AppContent: React.FC = () => {
 
   // Redirection logic for onboarding
   useEffect(() => {
-    if (!authLoading && user && (!firstName || !lastName) && location.pathname !== '/onboarding') {
-      navigate('/onboarding');
+    // Only redirect if we are sure the user is logged in, auth is not loading,
+    // and we have explicitly checked the profile and found it missing.
+    if (!authLoading && user && firstName === null && lastName === null && location.pathname !== '/onboarding') {
+      // Small delay to ensure state is settled
+      const timer = setTimeout(() => {
+        if (firstName === null && lastName === null) {
+          navigate('/onboarding');
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [user, firstName, lastName, authLoading, navigate, location.pathname]);
 
@@ -219,13 +228,15 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <StoreProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </StoreProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <StoreProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </StoreProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

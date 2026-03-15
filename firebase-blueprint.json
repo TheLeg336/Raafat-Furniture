@@ -86,6 +86,7 @@
         "nameKey": { "type": "string" },
         "categoryKey": { "type": "string" },
         "imageUrl": { "type": "string" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
         "price": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "archivedAt": { "type": "string", "format": "date-time" },
@@ -115,6 +116,14 @@
         "subCategories": { "type": "array", "items": { "$ref": "Category" } }
       },
       "required": ["id", "labelKey", "imageUrl"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "heroImageUrl": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -145,6 +154,10 @@
     "/categories/{categoryId}": {
       "schema": "Category",
       "description": "Product categories"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Global application settings"
     }
   }
 }

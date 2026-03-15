@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { TFunction } from '../types';
 import SearchIcon from './icons/SearchIcon';
 import CloseIcon from './icons/CloseIcon';
+import { useSettings } from '../hooks/useSettings';
 
 interface HeroProps {
   t: TFunction;
@@ -23,6 +24,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const { settings } = useSettings();
 
   useEffect(() => {
     if (!isSearchVisible) return;
@@ -61,7 +63,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
     }
   };
 
-  const defaultBgImage = 'https://picsum.photos/seed/sleek/1280/720';
+  const defaultBgImage = settings.heroImageUrl || 'https://picsum.photos/seed/sleek/1280/720';
 
   const currentConfig = {
       bgImage: defaultBgImage,

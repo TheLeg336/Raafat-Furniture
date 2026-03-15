@@ -30,6 +30,32 @@ service cloud.firestore {
     // Fields:
     //   - users: list of maps (user info)
     //
+    // Collection: products
+    // Document ID: {productId}
+    // Fields:
+    //   - name: map { en: string, ar: string }
+    //   - description: map { en: string, ar: string }
+    //   - categoryKey: string
+    //   - imageUrl: string
+    //   - imageUrls: list of strings
+    //   - price: number (optional)
+    //   - createdAt: string (ISO 8601)
+    //   - archivedAt: string (ISO 8601, optional)
+    //   - isTest: boolean
+    //
+    // Collection: categories
+    // Document ID: {categoryId}
+    // Fields:
+    //   - id: string
+    //   - labelKey: string
+    //   - imageUrl: string
+    //   - subCategories: list of maps (Category)
+    //
+    // Collection: settings
+    // Document ID: {settingId}
+    // Fields:
+    //   - heroImageUrl: string
+    //
     // ===============================================================
 
     // ===============================================================
@@ -63,11 +89,27 @@ service cloud.firestore {
              (!('wishlist' in data) || data.wishlist is list);
     }
 
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'description', 'categoryKey', 'imageUrl', 'createdAt']) &&
+             data.name is map && data.description is map &&
+             data.categoryKey is string && data.imageUrl is string &&
+             data.createdAt is string;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['id', 'labelKey', 'imageUrl']) &&
+             data.id is string && data.labelKey is string && data.imageUrl is string;
+    }
+
+    function isValidSettings(data) {
+      return !('heroImageUrl' in data) || data.heroImageUrl is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
-    // User profiles
+    // User profiles - PII protection: only owner or admin can read
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
@@ -85,30 +127,36 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Global user list
+    // Global user list - Admin only read
     match /users/all_users_list {
       allow read: if isAdmin();
       // Allow users to add themselves to the list
       allow create, update: if isAuthenticated(); 
     }
 
-    // Products
+    // Products - Public read
     match /products/{productId} {
-      allow read: if true; // Publicly readable
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin() && isValidProduct(request.resource.data);
     }
 
-    // Admin logs
+    // Admin logs - Admin only
     match /admin_logs/{logId} {
       allow read: if isAdmin();
       allow create: if isAdmin();
       allow update, delete: if false; // Logs should be immutable
     }
 
-    // Categories
+    // Categories - Public read
     match /categories/{categoryId} {
-      allow read: if true; // Publicly readable
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin() && isValidCategory(request.resource.data);
+    }
+
+    // Settings - Public read
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
     }
 
     // Default deny

@@ -52,7 +52,8 @@ export interface Product {
   name?: LocalizedString; // CMS data
   category?: LocalizedString; // CMS data
   description?: LocalizedString; // CMS data
-  imageUrl: string;
+  imageUrl: string; // Keep for backwards compatibility
+  imageUrls?: string[]; // Array of image URLs
   price?: number;
   dimensions?: string;
   materials?: string[];
