@@ -62,13 +62,14 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | null>(null);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [savedForLater, setSavedForLater] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLocalLoaded, setIsLocalLoaded] = useState(false);
   const [hasMerged, setHasMerged] = useState(false);
   const isRemoteUpdate = useRef(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -114,34 +115,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     testConnection();
   }, []);
 
-  // 1. Initial Load: Local Storage (only if no user or during auth transition)
+  // 1. Initial Load: Local Storage (Always do this once on mount, but wait for auth to be ready)
   useEffect(() => {
-    if (!user && !isInitialized) {
+    if (authLoading) return; // Wait for auth to determine if we have a user
+
+    if (!isLocalLoaded) {
       console.log("Loading initial data from local storage...");
       try {
         const localCart = localStorage.getItem('rf_cart');
         const localSaved = localStorage.getItem('rf_saved');
-        setCart(localCart ? JSON.parse(localCart) : []);
-        setSavedForLater(localSaved ? JSON.parse(localSaved) : []);
+        if (localCart) setCart(JSON.parse(localCart));
+        if (localSaved) setSavedForLater(JSON.parse(localSaved));
       } catch (error) {
         console.error("Failed to load from local storage:", error);
-        setCart([]);
-        setSavedForLater([]);
       }
-      setWishlist([]);
-      setIsInitialized(true);
+      setIsLocalLoaded(true);
+      // If no user, we are "initialized" for local mode
+      if (!user) setIsInitialized(true);
     }
-  }, [user, isInitialized]);
+  }, [isLocalLoaded, user, authLoading]);
 
   // 2. Sync with Firestore & Merge Logic
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user || !db) {
-      if (!user) {
+      if (!user && isLocalLoaded) {
+        setIsInitialized(true);
         setHasMerged(false);
-        setIsInitialized(false); // Allow re-initialization on next login
       }
       return;
     }
+
+    setIsInitialized(false); // Reset initialization when user changes to show loading if needed
 
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
     
@@ -164,9 +170,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           let mergedSaved = fsData?.savedForLater || [];
           const mergedWishlist = fsData?.wishlist || [];
 
-          // Merge logic: append local items if they don't exist in Firestore
+          // Merge logic: combine quantities for identical items
           lCart.forEach((item: CartItem) => {
-            if (!mergedCart.find((c: CartItem) => c.id === item.id)) {
+            const existing = mergedCart.find((c: CartItem) => c.id === item.id);
+            if (existing) {
+              existing.quantity += item.quantity;
+            } else {
               mergedCart.push(item);
             }
           });
@@ -216,9 +225,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => unsubscribe();
   }, [user, hasMerged]);
 
-  // 3. Persist to Local Storage (only if logged out)
+  // 3. Persist to Local Storage (only if logged out and local data is loaded)
   useEffect(() => {
-    if (!user && isInitialized) {
+    if (!user && isLocalLoaded) {
       console.log("Persisting cart to local storage...", { cartCount: cart.length });
       try {
         localStorage.setItem('rf_cart', JSON.stringify(cart));
@@ -227,7 +236,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error("Failed to save to local storage:", error);
       }
     }
-  }, [cart, savedForLater, user, isInitialized]);
+  }, [cart, savedForLater, user, isLocalLoaded]);
 
   // 4. Centralized Firestore Sync Effect
   useEffect(() => {
