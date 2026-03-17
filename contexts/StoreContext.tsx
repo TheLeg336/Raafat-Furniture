@@ -118,10 +118,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!user && !isInitialized) {
       console.log("Loading initial data from local storage...");
-      const localCart = localStorage.getItem('rf_cart');
-      const localSaved = localStorage.getItem('rf_saved');
-      setCart(localCart ? JSON.parse(localCart) : []);
-      setSavedForLater(localSaved ? JSON.parse(localSaved) : []);
+      try {
+        const localCart = localStorage.getItem('rf_cart');
+        const localSaved = localStorage.getItem('rf_saved');
+        setCart(localCart ? JSON.parse(localCart) : []);
+        setSavedForLater(localSaved ? JSON.parse(localSaved) : []);
+      } catch (error) {
+        console.error("Failed to load from local storage:", error);
+        setCart([]);
+        setSavedForLater([]);
+      }
       setWishlist([]);
       setIsInitialized(true);
     }
@@ -213,8 +219,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 3. Persist to Local Storage (only if logged out)
   useEffect(() => {
     if (!user && isInitialized) {
-      localStorage.setItem('rf_cart', JSON.stringify(cart));
-      localStorage.setItem('rf_saved', JSON.stringify(savedForLater));
+      console.log("Persisting cart to local storage...", { cartCount: cart.length });
+      try {
+        localStorage.setItem('rf_cart', JSON.stringify(cart));
+        localStorage.setItem('rf_saved', JSON.stringify(savedForLater));
+      } catch (error) {
+        console.error("Failed to save to local storage:", error);
+      }
     }
   }, [cart, savedForLater, user, isInitialized]);
 
