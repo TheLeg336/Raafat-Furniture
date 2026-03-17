@@ -197,15 +197,29 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               <button 
                 onClick={() => { setIsMenuOpen(!isMenuOpen); setIsCartOpen(false); }} 
                 aria-label={isMenuOpen ? t('aria_close_menu') : t('aria_open_menu')} 
-                className="text-[var(--color-text-primary)] p-2 -ml-2"
+                className="text-[var(--color-text-primary)] p-2 -ml-2 relative z-50"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {isMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
+                <motion.div 
+                  animate={{ rotate: isMenuOpen ? 180 : 0 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  className="w-6 h-5 flex flex-col justify-between items-center"
+                >
+                  <motion.span
+                    animate={isMenuOpen ? { rotate: 45, y: 9 } : { rotate: 0, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-6 h-0.5 bg-current rounded-full origin-center"
+                  />
+                  <motion.span
+                    animate={isMenuOpen ? { opacity: 0, scale: 0 } : { opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-6 h-0.5 bg-current rounded-full"
+                  />
+                  <motion.span
+                    animate={isMenuOpen ? { rotate: -45, y: -9 } : { rotate: 0, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-6 h-0.5 bg-current rounded-full origin-center"
+                  />
+                </motion.div>
               </button>
             </div>
 
@@ -261,16 +275,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                 {/* Decorative background blob */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-primary)] opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                 
-                <button 
-                  onClick={() => setIsMenuOpen(false)} 
-                  aria-label={t('aria_close_menu')} 
-                  className={`absolute top-6 end-6 text-[var(--color-text-primary)] p-2 bg-[var(--color-text-primary)]/5 hover:bg-[var(--color-text-primary)]/10 rounded-full transition-colors z-20`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-
                 <div className="text-[var(--color-text-primary)] mt-4 mb-12 relative z-10">
                   <Link to="/" onClick={handleLogoClick}>
                       <Logo t={t} />
