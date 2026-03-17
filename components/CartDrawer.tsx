@@ -41,13 +41,22 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   };
 
   useEffect(() => {
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    
     if (isCartOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+      document.documentElement.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.documentElement.style.overflow = '';
     }
+    
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.documentElement.style.overflow = '';
     };
   }, [isCartOpen]);
 

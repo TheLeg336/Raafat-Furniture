@@ -8,9 +8,9 @@ service cloud.firestore {
     // Collection: users
     // Document ID: {userId}
     // Fields:
-    //   - firstName: string (optional)
-    //   - lastName: string (optional)
-    //   - email: string (required)
+    //   - firstName: string (optional, 1-50 chars)
+    //   - lastName: string (optional, 1-50 chars)
+    //   - email: string (required, valid format)
     //   - updatedAt: string (ISO 8601)
     //
     // Collection: users/{userId}/store
@@ -24,11 +24,6 @@ service cloud.firestore {
     // Document ID: {email}
     // Fields:
     //   - role: string ('admin' | 'developer')
-    //
-    // Collection: users
-    // Document ID: all_users_list
-    // Fields:
-    //   - users: list of maps (user info)
     //
     // ===============================================================
 
@@ -59,16 +54,21 @@ service cloud.firestore {
       );
     }
 
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
     function isValidUser(data) {
       return data.keys().hasAll(['email']) &&
-             data.email is string &&
-             data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+             data.email is string && isValidEmail(data.email) &&
+             (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 50)) &&
+             (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 50));
     }
 
     function isValidStoreData(data) {
-      return (!('cart' in data) || data.cart is list) &&
-             (!('savedForLater' in data) || data.savedForLater is list) &&
-             (!('wishlist' in data) || data.wishlist is list);
+      return (!('cart' in data) || (data.cart is list && data.cart.size() <= 100)) &&
+             (!('savedForLater' in data) || (data.savedForLater is list && data.savedForLater.size() <= 100)) &&
+             (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 200));
     }
 
     // ===============================================================

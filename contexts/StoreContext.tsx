@@ -1,7 +1,35 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
 
 export interface CartItem {
   id: string; // unique id for the cart item (productId + color + material)
@@ -41,81 +69,127 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasMerged, setHasMerged] = useState(false);
 
-  // Load from local storage initially or on logout
+  const handleFirestoreError = (error: any, operationType: OperationType, path: string | null) => {
+    const errInfo: FirestoreErrorInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: user?.uid,
+        email: user?.email,
+        emailVerified: user?.emailVerified,
+        isAnonymous: user?.isAnonymous,
+        tenantId: user?.tenantId,
+        providerInfo: user?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    if (errInfo.error.includes('permission-denied') || errInfo.error.includes('Missing or insufficient permissions')) {
+      throw new Error(JSON.stringify(errInfo));
+    }
+  };
+
+  // Test connection on mount
   useEffect(() => {
-    if (!user) {
+    const testConnection = async () => {
+      if (!db) return;
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+        console.log("Firestore connection test successful.");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. The client is offline.");
+        }
+      }
+    };
+    testConnection();
+  }, []);
+
+  // 1. Initial Load: Local Storage (only if no user or during auth transition)
+  useEffect(() => {
+    if (!user && !isInitialized) {
+      console.log("Loading initial data from local storage...");
       const localCart = localStorage.getItem('rf_cart');
       const localSaved = localStorage.getItem('rf_saved');
       setCart(localCart ? JSON.parse(localCart) : []);
       setSavedForLater(localSaved ? JSON.parse(localSaved) : []);
-      setWishlist([]); // Wishlist is only for logged-in users
+      setWishlist([]);
       setIsInitialized(true);
     }
-  }, [user]);
+  }, [user, isInitialized]);
 
-  // Sync with Firestore when user logs in
+  // 2. Sync with Firestore & Merge Logic
   useEffect(() => {
-    if (!user || !db) return;
+    if (!user || !db) {
+      if (!user) {
+        setHasMerged(false);
+        setIsInitialized(false); // Allow re-initialization on next login
+      }
+      return;
+    }
 
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
     
-    // Merge local storage to firestore on first login if local has items
-    const mergeLocalData = async () => {
-      if (!isInitialized) return;
-      const localCart = localStorage.getItem('rf_cart');
-      const localSaved = localStorage.getItem('rf_saved');
+    console.log("Setting up Firestore sync for user:", user.uid);
+    
+    const unsubscribe = onSnapshot(userStoreRef, async (docSnap) => {
+      const fsData = docSnap.exists() ? docSnap.data() : null;
       
-      if (localCart || localSaved) {
-        const docSnap = await getDoc(userStoreRef);
-        let mergedCart = localCart ? JSON.parse(localCart) : [];
-        let mergedSaved = localSaved ? JSON.parse(localSaved) : [];
-        let mergedWishlist: string[] = [];
+      // If we haven't merged local data yet, do it now
+      if (!hasMerged) {
+        const localCart = localStorage.getItem('rf_cart');
+        const localSaved = localStorage.getItem('rf_saved');
+        
+        if (localCart || localSaved) {
+          console.log("Merging local data to Firestore...");
+          const lCart = localCart ? JSON.parse(localCart) : [];
+          const lSaved = localSaved ? JSON.parse(localSaved) : [];
+          
+          let mergedCart = fsData?.cart || [];
+          let mergedSaved = fsData?.savedForLater || [];
+          const mergedWishlist = fsData?.wishlist || [];
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          // Simple merge: keep firestore items, append local items if they don't exist
-          const fsCart = data.cart || [];
-          const fsSaved = data.savedForLater || [];
-          mergedWishlist = data.wishlist || [];
+          // Merge logic: append local items if they don't exist in Firestore
+          lCart.forEach((item: CartItem) => {
+            if (!mergedCart.find((c: CartItem) => c.id === item.id)) {
+              mergedCart.push(item);
+            }
+          });
 
-          mergedCart = [...fsCart];
-          if (localCart) {
-            JSON.parse(localCart).forEach((item: CartItem) => {
-              if (!mergedCart.find((c: CartItem) => c.id === item.id)) {
-                mergedCart.push(item);
-              }
-            });
-          }
+          lSaved.forEach((item: CartItem) => {
+            if (!mergedSaved.find((c: CartItem) => c.id === item.id)) {
+              mergedSaved.push(item);
+            }
+          });
 
-          mergedSaved = [...fsSaved];
-          if (localSaved) {
-            JSON.parse(localSaved).forEach((item: CartItem) => {
-              if (!mergedSaved.find((c: CartItem) => c.id === item.id)) {
-                mergedSaved.push(item);
-              }
-            });
+          try {
+            await setDoc(userStoreRef, {
+              cart: mergedCart,
+              savedForLater: mergedSaved,
+              wishlist: mergedWishlist
+            }, { merge: true });
+            
+            localStorage.removeItem('rf_cart');
+            localStorage.removeItem('rf_saved');
+            console.log("Merge complete.");
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
           }
         }
-
-        await setDoc(userStoreRef, {
-          cart: mergedCart,
-          savedForLater: mergedSaved,
-          wishlist: mergedWishlist
-        }, { merge: true });
-
-        // Clear local storage after merge
-        localStorage.removeItem('rf_cart');
-        localStorage.removeItem('rf_saved');
+        setHasMerged(true);
       }
-    };
 
-    mergeLocalData();
-
-    // Listen to changes
-    const unsubscribe = onSnapshot(userStoreRef, (docSnap) => {
+      // Update local state from Firestore
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log("Firestore data received:", data);
         setCart(data.cart || []);
         setSavedForLater(data.savedForLater || []);
         setWishlist(data.wishlist || []);
@@ -125,12 +199,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setWishlist([]);
       }
       setIsInitialized(true);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, userStoreRef.path);
     });
 
     return () => unsubscribe();
-  }, [user, isInitialized]);
+  }, [user, hasMerged]);
 
-  // Save to local storage if not logged in
+  // 3. Persist to Local Storage (only if logged out)
   useEffect(() => {
     if (!user && isInitialized) {
       localStorage.setItem('rf_cart', JSON.stringify(cart));
@@ -138,15 +214,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cart, savedForLater, user, isInitialized]);
 
-  // Save to Firestore if logged in
+  // 4. Update Firestore Helper
   const updateFirestore = async (newCart: CartItem[], newSaved: CartItem[], newWishlist: string[]) => {
-    if (!user || !db) return;
+    if (!user || !db || !isInitialized) {
+      console.warn("Skipping Firestore update: Not initialized or no user.");
+      return;
+    }
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
-    await setDoc(userStoreRef, {
-      cart: newCart,
-      savedForLater: newSaved,
-      wishlist: newWishlist
-    }, { merge: true });
+    try {
+      await setDoc(userStoreRef, {
+        cart: newCart,
+        savedForLater: newSaved,
+        wishlist: newWishlist
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
+    }
   };
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
