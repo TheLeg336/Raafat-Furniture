@@ -22,14 +22,22 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
 
   const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
-  const getLocalizedName = (item: any) => {
+  const getSyncedProduct = (item: any) => {
     const product = products.find(p => p.id.toString() === item.productId.toString());
-    if (product) {
-      const lang = document.documentElement.lang as 'en' | 'ar';
-      if (product.name && product.name[lang]) return product.name[lang];
-      if (product.nameKey) return t(product.nameKey);
-    }
-    return item.name;
+    const lang = document.documentElement.lang as 'en' | 'ar';
+    
+    if (!product) return { name: item.name, imageUrl: item.imageUrl, price: item.price };
+
+    return {
+      name: product.name?.[lang] || (product.nameKey ? t(product.nameKey) : item.name),
+      imageUrl: product.images?.[0] || product.imageUrl || item.imageUrl,
+      price: product.price || item.price
+    };
+  };
+
+  const handleProductClick = (productId: string | number) => {
+    setIsCartOpen(false);
+    navigate(`/product/${productId}`);
   };
 
   useEffect(() => {
@@ -93,54 +101,65 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex gap-4">
-                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-[var(--color-secondary)]/10 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-bold text-lg leading-tight">{getLocalizedName(item)}</h3>
-                              <span className="font-bold text-[var(--color-primary)]">
-                                {item.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(item.price) : t('price_on_request')}
-                              </span>
+                    {cart.map((item) => {
+                      const synced = getSyncedProduct(item);
+                      return (
+                        <div key={item.id} className="flex gap-4">
+                          <button 
+                            onClick={() => handleProductClick(item.productId)}
+                            className="w-24 h-24 rounded-xl overflow-hidden bg-[var(--color-secondary)]/10 flex-shrink-0 hover:opacity-80 transition-opacity"
+                          >
+                            <img src={synced.imageUrl} alt={synced.name} className="w-full h-full object-cover" />
+                          </button>
+                          <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <button 
+                                  onClick={() => handleProductClick(item.productId)}
+                                  className="font-bold text-lg leading-tight text-left hover:text-[var(--color-primary)] transition-colors"
+                                >
+                                  {synced.name}
+                                </button>
+                                <span className="font-bold text-[var(--color-primary)]">
+                                  {synced.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(synced.price) : t('price_on_request')}
+                                </span>
+                              </div>
+                              <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex gap-2">
+                                {item.color && <span>Color: {item.color}</span>}
+                                {item.material && <span>Material: {item.material}</span>}
+                              </div>
                             </div>
-                            <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex gap-2">
-                              {item.color && <span>Color: {item.color}</span>}
-                              {item.material && <span>Material: {item.material}</span>}
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center border border-[var(--color-primary)]/20 rounded-full">
+                                <button 
+                                  onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                                  className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                                >-</button>
+                                <span className="w-8 text-center text-sm font-medium">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US').format(item.quantity)}</span>
+                                <button 
+                                  onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                                  className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                                >+</button>
+                              </div>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => moveToSavedForLater(item.id)}
+                                  className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] underline underline-offset-2"
+                                >
+                                  {t('save_for_later') || 'Save for later'}
+                                </button>
+                                <button 
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="p-1.5 text-[var(--color-text-secondary)] hover:text-red-500 transition-colors rounded-full hover:bg-red-500/10"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center border border-[var(--color-primary)]/20 rounded-full">
-                              <button 
-                                onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                                className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
-                              >-</button>
-                              <span className="w-8 text-center text-sm font-medium">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US').format(item.quantity)}</span>
-                              <button 
-                                onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                                className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
-                              >+</button>
-                            </div>
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => moveToSavedForLater(item.id)}
-                                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] underline underline-offset-2"
-                              >
-                                {t('save_for_later') || 'Save for later'}
-                              </button>
-                              <button 
-                                onClick={() => removeFromCart(item.id)}
-                                className="p-1.5 text-[var(--color-text-secondary)] hover:text-red-500 transition-colors rounded-full hover:bg-red-500/10"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -153,35 +172,46 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                     {t('saved_for_later') || 'Saved for later'} ({savedForLater.length})
                   </h3>
                   <div className="space-y-4">
-                    {savedForLater.map((item) => (
-                      <div key={item.id} className="flex gap-4 opacity-70 hover:opacity-100 transition-opacity">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-[var(--color-secondary)]/10 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-between">
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-sm">{getLocalizedName(item)}</h4>
-                            <span className="font-bold text-sm">
-                              {item.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(item.price) : t('price_on_request')}
-                            </span>
+                    {savedForLater.map((item) => {
+                      const synced = getSyncedProduct(item);
+                      return (
+                        <div key={item.id} className="flex gap-4 opacity-70 hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => handleProductClick(item.productId)}
+                            className="w-16 h-16 rounded-lg overflow-hidden bg-[var(--color-secondary)]/10 flex-shrink-0 hover:opacity-80 transition-opacity"
+                          >
+                            <img src={synced.imageUrl} alt={synced.name} className="w-full h-full object-cover" />
+                          </button>
+                          <div className="flex-1 flex flex-col justify-between">
+                            <div className="flex justify-between items-start">
+                              <button 
+                                onClick={() => handleProductClick(item.productId)}
+                                className="font-semibold text-sm text-left hover:text-[var(--color-primary)] transition-colors"
+                              >
+                                {synced.name}
+                              </button>
+                              <span className="font-bold text-sm">
+                                {synced.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(synced.price) : t('price_on_request')}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <button 
+                                onClick={() => moveToCart(item.id)}
+                                className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                              >
+                                {t('move_to_cart') || 'Move to cart'}
+                              </button>
+                              <button 
+                                onClick={() => removeFromSavedForLater(item.id)}
+                                className="text-xs text-[var(--color-text-secondary)] hover:text-red-500"
+                              >
+                                {t('remove') || 'Remove'}
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <button 
-                              onClick={() => moveToCart(item.id)}
-                              className="text-xs font-medium text-[var(--color-primary)] hover:underline"
-                            >
-                              {t('move_to_cart') || 'Move to cart'}
-                            </button>
-                            <button 
-                              onClick={() => removeFromSavedForLater(item.id)}
-                              className="text-xs text-[var(--color-text-secondary)] hover:text-red-500"
-                            >
-                              {t('remove') || 'Remove'}
-                            </button>
-                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

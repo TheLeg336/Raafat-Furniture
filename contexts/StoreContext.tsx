@@ -42,13 +42,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from local storage initially
+  // Load from local storage initially or on logout
   useEffect(() => {
     if (!user) {
       const localCart = localStorage.getItem('rf_cart');
       const localSaved = localStorage.getItem('rf_saved');
-      if (localCart) setCart(JSON.parse(localCart));
-      if (localSaved) setSavedForLater(JSON.parse(localSaved));
+      setCart(localCart ? JSON.parse(localCart) : []);
+      setSavedForLater(localSaved ? JSON.parse(localSaved) : []);
       setWishlist([]); // Wishlist is only for logged-in users
       setIsInitialized(true);
     }
