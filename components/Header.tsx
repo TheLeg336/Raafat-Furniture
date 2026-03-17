@@ -27,14 +27,26 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const handleLogoClick = () => {
+    setIsMenuOpen(false);
+    setIsCartOpen(false);
+  };
+
   useEffect(() => {
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
     if (isMenuOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+      document.documentElement.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.documentElement.style.overflow = '';
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.documentElement.style.overflow = '';
     };
   }, [isMenuOpen]);
 
@@ -160,7 +172,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   return (
     <>
-      <header ref={ref} className={`${headerClass} transition-colors duration-500 shine-effect ${isShineAnimating ? 'shine-onload' : ''}`}>
+      <header ref={ref} className={`${headerClass} transition-colors duration-500 shine-effect ${isShineAnimating ? 'shine-onload' : ''} ${isMenuOpen ? 'bg-transparent shadow-none backdrop-blur-none' : ''}`}>
         <div className="container mx-auto px-6 py-4">
           {/* Desktop Layout */}
           <div className="hidden md:grid grid-cols-3 items-center">
@@ -169,7 +181,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
             </nav>
             
             <div className="justify-self-center text-[var(--color-text-primary)]">
-               <Link to="/">
+               <Link to="/" onClick={handleLogoClick}>
                   <Logo t={t} />
                </Link>
             </div>
@@ -182,20 +194,28 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
           {/* Mobile Layout */}
           <div className="md:hidden flex justify-between items-center relative z-50">
             <div className="relative z-50">
-              <button onClick={() => { setIsMenuOpen(true); setIsCartOpen(false); }} aria-label={t('aria_open_menu')} className="text-[var(--color-text-primary)] p-2 -ml-2">
+              <button 
+                onClick={() => { setIsMenuOpen(!isMenuOpen); setIsCartOpen(false); }} 
+                aria-label={isMenuOpen ? t('aria_close_menu') : t('aria_open_menu')} 
+                className="text-[var(--color-text-primary)] p-2 -ml-2"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  {isMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
             </div>
 
-            <div className="absolute left-1/2 transform -translate-x-1/2 text-[var(--color-text-primary)] z-10">
-               <Link to="/" onClick={() => setIsMenuOpen(false)}>
+            <div className={`absolute left-1/2 transform -translate-x-1/2 text-[var(--color-text-primary)] z-10 transition-opacity duration-300 ${isMenuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+               <Link to="/" onClick={handleLogoClick}>
                   <Logo t={t} />
                </Link>
             </div>
 
-            <div className="relative z-50 flex items-center min-w-[40px] justify-end">
+            <div className={`relative z-50 flex items-center min-w-[40px] justify-end transition-opacity duration-300 ${isMenuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
               {cartCount > 0 && (
                 <button
                   onClick={() => setIsCartOpen(!isCartOpen)}
@@ -252,7 +272,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                 </button>
 
                 <div className="text-[var(--color-text-primary)] mt-4 mb-12 relative z-10">
-                  <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/" onClick={handleLogoClick}>
                       <Logo t={t} />
                   </Link>
                 </div>
