@@ -166,6 +166,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const lCart = localCart ? JSON.parse(localCart) : [];
           const lSaved = localSaved ? JSON.parse(localSaved) : [];
           
+          // Clear local storage BEFORE the async call to prevent loops
+          // if another snapshot arrives during the await.
+          localStorage.removeItem('rf_cart');
+          localStorage.removeItem('rf_saved');
+          
           let mergedCart = fsData?.cart || [];
           let mergedSaved = fsData?.savedForLater || [];
           const mergedWishlist = fsData?.wishlist || [];
@@ -193,11 +198,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               wishlist: mergedWishlist
             }, { merge: true });
             
-            localStorage.removeItem('rf_cart');
-            localStorage.removeItem('rf_saved');
             console.log("Merge complete.");
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
+            // If it fails, we might want to restore local storage, 
+            // but usually a failure here means a bigger issue.
           }
         }
         setHasMerged(true);
