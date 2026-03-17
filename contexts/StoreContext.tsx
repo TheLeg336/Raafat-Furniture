@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -70,6 +70,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasMerged, setHasMerged] = useState(false);
+  const isRemoteUpdate = useRef(false);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFirestoreError = (error: any, operationType: OperationType, path: string | null) => {
     const errInfo: FirestoreErrorInfo = {
@@ -190,10 +192,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (docSnap.exists()) {
         const data = docSnap.data();
         console.log("Firestore data received:", data);
+        isRemoteUpdate.current = true;
         setCart(data.cart || []);
         setSavedForLater(data.savedForLater || []);
         setWishlist(data.wishlist || []);
       } else {
+        isRemoteUpdate.current = true;
         setCart([]);
         setSavedForLater([]);
         setWishlist([]);
@@ -214,41 +218,75 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cart, savedForLater, user, isInitialized]);
 
-  // 4. Update Firestore Helper
+  // 4. Centralized Firestore Sync Effect
+  useEffect(() => {
+    if (!user || !db || !isInitialized) return;
+
+    // If this change came from Firestore, don't push it back
+    if (isRemoteUpdate.current) {
+      isRemoteUpdate.current = false;
+      return;
+    }
+
+    // Debounce Firestore updates
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    
+    syncTimeoutRef.current = setTimeout(() => {
+      updateFirestore(cart, savedForLater, wishlist);
+    }, 1000); // 1 second debounce
+
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [cart, savedForLater, wishlist, user, isInitialized]);
+
+  // 5. Update Firestore Helper
   const updateFirestore = async (newCart: CartItem[], newSaved: CartItem[], newWishlist: string[]) => {
     if (!user || !db || !isInitialized) {
       console.warn("Skipping Firestore update: Not initialized or no user.");
       return;
     }
+
+    // Firestore does not accept 'undefined'. We must strip undefined values or convert to null.
+    const sanitizeItem = (item: CartItem) => {
+      const sanitized = { ...item };
+      if (sanitized.color === undefined) delete sanitized.color;
+      if (sanitized.material === undefined) delete sanitized.material;
+      if (sanitized.price === undefined) delete sanitized.price;
+      return sanitized;
+    };
+
+    const sanitizedCart = newCart.map(sanitizeItem);
+    const sanitizedSaved = newSaved.map(sanitizeItem);
+
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
+    console.log("Updating Firestore with sanitized data...", { cartCount: sanitizedCart.length });
+    
     try {
       await setDoc(userStoreRef, {
-        cart: newCart,
-        savedForLater: newSaved,
+        cart: sanitizedCart,
+        savedForLater: sanitizedSaved,
         wishlist: newWishlist
       }, { merge: true });
+      console.log("Firestore update successful.");
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
     }
   };
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
+    console.log("Adding to cart:", item.name);
     const id = `${item.productId}-${item.color || 'default'}-${item.material || 'default'}`;
     const existingItem = cart.find(c => c.id === id);
-    let newCart;
     if (existingItem) {
-      newCart = cart.map(c => c.id === id ? { ...c, quantity: c.quantity + item.quantity } : c);
+      setCart(cart.map(c => c.id === id ? { ...c, quantity: c.quantity + item.quantity } : c));
     } else {
-      newCart = [...cart, { ...item, id }];
+      setCart([...cart, { ...item, id }]);
     }
-    setCart(newCart);
-    if (user) updateFirestore(newCart, savedForLater, wishlist);
   };
 
   const removeFromCart = (id: string) => {
-    const newCart = cart.filter(c => c.id !== id);
-    setCart(newCart);
-    if (user) updateFirestore(newCart, savedForLater, wishlist);
+    setCart(cart.filter(c => c.id !== id));
   };
 
   const updateCartQuantity = (id: string, quantity: number) => {
@@ -256,41 +294,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       removeFromCart(id);
       return;
     }
-    const newCart = cart.map(c => c.id === id ? { ...c, quantity } : c);
-    setCart(newCart);
-    if (user) updateFirestore(newCart, savedForLater, wishlist);
+    setCart(cart.map(c => c.id === id ? { ...c, quantity } : c));
   };
 
   const moveToSavedForLater = (id: string) => {
     const item = cart.find(c => c.id === id);
     if (!item) return;
-    const newCart = cart.filter(c => c.id !== id);
-    const newSaved = [...savedForLater, item];
-    setCart(newCart);
-    setSavedForLater(newSaved);
-    if (user) updateFirestore(newCart, newSaved, wishlist);
+    setCart(cart.filter(c => c.id !== id));
+    setSavedForLater([...savedForLater, item]);
   };
 
   const moveToCart = (id: string) => {
     const item = savedForLater.find(c => c.id === id);
     if (!item) return;
-    const newSaved = savedForLater.filter(c => c.id !== id);
+    setSavedForLater(savedForLater.filter(c => c.id !== id));
     const existingCartItem = cart.find(c => c.id === id);
-    let newCart;
     if (existingCartItem) {
-      newCart = cart.map(c => c.id === id ? { ...c, quantity: c.quantity + item.quantity } : c);
+      setCart(cart.map(c => c.id === id ? { ...c, quantity: c.quantity + item.quantity } : c));
     } else {
-      newCart = [...cart, item];
+      setCart([...cart, item]);
     }
-    setSavedForLater(newSaved);
-    setCart(newCart);
-    if (user) updateFirestore(newCart, newSaved, wishlist);
   };
 
   const removeFromSavedForLater = (id: string) => {
-    const newSaved = savedForLater.filter(c => c.id !== id);
-    setSavedForLater(newSaved);
-    if (user) updateFirestore(cart, newSaved, wishlist);
+    setSavedForLater(savedForLater.filter(c => c.id !== id));
   };
 
   const toggleWishlist = (productId: string | number) => {
@@ -299,14 +326,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     const idStr = String(productId);
-    let newWishlist;
     if (wishlist.includes(idStr)) {
-      newWishlist = wishlist.filter(id => id !== idStr);
+      setWishlist(wishlist.filter(id => id !== idStr));
     } else {
-      newWishlist = [...wishlist, idStr];
+      setWishlist([...wishlist, idStr]);
     }
-    setWishlist(newWishlist);
-    updateFirestore(cart, savedForLater, newWishlist);
   };
 
   return (
