@@ -202,22 +202,22 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                 <motion.div 
                   animate={{ rotate: isMenuOpen ? 180 : 0 }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className="w-6 h-5 flex flex-col justify-between items-center"
+                  className="w-6 h-6 flex flex-col justify-center gap-[5px] items-center"
                 >
                   <motion.span
-                    animate={isMenuOpen ? { rotate: 45, y: 9 } : { rotate: 0, y: 0 }}
+                    animate={isMenuOpen ? { rotate: 45, y: 7 } : { rotate: 0, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="w-6 h-0.5 bg-current rounded-full origin-center"
+                    className="w-6 h-[2px] bg-current rounded-full origin-center"
                   />
                   <motion.span
                     animate={isMenuOpen ? { opacity: 0, scale: 0 } : { opacity: 1, scale: 1 }}
                     transition={{ duration: 0.2 }}
-                    className="w-6 h-0.5 bg-current rounded-full"
+                    className="w-6 h-[2px] bg-current rounded-full"
                   />
                   <motion.span
-                    animate={isMenuOpen ? { rotate: -45, y: -9 } : { rotate: 0, y: 0 }}
+                    animate={isMenuOpen ? { rotate: -45, y: -7 } : { rotate: 0, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="w-6 h-0.5 bg-current rounded-full origin-center"
+                    className="w-6 h-[2px] bg-current rounded-full origin-center"
                   />
                 </motion.div>
               </button>
