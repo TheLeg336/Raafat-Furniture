@@ -72,6 +72,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLocalLoaded, setIsLocalLoaded] = useState(false);
   const [hasMerged, setHasMerged] = useState(false);
   const isRemoteUpdate = useRef(false);
+  const lastSyncedUserId = useRef<string | null>(null);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFirestoreError = (error: any, operationType: OperationType, path: string | null) => {
@@ -143,6 +144,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!user && isLocalLoaded) {
         setIsInitialized(true);
         setHasMerged(false);
+        lastSyncedUserId.current = null;
       }
       return;
     }
@@ -223,6 +225,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setWishlist([]);
       }
       setIsInitialized(true);
+      lastSyncedUserId.current = user.uid;
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, userStoreRef.path);
     });
@@ -267,8 +270,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // 5. Update Firestore Helper
   const updateFirestore = async (newCart: CartItem[], newSaved: CartItem[], newWishlist: string[]) => {
-    if (!user || !db || !isInitialized) {
-      console.warn("Skipping Firestore update: Not initialized or no user.");
+    if (!user || !db || !isInitialized || user.uid !== lastSyncedUserId.current) {
+      console.warn("Skipping Firestore update: Not initialized, no user, or user mismatch.");
       return;
     }
 
