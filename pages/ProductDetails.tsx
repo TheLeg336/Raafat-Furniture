@@ -27,6 +27,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
+  const images = product?.images?.length ? product.images : [product?.imageUrl];
+
   const handleScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, offsetWidth } = scrollRef.current;
@@ -46,6 +48,16 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
         behavior: 'smooth'
       });
     }
+  };
+
+  const handleNextImage = () => {
+    const nextIndex = (currentImageIndex + 1) % images.length;
+    scrollToImage(nextIndex);
+  };
+
+  const handlePrevImage = () => {
+    const prevIndex = (currentImageIndex - 1 + images.length) % images.length;
+    scrollToImage(prevIndex);
   };
 
   // Initialize selections when product loads
@@ -122,17 +134,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
     }, 600);
   };
 
-  const images = product?.images?.length ? product.images : [product?.imageUrl];
-
-  const handleNextImage = () => {
-    const nextIndex = (currentImageIndex + 1) % images.length;
-    scrollToImage(nextIndex);
-  };
-
-  const handlePrevImage = () => {
-    const prevIndex = (currentImageIndex - 1 + images.length) % images.length;
-    scrollToImage(prevIndex);
-  };
 
   return (
     <main className="container mx-auto px-6 pt-12 pb-24 md:pt-32 md:pb-32 min-h-[80vh]">
@@ -151,15 +152,16 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           transition={{ duration: 0.6 }}
           className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group aspect-square md:aspect-auto"
         >
-          <div className="relative w-full h-full overflow-hidden select-none">
+          <div className="relative w-full h-full overflow-hidden">
             <div 
               ref={scrollRef}
               onScroll={handleScroll}
-              className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide touch-pan-y overscroll-x-contain scroll-smooth"
+              className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain scroll-smooth"
               style={{ 
                 scrollbarWidth: 'none', 
                 msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x pan-y'
               }}
             >
               {images.map((img, idx) => (
@@ -304,7 +306,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             <button 
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="flex-1 relative overflow-hidden px-8 py-4 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
+              className="flex-1 sm:flex-none sm:min-w-[200px] relative overflow-hidden px-8 py-4 md:px-6 md:py-2.5 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg md:text-base hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
             >
               <AnimatePresence mode="wait">
                 {isAdding ? (
@@ -335,7 +337,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             
             <button 
               onClick={() => toggleWishlist(product.id)}
-              className="px-8 py-4 border-2 border-[var(--color-primary)] text-[var(--color-primary)] rounded-full font-bold text-lg hover:bg-[var(--color-primary)] hover:text-white transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none sm:min-w-[140px] px-8 py-4 md:px-6 md:py-2.5 border-2 border-[var(--color-primary)] text-[var(--color-primary)] rounded-full font-bold text-lg md:text-base hover:bg-[var(--color-primary)] hover:text-white transition-all transform hover:scale-105 flex items-center justify-center gap-2"
             >
               <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
               <span>{isWishlisted ? 'Saved' : 'Save'}</span>
