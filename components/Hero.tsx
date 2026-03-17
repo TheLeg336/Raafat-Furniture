@@ -91,7 +91,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
   return (
       <div
         ref={heroRef}
-        className="relative text-[var(--color-text-primary)] transition-all duration-500 h-[50vh] md:h-screen overflow-hidden"
+        className="relative text-[var(--color-text-primary)] transition-all duration-500 h-[50vh] md:h-[100dvh] overflow-hidden"
       >
         {/* 
           Pre-render element: This hidden div includes the classes for the active search bar.

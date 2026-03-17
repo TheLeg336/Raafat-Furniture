@@ -1206,7 +1206,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_tab_logs')}</h1>
             <div className="bg-[var(--color-secondary)]/5 rounded-2xl border border-[var(--color-secondary)]/10 overflow-hidden">
-              <div className="overflow-x-auto scrollbar-hide">
+              <div className="overflow-x-auto scrollbar-hide touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full min-w-[600px] text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--color-secondary)]/10 text-[var(--color-text-secondary)] text-sm">
@@ -1423,9 +1423,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     </div>
                   ) : editingListing ? (
                     <div className="flex flex-col items-center">
-                      <div className="flex gap-2 mb-2 overflow-x-auto max-w-full pb-2">
+                      <div className="flex gap-2 mb-2 overflow-x-auto max-w-full pb-2 snap-x touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {(editingListing.images?.length > 0 ? editingListing.images : [editingListing.imageUrl]).map((url: string, idx: number) => (
-                          <img key={idx} src={url} alt={`Current ${idx}`} className="w-16 h-16 object-cover rounded-md opacity-50 shrink-0" />
+                          <img key={idx} src={url} alt={`Current ${idx}`} className="w-16 h-16 object-cover rounded-md opacity-50 shrink-0 snap-center" draggable="false" />
                         ))}
                       </div>
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('admin_click_to_change')}</p>

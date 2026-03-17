@@ -151,19 +151,24 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           transition={{ duration: 0.6 }}
           className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group aspect-square md:aspect-auto"
         >
-          <div className="relative w-full h-full overflow-hidden">
+          <div className="relative w-full h-full overflow-hidden select-none">
             <div 
               ref={scrollRef}
               onScroll={handleScroll}
-              className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide touch-pan-y overscroll-x-contain"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide touch-pan-y overscroll-x-contain scroll-smooth"
+              style={{ 
+                scrollbarWidth: 'none', 
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}
             >
               {images.map((img, idx) => (
-                <div key={idx} className="w-full h-full flex-shrink-0 snap-center">
+                <div key={idx} className="w-full h-full flex-shrink-0 snap-center snap-always">
                   <img 
                     src={img} 
                     alt={`Photo ${idx + 1} of ${name}`} 
-                    className="w-full h-full object-cover pointer-events-none"
+                    draggable="false"
+                    className="w-full h-full object-cover"
                   />
                 </div>
               ))}
@@ -174,13 +179,13 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             <>
               <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePrevImage(); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity disabled:opacity-0 z-10"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
               <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNextImage(); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity disabled:opacity-0 z-10"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>

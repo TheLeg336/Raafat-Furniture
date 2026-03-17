@@ -142,8 +142,17 @@
       }
 
       /* Global Theme Transition */
-      html, body {
+      html {
+        height: 100%;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      body {
+        min-height: 100dvh;
         transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+        touch-action: manipulation;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
       }
       
       /* Ensure smooth transitions for all themed elements */
@@ -157,15 +166,6 @@
       .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
-      }
-
-      /* Global scrollbar hide - except for custom-scrollbar */
-      *:not(.custom-scrollbar):not(.custom-scrollbar *) {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      *:not(.custom-scrollbar):not(.custom-scrollbar *)::-webkit-scrollbar {
-        display: none;
       }
 
       /* Custom Scrollbar for Desktop Filters */
