@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useStore } from '../contexts/StoreContext';
 import { useNavigate } from 'react-router-dom';
+import { useProducts } from '../hooks/useProducts';
 
 export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   const { 
@@ -17,8 +18,19 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
     removeFromSavedForLater
   } = useStore();
   const navigate = useNavigate();
+  const { products } = useProducts();
 
   const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
+
+  const getLocalizedName = (item: any) => {
+    const product = products.find(p => p.id.toString() === item.productId.toString());
+    if (product) {
+      const lang = document.documentElement.lang as 'en' | 'ar';
+      if (product.name && product.name[lang]) return product.name[lang];
+      if (product.nameKey) return t(product.nameKey);
+    }
+    return item.name;
+  };
 
   useEffect(() => {
     if (isCartOpen) {
@@ -89,9 +101,9 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                         <div className="flex-1 flex flex-col justify-between">
                           <div>
                             <div className="flex justify-between items-start">
-                              <h3 className="font-bold text-lg leading-tight">{item.name}</h3>
+                              <h3 className="font-bold text-lg leading-tight">{getLocalizedName(item)}</h3>
                               <span className="font-bold text-[var(--color-primary)]">
-                                {item.price ? `$${item.price.toLocaleString()}` : t('price_on_request')}
+                                {item.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(item.price) : t('price_on_request')}
                               </span>
                             </div>
                             <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex gap-2">
@@ -105,7 +117,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                                 onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                                 className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
                               >-</button>
-                              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                              <span className="w-8 text-center text-sm font-medium">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US').format(item.quantity)}</span>
                               <button 
                                 onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                                 className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
@@ -148,9 +160,9 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                         </div>
                         <div className="flex-1 flex flex-col justify-between">
                           <div className="flex justify-between items-start">
-                            <h4 className="font-semibold text-sm">{item.name}</h4>
+                            <h4 className="font-semibold text-sm">{getLocalizedName(item)}</h4>
                             <span className="font-bold text-sm">
-                              {item.price ? `$${item.price.toLocaleString()}` : t('price_on_request')}
+                              {item.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(item.price) : t('price_on_request')}
                             </span>
                           </div>
                           <div className="flex items-center justify-between mt-1">
@@ -180,7 +192,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
               <div className="p-6 bg-[var(--color-secondary)]/5 border-t border-[var(--color-primary)]/10">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[var(--color-text-secondary)]">{t('subtotal') || 'Subtotal'}</span>
-                  <span className="text-2xl font-bold">${subtotal.toLocaleString()}</span>
+                  <span className="text-2xl font-bold">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</span>
                 </div>
                 <p className="text-xs text-[var(--color-text-secondary)] mb-6">
                   {t('shipping_taxes_calculated') || 'Shipping and taxes calculated at checkout.'}

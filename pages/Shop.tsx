@@ -251,7 +251,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       <div className="space-y-3 sm:col-span-2">
                         <div className="flex justify-between items-center">
                           <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
-                          <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                          <span className="text-sm font-bold text-[var(--color-primary)]">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[1])}</span>
                         </div>
                         <div className="relative h-6 flex items-center">
                           <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
@@ -408,7 +408,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       <div className="space-y-3 sm:col-span-2">
                         <div className="flex justify-between items-center">
                           <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
-                          <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                          <span className="text-sm font-bold text-[var(--color-primary)]">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[1])}</span>
                         </div>
                         <div className="relative h-6 flex items-center">
                           <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
@@ -449,8 +449,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           />
                         </div>
                         <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
-                          <span>$0</span>
-                          <span>$10,000+</span>
+                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(0)}</span>
+                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(10000)}+</span>
                         </div>
                       </div>
 
@@ -545,7 +545,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       <div className="space-y-3 sm:col-span-2">
                         <div className="flex justify-between items-center">
                           <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
-                          <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                          <span className="text-sm font-bold text-[var(--color-primary)]">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[1])}</span>
                         </div>
                         <div className="relative h-6 flex items-center">
                           <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
@@ -586,8 +586,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           />
                         </div>
                         <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
-                          <span>$0</span>
-                          <span>$10,000+</span>
+                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(0)}</span>
+                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(10000)}+</span>
                         </div>
                       </div>
 
@@ -694,7 +694,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
-                        <span className="text-sm font-bold text-[var(--color-primary)]">${priceRange[0]} - ${priceRange[1]}</span>
+                        <span className="text-sm font-bold text-[var(--color-primary)]">
+                          {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(priceRange[1])}
+                        </span>
                       </div>
                       <div className="relative h-6 flex items-center">
                         <div className="absolute w-full h-1.5 bg-[var(--color-primary)]/10 rounded-lg"></div>
@@ -735,8 +737,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         />
                       </div>
                       <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
-                        <span>$0</span>
-                        <span>$10,000+</span>
+                        <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(0)}</span>
+                        <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(10000)}+</span>
                       </div>
                     </div>
 
@@ -797,7 +799,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 ))}
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-4 sm:gap-x-8 sm:gap-y-12">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-4 sm:gap-x-8 sm:gap-y-12">
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}

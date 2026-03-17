@@ -78,6 +78,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [price, setPrice] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isTestListing, setIsTestListing] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -461,10 +462,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         }
       }
 
-      let finalImageUrl = editingListing?.imageUrl || '';
-      let finalImages = editingListing?.images || [];
+      let finalImageUrl = existingImages[0] || '';
+      let finalImages = [...existingImages];
       
-      if (isTestListing && isDeveloper && imageFiles.length === 0 && !editingListing) {
+      if (isTestListing && isDeveloper && imageFiles.length === 0 && existingImages.length === 0 && !editingListing) {
         // Use one of the test images
         finalImageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
         finalImages = [finalImageUrl];
@@ -1026,6 +1027,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setDescAr(listing.description.ar);
                         setCategory(listing.categoryKey);
                         setPrice(listing.price?.toString() || '');
+                        setExistingImages(listing.images || [listing.imageUrl]);
                         setIsCreateModalOpen(true);
                       }}
                       className="absolute top-3 start-3 p-2 bg-white/90 backdrop-blur-sm text-blue-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-blue-50 shadow-sm z-10"
@@ -1153,7 +1155,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   </h1>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                   {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).map(listing => {
                     const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
                     const daysLeft = Math.max(0, 14 - daysSinceArchived);
@@ -1161,7 +1163,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
                     return (
                       <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
-                        <div className="aspect-[4/3] relative opacity-60 grayscale">
+                        <div className="aspect-[4/5] relative opacity-60 grayscale">
                           <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
                         </div>
                         <div className="p-4 flex-1 flex flex-col">
@@ -1355,11 +1357,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                   {editingListing ? t('admin_change_photo') || 'Change Photos' : t('admin_photo_min')}
                 </label>
-                <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && imageFiles.length === 0 ? 'opacity-50' : ''}`}>
+                <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && imageFiles.length === 0 && existingImages.length === 0 ? 'opacity-50' : ''}`}>
                   <input 
                     type="file" 
                     multiple
-                    required={!isTestListing && !editingListing && imageFiles.length === 0}
+                    required={!isTestListing && !editingListing && imageFiles.length === 0 && existingImages.length === 0}
                     accept="image/*"
                     onChange={e => {
                       if (e.target.files) {
@@ -1368,14 +1370,35 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  {imageFiles.length > 0 ? (
+                  {(imageFiles.length > 0 || existingImages.length > 0) ? (
                     <div className="flex flex-col items-center">
                       <ImageIcon size={32} className="text-[var(--color-primary)] mb-2" />
-                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{imageFiles.length} files selected</p>
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {imageFiles.length + existingImages.length} images total
+                      </p>
                       <div className="flex flex-wrap gap-3 mt-4 justify-center relative z-20">
+                        {/* Existing Images */}
+                        {existingImages.map((url, idx) => (
+                          <div key={`existing-${idx}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-white/10 group">
+                            <img src={url} alt={`existing ${idx}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setExistingImages(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {/* New Files */}
                         {imageFiles.map((file, idx) => (
-                          <div key={idx} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-white/10 group">
+                          <div key={`new-${idx}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-[var(--color-primary)] group">
                             <img src={URL.createObjectURL(file)} alt={`preview ${idx}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-1 left-1 bg-[var(--color-primary)] text-white text-[8px] px-1 rounded uppercase font-bold">New</div>
                             <button
                               type="button"
                               onClick={(e) => {

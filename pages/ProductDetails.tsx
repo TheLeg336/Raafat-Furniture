@@ -24,6 +24,30 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   
   const product = products.find(p => p.id.toString() === id);
 
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, offsetWidth } = scrollRef.current;
+      if (offsetWidth > 0) {
+        const index = Math.round(scrollLeft / offsetWidth);
+        if (index !== currentImageIndex) {
+          setCurrentImageIndex(index);
+        }
+      }
+    }
+  };
+
+  const scrollToImage = (index: number) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        left: index * scrollRef.current.offsetWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Initialize selections when product loads
   React.useEffect(() => {
     if (product) {
@@ -98,43 +122,16 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
     }, 600);
   };
 
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = product?.images?.length ? product.images : [product?.imageUrl];
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    const nextIndex = (currentImageIndex + 1) % images.length;
+    scrollToImage(nextIndex);
   };
 
   const handlePrevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  // Touch handling for swipe
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) {
-      handleNextImage();
-    }
-    if (isRightSwipe) {
-      handlePrevImage();
-    }
+    const prevIndex = (currentImageIndex - 1 + images.length) % images.length;
+    scrollToImage(prevIndex);
   };
 
   return (
@@ -152,16 +149,26 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
-          className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group aspect-square md:aspect-auto"
         >
-          <img 
-            src={images[currentImageIndex]} 
-            alt={`Photo of ${name}`} 
-            className="w-full h-auto object-cover aspect-square md:aspect-auto"
-          />
+          <div className="relative w-full h-full overflow-hidden">
+            <div 
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide touch-pan-y overscroll-x-contain"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {images.map((img, idx) => (
+                <div key={idx} className="w-full h-full flex-shrink-0 snap-center">
+                  <img 
+                    src={img} 
+                    alt={`Photo ${idx + 1} of ${name}`} 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           
           {images.length > 1 && (
             <>
@@ -182,9 +189,20 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
                 {images.map((_, idx) => (
                   <button
                     key={idx}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }}
-                    className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'}`}
-                  />
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); scrollToImage(idx); }}
+                    className="relative w-2 h-2 flex items-center justify-center"
+                  >
+                    <motion.div 
+                      className="absolute rounded-full bg-white"
+                      initial={false}
+                      animate={{ 
+                        width: idx === currentImageIndex ? 16 : 8,
+                        height: 8,
+                        opacity: idx === currentImageIndex ? 1 : 0.5
+                      }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  </button>
                 ))}
               </div>
             </>
@@ -215,7 +233,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             {name}
           </h1>
           <p className="text-2xl text-[var(--color-primary)] mb-6 font-medium">
-            {product.price ? `$${product.price.toLocaleString()}` : t('price_on_request')}
+            {product.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(product.price) : t('price_on_request')}
           </p>
           
           <div className="mb-8">
