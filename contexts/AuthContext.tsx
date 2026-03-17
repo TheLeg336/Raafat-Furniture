@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 
 interface AuthContextType {
@@ -62,6 +62,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLastName(lName);
             setIsAdmin(currentAdminStatus);
             setIsDeveloper(currentDeveloperStatus);
+
+            if (!currentAdminStatus) {
+              // Save non-admin emails to a single list for marketing/personalization
+              // Do this asynchronously so it doesn't block the UI or state updates
+              try {
+                await updateDoc(doc(db, 'users', 'all_users_list'), {
+                  users: arrayUnion({
+                    email: currentUser.email,
+                    uid: currentUser.uid,
+                    firstName: fName,
+                    lastName: lName,
+                    joinedAt: new Date().toISOString()
+                  })
+                });
+              } catch (error: any) {
+                if (error.code === 'not-found') {
+                  try {
+                    await setDoc(doc(db, 'users', 'all_users_list'), {
+                      users: [{
+                        email: currentUser.email,
+                        uid: currentUser.uid,
+                        firstName: fName,
+                        lastName: lName,
+                        joinedAt: new Date().toISOString()
+                      }]
+                    });
+                  } catch (innerError) {
+                    console.error("Failed to create all_users_list:", innerError);
+                  }
+                } else {
+                  console.error("Failed to update all_users_list:", error);
+                }
+              }
+            }
           } catch (error) {
             console.error("Error checking user status:", error);
             // On error, do not update the state variables so we don't wipe out existing profile data

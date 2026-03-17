@@ -55,7 +55,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState<LocalizedString>({ en: '', ar: '' });
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [newCategoryNames, setNewCategoryNames] = useState<string[]>(['']);
+  const [newCategories, setNewCategories] = useState<{name: string, file: File | null}[]>([{ name: '', file: null }]);
   const [listingsToRedistribute, setListingsToRedistribute] = useState<any[]>([]);
   const [redistributionMap, setRedistributionMap] = useState<Record<string, string>>({});
 
@@ -76,8 +76,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [descAr, setDescAr] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState<string>('');
-  const [imageFile, setImageFile] = useState<File | null>(null); // For category image
-  const [imageFiles, setImageFiles] = useState<File[]>([]); // For listing images
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isTestListing, setIsTestListing] = useState(false);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -354,7 +354,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || (imageFiles.length === 0 && !isTestListing && !editingListing)) return;
+    if (!db || (!imageFile && !isTestListing && !editingListing)) return;
     
     // Safety check: Prevent exceeding free tier limits
     if (!editingListing && listings.length >= MAX_LISTINGS) {
@@ -406,8 +406,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           Rules:
           1. Return ONLY a valid JSON object.
           2. Do not include any markdown formatting (no \`\`\`json).
-          3. If a field is already provided, keep it as is.
-          4. Ensure the Arabic translation is elegant and professional.
+          3. If a field is already provided, keep it exactly as is.
+          4. If English fields (nameEn, descEn) are missing, translate them from the Arabic fields.
+          5. If Arabic fields (nameAr, descAr) are missing, translate them from the English fields.
+          6. Ensure the translations are elegant and professional.
           
           Current Data:
           ${JSON.stringify({
@@ -436,7 +438,15 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           });
           
           const rawText = response.text || "{}";
-          const cleanText = rawText.replace(/```json|```/g, '').trim();
+          let cleanText = rawText.replace(/```json|```/g, '').trim();
+          
+          // Extract JSON object if there's extra text
+          const firstBrace = cleanText.indexOf('{');
+          const lastBrace = cleanText.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+          }
+          
           const result = JSON.parse(cleanText || "{}");
           
           finalNameEn = result.nameEn || finalNameEn;
@@ -452,13 +462,14 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       }
 
       let finalImageUrl = editingListing?.imageUrl || '';
-      let finalImageUrls = editingListing?.imageUrls || (editingListing?.imageUrl ? [editingListing.imageUrl] : []);
+      let finalImages = editingListing?.images || [];
       
       if (isTestListing && isDeveloper && imageFiles.length === 0 && !editingListing) {
         // Use one of the test images
         finalImageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
-        finalImageUrls = [finalImageUrl];
+        finalImages = [finalImageUrl];
       } else if (imageFiles.length > 0) {
+        // Try Cloudinary first, fallback to Firebase Storage if configured
         const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
@@ -466,7 +477,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           throw new Error("Cloudinary configuration is missing. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.");
         }
 
-        const uploadedUrls = await Promise.all(imageFiles.map(async (file) => {
+        const uploadedUrls = [];
+        for (const file of imageFiles) {
           const compressedBlob = await compressImage(file);
           const formData = new FormData();
           formData.append('file', compressedBlob);
@@ -484,18 +496,20 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           }
 
           const data = await response.json();
-          return data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
-        }));
-
-        finalImageUrls = uploadedUrls;
-        finalImageUrl = uploadedUrls[0]; // Set first image as main imageUrl for backwards compatibility
+          uploadedUrls.push(data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/'));
+        }
+        
+        finalImages = [...finalImages, ...uploadedUrls];
+        if (finalImages.length > 0) {
+          finalImageUrl = finalImages[0];
+        }
       } else if (!editingListing) {
         alert(t('admin_alert_image_required') || 'Image is required');
         setIsSubmitting(false);
         return;
       }
 
-      const parsedPrice = price ? parseFloat(price) : undefined;
+      const parsedPrice = price ? parseFloat(price) : null;
       
       if (editingListing) {
         // Update existing listing
@@ -504,7 +518,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           description: { en: finalDescEn, ar: finalDescAr },
           categoryKey: category,
           imageUrl: finalImageUrl,
-          imageUrls: finalImageUrls,
+          images: finalImages,
           price: parsedPrice,
           updatedAt: new Date().toISOString()
         });
@@ -517,7 +531,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           description: { en: finalDescEn, ar: finalDescAr },
           categoryKey: category,
           imageUrl: finalImageUrl,
-          imageUrls: finalImageUrls,
+          images: finalImages,
           price: parsedPrice,
           createdAt: new Date().toISOString(),
           archivedAt: null,
@@ -598,12 +612,35 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         const parentCat = categories.find(c => c.id === selectedCategory);
         if (!parentCat) throw new Error("Parent category not found");
 
-        const newSubs = newCategoryNames.filter(n => n.trim()).map(name => ({
-          id: name.toLowerCase().replace(/\s+/g, '_'),
-          labelKey: `cat_${name.toLowerCase().replace(/\s+/g, '_')}`,
-          name: { en: name, ar: name }, // Use same name for both for now
-          imageUrl: 'https://picsum.photos/seed/' + name + '/800/1000'
-        }));
+        const newSubs = [];
+        for (const cat of newCategories.filter(c => c.name.trim())) {
+          const id = cat.name.toLowerCase().replace(/\s+/g, '_');
+          let imageUrl = 'https://picsum.photos/seed/' + cat.name + '/800/1000';
+          
+          if (cat.file) {
+            const compressedBlob = await compressImage(cat.file);
+            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+            if (cloudName && uploadPreset) {
+              const formData = new FormData();
+              formData.append('file', compressedBlob);
+              formData.append('upload_preset', uploadPreset);
+              formData.append('folder', 'raafat_furniture/categories');
+              const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+              if (response.ok) {
+                const data = await response.json();
+                imageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
+              }
+            }
+          }
+          
+          newSubs.push({
+            id,
+            labelKey: `cat_${id}`,
+            name: { en: cat.name, ar: cat.name }, // Use same name for both for now
+            imageUrl
+          });
+        }
 
         const updatedSubCategories = [...(parentCat.subCategories || []), ...newSubs];
         await updateDoc(doc(db, 'categories', parentCat.id), {
@@ -622,22 +659,41 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         await logActivity('ADD_SUBCATEGORIES', `Added ${newSubs.length} subcategories to ${selectedCategory}`);
       } else {
         // Add new top-level categories
-        for (const name of newCategoryNames.filter(n => n.trim())) {
-          const id = name.toLowerCase().replace(/\s+/g, '_');
+        for (const cat of newCategories.filter(c => c.name.trim())) {
+          const id = cat.name.toLowerCase().replace(/\s+/g, '_');
+          let imageUrl = 'https://picsum.photos/seed/' + id + '/800/1000';
+          
+          if (cat.file) {
+            const compressedBlob = await compressImage(cat.file);
+            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+            if (cloudName && uploadPreset) {
+              const formData = new FormData();
+              formData.append('file', compressedBlob);
+              formData.append('upload_preset', uploadPreset);
+              formData.append('folder', 'raafat_furniture/categories');
+              const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+              if (response.ok) {
+                const data = await response.json();
+                imageUrl = data.secure_url.replace('/upload/', '/upload/f_auto,q_auto/');
+              }
+            }
+          }
+          
           await addDoc(collection(db, 'categories'), {
             id,
             labelKey: `cat_${id}`,
-            name: { en: name, ar: name },
-            imageUrl: 'https://picsum.photos/seed/' + id + '/800/1000',
+            name: { en: cat.name, ar: cat.name },
+            imageUrl,
             subCategories: []
           });
         }
-        await logActivity('ADD_CATEGORIES', `Added ${newCategoryNames.length} new categories`);
+        await logActivity('ADD_CATEGORIES', `Added ${newCategories.filter(c => c.name.trim()).length} new categories`);
       }
 
       setIsCategoryModalOpen(false);
       setEditingCategory(null);
-      setNewCategoryNames(['']);
+      setNewCategories([{ name: '', file: null }]);
       setImageFile(null);
       setRedistributionMap({});
       setListingsToRedistribute([]);
@@ -1000,7 +1056,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             {isDeveloper && (
               <button 
                 onClick={() => {
-                  setNewCategoryNames(['']);
+                  setNewCategories([{ name: '', file: null }]);
                   setIsCategoryModalOpen(true);
                   if (selectedCategory) {
                     const catListings = activeListings.filter(l => l.categoryKey === selectedCategory);
@@ -1297,32 +1353,44 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  {editingListing ? t('admin_change_photo') || 'Change Photos' : t('admin_photo_min') || 'Photos'}
+                  {editingListing ? t('admin_change_photo') || 'Change Photos' : t('admin_photo_min')}
                 </label>
                 <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && imageFiles.length === 0 ? 'opacity-50' : ''}`}>
                   <input 
                     type="file" 
-                    required={!isTestListing && !editingListing}
-                    accept="image/*"
                     multiple
+                    required={!isTestListing && !editingListing && imageFiles.length === 0}
+                    accept="image/*"
                     onChange={e => {
                       if (e.target.files) {
-                        setImageFiles(Array.from(e.target.files));
+                        setImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                       }
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
                   {imageFiles.length > 0 ? (
                     <div className="flex flex-col items-center">
-                      <div className="flex flex-wrap gap-2 justify-center mb-4">
-                        {imageFiles.map((file, index) => (
-                          <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border border-[var(--color-secondary)]/20">
-                            <img src={URL.createObjectURL(file)} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                      <ImageIcon size={32} className="text-[var(--color-primary)] mb-2" />
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{imageFiles.length} files selected</p>
+                      <div className="flex flex-wrap gap-3 mt-4 justify-center relative z-20">
+                        {imageFiles.map((file, idx) => (
+                          <div key={idx} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-white/10 group">
+                            <img src={URL.createObjectURL(file)} alt={`preview ${idx}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setImageFiles(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
                         ))}
                       </div>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{imageFiles.length} file(s) selected</p>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t('admin_click_to_change')}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-3">Click or drag to add more images</p>
                     </div>
                   ) : isTestListing ? (
                     <div className="flex flex-col items-center">
@@ -1332,11 +1400,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     </div>
                   ) : editingListing ? (
                     <div className="flex flex-col items-center">
-                      <div className="flex flex-wrap gap-2 justify-center mb-4">
-                        {(editingListing.imageUrls || (editingListing.imageUrl ? [editingListing.imageUrl] : [])).map((url: string, index: number) => (
-                          <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border border-[var(--color-secondary)]/20 opacity-50">
-                            <img src={url} alt={`Current ${index + 1}`} className="w-full h-full object-cover" />
-                          </div>
+                      <div className="flex gap-2 mb-2 overflow-x-auto max-w-full pb-2">
+                        {(editingListing.images?.length > 0 ? editingListing.images : [editingListing.imageUrl]).map((url: string, idx: number) => (
+                          <img key={idx} src={url} alt={`Current ${idx}`} className="w-16 h-16 object-cover rounded-md opacity-50 shrink-0" />
                         ))}
                       </div>
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('admin_click_to_change')}</p>
@@ -1394,7 +1460,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setIsCategoryModalOpen(false);
                   setEditingCategory(null);
                   setEditingCategoryName({ en: '', ar: '' });
-                  setNewCategoryNames(['']);
+                  setNewCategories([{ name: '', file: null }]);
                   setImageFile(null);
                 }} 
                 className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
@@ -1445,28 +1511,54 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               ) : (
                 <div className="space-y-6">
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Category Names</label>
-                    {newCategoryNames.map((name, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={name} 
-                          onChange={e => {
-                            const updated = [...newCategoryNames];
-                            updated[idx] = e.target.value;
-                            setNewCategoryNames(updated);
-                          }}
-                          className="flex-1 bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                          placeholder="Enter name..."
-                        />
-                        {newCategoryNames.length > 1 && (
-                          <button type="button" onClick={() => setNewCategoryNames(newCategoryNames.filter((_, i) => i !== idx))} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
-                            <Trash2 size={20} />
-                          </button>
-                        )}
+                    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Categories</label>
+                    {newCategories.map((cat, idx) => (
+                      <div key={idx} className="flex flex-col gap-3 p-4 border border-[var(--color-secondary)]/10 rounded-xl bg-[var(--color-secondary)]/5">
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={cat.name} 
+                            onChange={e => {
+                              const updated = [...newCategories];
+                              updated[idx].name = e.target.value;
+                              setNewCategories(updated);
+                            }}
+                            className="flex-1 bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            placeholder="Enter category name..."
+                          />
+                          {newCategories.length > 1 && (
+                            <button type="button" onClick={() => setNewCategories(newCategories.filter((_, i) => i !== idx))} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                              <Trash2 size={20} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-[var(--color-secondary)]/10 flex items-center justify-center relative">
+                            {cat.file ? (
+                              <img src={URL.createObjectURL(cat.file)} alt="preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <ImageIcon size={24} className="text-[var(--color-text-secondary)]" />
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={e => {
+                                if (e.target.files?.[0]) {
+                                  const updated = [...newCategories];
+                                  updated[idx].file = e.target.files[0];
+                                  setNewCategories(updated);
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </div>
+                          <div className="text-sm text-[var(--color-text-secondary)]">
+                            {cat.file ? cat.file.name : 'Click to upload category image (optional)'}
+                          </div>
+                        </div>
                       </div>
                     ))}
-                    <button type="button" onClick={() => setNewCategoryNames([...newCategoryNames, ''])} className="flex items-center gap-2 text-blue-600 font-medium hover:underline">
+                    <button type="button" onClick={() => setNewCategories([...newCategories, { name: '', file: null }])} className="flex items-center gap-2 text-blue-600 font-medium hover:underline">
                       <PlusCircle size={18} /> Add another
                     </button>
                   </div>
@@ -1487,8 +1579,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                               className="bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg px-2 py-1 text-xs outline-none"
                             >
                               <option value="">Keep in Main</option>
-                              {newCategoryNames.filter(n => n.trim()).map(name => (
-                                <option key={name} value={name.toLowerCase().replace(/\s+/g, '_')}>{name}</option>
+                              {newCategories.filter(c => c.name.trim()).map(cat => (
+                                <option key={cat.name} value={cat.name.toLowerCase().replace(/\s+/g, '_')}>{cat.name}</option>
                               ))}
                             </select>
                           </div>
@@ -1500,7 +1592,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               )}
 
               <div className="pt-6 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
-                <button type="button" onClick={() => { setIsCategoryModalOpen(false); setEditingCategory(null); setEditingCategoryName({ en: '', ar: '' }); }} className="px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
+                <button type="button" onClick={() => { setIsCategoryModalOpen(false); setEditingCategory(null); setEditingCategoryName({ en: '', ar: '' }); setNewCategories([{ name: '', file: null }]); }} className="px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-8 py-3 bg-blue-600 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70">

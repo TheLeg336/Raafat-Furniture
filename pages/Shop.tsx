@@ -767,7 +767,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 <p className="text-[var(--color-text-secondary)] font-medium animate-pulse">Curating excellence...</p>
               </div>
             ) : hasSubCategories && !isSearchMode ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-8">
                 {category.subCategories?.map((subCat, index) => (
                   <motion.div
                     key={subCat.id}
@@ -797,7 +797,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 ))}
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-4 sm:gap-x-8 sm:gap-y-12">
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}

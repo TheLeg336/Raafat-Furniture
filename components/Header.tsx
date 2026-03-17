@@ -23,7 +23,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { cart, setIsCartOpen } = useStore();
+  const { cart, setIsCartOpen, isCartOpen } = useStore();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -115,7 +115,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       </Link>
       {!isMobile && (
         <button
-          onClick={() => setIsCartOpen(true)}
+          onClick={() => setIsCartOpen(!isCartOpen)}
           className="relative text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
           aria-label={t('cart')}
         >
@@ -182,7 +182,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
           {/* Mobile Layout */}
           <div className="md:hidden flex justify-between items-center relative z-50">
             <div className="relative z-50">
-              <button onClick={() => setIsMenuOpen(true)} aria-label={t('aria_open_menu')} className="text-[var(--color-text-primary)] p-2 -ml-2">
+              <button onClick={() => { setIsMenuOpen(true); setIsCartOpen(false); }} aria-label={t('aria_open_menu')} className="text-[var(--color-text-primary)] p-2 -ml-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -198,7 +198,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
             <div className="relative z-50 flex items-center min-w-[40px] justify-end">
               {cartCount > 0 && (
                 <button
-                  onClick={() => setIsCartOpen(true)}
+                  onClick={() => setIsCartOpen(!isCartOpen)}
                   className="relative text-[var(--color-text-primary)] p-2 -mr-2"
                   aria-label={t('cart')}
                 >

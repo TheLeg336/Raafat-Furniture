@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Check, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, Check, ShoppingCart } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
@@ -21,7 +21,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('');
   const [isAdding, setIsAdding] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   const product = products.find(p => p.id.toString() === id);
 
@@ -81,23 +80,13 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   
   const isWishlisted = wishlist.includes(String(product.id));
 
-  const images = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imageUrl];
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
   const handleAddToCart = () => {
     setIsAdding(true);
     addToCart({
       productId: product.id,
       name,
       price: product.price,
-      imageUrl: images[0],
+      imageUrl: product.imageUrl,
       quantity: 1,
       color: selectedColor || undefined,
       material: selectedMaterial || undefined,
@@ -107,6 +96,45 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
     setTimeout(() => {
       setIsAdding(false);
     }, 600);
+  };
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const images = product?.images?.length ? product.images : [product?.imageUrl];
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  // Touch handling for swipe
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      handleNextImage();
+    }
+    if (isRightSwipe) {
+      handlePrevImage();
+    }
   };
 
   return (
@@ -120,63 +148,48 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
       </button>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-        <div className="flex flex-col gap-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group"
-          >
-          <div className="relative aspect-square w-full">
-            <img 
-              src={images[currentImageIndex]} 
-              alt={`Photo of ${name} - Image ${currentImageIndex + 1}`} 
-              className="w-full h-full object-cover transition-opacity duration-300"
-            />
-            
-            {images.length > 1 && (
-              <>
-                <div className="absolute top-4 left-4 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm z-10">
-                  {currentImageIndex + 1} / {images.length}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    prevImage();
-                  }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors opacity-0 group-hover:opacity-100"
-                  aria-label="Previous image"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    nextImage();
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors opacity-0 group-hover:opacity-100"
-                  aria-label="Next image"
-                >
-                  <ChevronRight size={24} />
-                </button>
-                
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                  {images.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'
-                      }`}
-                      aria-label={`Go to image ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden relative shadow-xl group"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <img 
+            src={images[currentImageIndex]} 
+            alt={`Photo of ${name}`} 
+            className="w-full h-auto object-cover aspect-square md:aspect-auto"
+          />
+          
+          {images.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePrevImage(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNextImage(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md">
+                {images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }}
+                    className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -191,23 +204,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             />
           </button>
         </motion.div>
-        
-        {images.length > 1 && (
-          <div className="flex gap-3 overflow-x-auto pb-2 snap-x mt-4">
-            {images.map((url, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentImageIndex(idx)}
-                className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all snap-start ${
-                  idx === currentImageIndex ? 'border-[var(--color-primary)]' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
-        </div>
         
         <motion.div
           initial={{ opacity: 0, y: 30 }}
