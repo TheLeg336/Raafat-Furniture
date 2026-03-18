@@ -168,7 +168,13 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             </h1>
             
             <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full mb-4 md:mb-6 group">
-              <Search className="absolute start-4 text-[var(--color-primary)] group-focus-within:scale-110 transition-transform" size={20} />
+              <button 
+                type="submit"
+                className="absolute start-4 text-[var(--color-primary)] group-focus-within:scale-110 transition-transform hover:text-[var(--color-primary)] z-10"
+                aria-label={t('nav_shop')}
+              >
+                <Search size={20} />
+              </button>
               <input 
                 type="text"
                 value={searchInput}
@@ -788,7 +794,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-8">
                         <span className="text-white font-bold text-lg flex items-center gap-2">
-                          Explore Collection <ArrowLeft className="rotate-180" size={20} />
+                          {t('nav_shop')} <ArrowLeft className="rotate-180" size={20} />
                         </span>
                       </div>
                     </div>
@@ -831,11 +837,28 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading leading-tight">
-                        {document.documentElement.lang === 'ar' ? product.name?.ar : product.name?.en}
+                        {(() => {
+                          const lang = document.documentElement.lang as 'en' | 'ar';
+                          return product.name?.[lang] || (product.nameKey ? t(product.nameKey) : '');
+                        })()}
                       </h3>
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-[var(--color-text-secondary)] font-medium">
-                          {category ? t(category.labelKey) : 'Collection'}
+                          {(() => {
+                            const lang = document.documentElement.lang as 'en' | 'ar';
+                            // 1. Try CMS category object
+                            if (product.category?.[lang]) return product.category[lang];
+                            
+                            // 2. Try categoryKey from product
+                            const catObj = getCategoryObj(product.categoryKey || null);
+                            if (catObj) return getCategoryLabel(catObj);
+                            
+                            // 3. Try current page category
+                            if (category) return t(category.labelKey);
+                            
+                            // 4. Final fallback - use "Shop" or "Collection" but translated
+                            return t('nav_shop');
+                          })()}
                         </p>
                         {product.colors && product.colors.length > 0 && (
                           <div className="flex gap-1">

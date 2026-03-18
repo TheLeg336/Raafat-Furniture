@@ -355,7 +355,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || (!imageFile && !isTestListing && !editingListing)) return;
+    if (!db || (imageFiles.length === 0 && !isTestListing && !editingListing)) return;
     
     // Safety check: Prevent exceeding free tier limits
     if (!editingListing && listings.length >= MAX_LISTINGS) {
@@ -544,7 +544,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
       // Reset form
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
-      setCategory(categories[0]?.id || ''); setImageFiles([]); setPrice('');
+      setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPrice('');
       setIsTestListing(false);
       setIsCreateModalOpen(false);
       setEditingListing(null);

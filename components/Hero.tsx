@@ -170,7 +170,13 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                         }}
                         style={{ pointerEvents: isSearchVisible ? 'auto' : 'none' }}
                     >
-                        <SearchIcon className="text-white/80 shrink-0 me-3" />
+                        <button 
+                            type="submit" 
+                            className="text-white/80 hover:text-white shrink-0 me-3 transition-colors"
+                            aria-label={t('nav_shop')}
+                        >
+                            <SearchIcon />
+                        </button>
                         <input
                             ref={searchInputRef}
                             type="text"
