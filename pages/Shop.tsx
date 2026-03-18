@@ -775,7 +775,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 <p className="text-[var(--color-text-secondary)] font-medium animate-pulse">Curating excellence...</p>
               </div>
             ) : hasSubCategories && !isSearchMode ? (
-              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-8">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-8">
                 {category.subCategories?.map((subCat, index) => (
                   <motion.div
                     key={subCat.id}
@@ -798,7 +798,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         </span>
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading">
+                    <h3 className="text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading text-center">
                       {getCategoryLabel(subCat)}
                     </h3>
                   </motion.div>

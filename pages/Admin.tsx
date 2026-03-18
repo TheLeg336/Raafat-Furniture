@@ -230,11 +230,33 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     return null;
   };
 
-  const getCategoryLabel = (cat: any) => {
+  const getCategoryLabel = (cat: any, includeParent = false) => {
     if (!cat) return '';
     const lang = language as 'en' | 'ar';
-    if (cat.name && cat.name[lang]) return cat.name[lang];
-    return t(cat.labelKey);
+    let label = (cat.name && cat.name[lang]) ? cat.name[lang] : t(cat.labelKey);
+    
+    if (includeParent) {
+      const parent = categories.find(c => c.subCategories?.some((s: any) => s.id === cat.id));
+      if (parent) {
+        const parentLabel = (parent.name && parent.name[lang]) ? parent.name[lang] : t(parent.labelKey);
+        return `${parentLabel} > ${label}`;
+      }
+    }
+    
+    return label;
+  };
+
+  const getCategoryItemCount = (cat: any, isArchived = false) => {
+    const list = isArchived ? archivedListings : activeListings;
+    let count = list.filter(l => l.categoryKey === cat.id).length;
+    
+    if (cat.subCategories && cat.subCategories.length > 0) {
+      cat.subCategories.forEach((sub: any) => {
+        count += list.filter(l => l.categoryKey === sub.id).length;
+      });
+    }
+    
+    return count;
   };
 
   const currentCategory = getCategoryObj(selectedCategory);
@@ -278,24 +300,43 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   };
 
   const handlePermanentDelete = async (id: string) => {
-    if (!db) return;
+    if (!db || !isDeveloper) return;
     try {
       const productToDelete = listings.find(l => l.id === id);
       
-      // Only attempt Firebase Storage deletion if it's a Firebase URL
-      if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.includes('firebasestorage')) {
-        if (storage) {
+      if (productToDelete && productToDelete.imageUrl) {
+        // Only attempt Firebase Storage deletion if it's a Firebase URL
+        if (productToDelete.imageUrl.includes('firebasestorage')) {
+          if (storage) {
+            try {
+              const imageRef = ref(storage, productToDelete.imageUrl);
+              await deleteObject(imageRef);
+            } catch (imgError) {
+              console.error("Failed to delete image from storage:", imgError);
+            }
+          }
+        }
+        
+        // Call server-side Cloudinary deletion API
+        if (productToDelete.imageUrl.includes('cloudinary.com')) {
           try {
-            const imageRef = ref(storage, productToDelete.imageUrl);
-            await deleteObject(imageRef);
-          } catch (imgError) {
-            console.error("Failed to delete image from storage:", imgError);
+            const response = await fetch('/api/cloudinary/delete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ imageUrl: productToDelete.imageUrl }),
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error("Cloudinary deletion failed:", errorData.error);
+            }
+          } catch (cloudinaryError) {
+            console.error("Failed to call Cloudinary deletion API:", cloudinaryError);
           }
         }
       }
-      
-      // Note: Deleting from Cloudinary client-side requires a signed request.
-      // For now, we just remove the Firestore document.
       
       await deleteDoc(doc(db, 'products', id));
       await logActivity('DELETE', `Permanently deleted product: ${productToDelete?.name?.en || id}`);
@@ -865,7 +906,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
               {categories.map((cat, index) => (
                 <motion.div 
                   key={cat.id}
@@ -902,7 +943,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       {getCategoryLabel(cat)}
                     </h3>
                     <p className="text-md text-[var(--color-text-secondary)]">
-                      {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
+                      {getCategoryItemCount(cat)} {t('admin_items')}
                     </p>
                   </div>
                 </motion.div>
@@ -927,7 +968,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
               {currentCategory?.subCategories?.map((cat, index) => (
                 <motion.div 
                   key={cat.id}
@@ -964,7 +1005,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       {getCategoryLabel(cat)}
                     </h3>
                     <p className="text-md text-[var(--color-text-secondary)]">
-                      {activeListings.filter(l => l.categoryKey === cat.id).length} {t('admin_items')}
+                      {getCategoryItemCount(cat)} {t('admin_items')}
                     </p>
                   </div>
                 </motion.div>
@@ -1088,119 +1129,170 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           </div>
         )}
 
-        {activeTab === 'archive' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            {!selectedArchivedCategory ? (
-              <>
-                <div className="mb-6 md:mb-8">
-                  <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_archived')}</h1>
-                  <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
-                </div>
+        {activeTab === 'archive' && (() => {
+          const currentArchivedCat = getCategoryObj(selectedArchivedCategory);
+          return (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              {!selectedArchivedCategory ? (
+                <>
+                  <div className="mb-6 md:mb-8">
+                    <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_archived')}</h1>
+                    <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
+                  </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-12">
-                  {archivedListings.length === 0 ? (
-                    <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/10">
-                      {t('admin_no_listings')}
-                    </div>
-                  ) : (
-                    categories.reduce((acc, cat) => {
-                      acc.push(cat);
-                      if (cat.subCategories) acc.push(...cat.subCategories);
-                      return acc;
-                    }, [] as any[]).map((cat, index) => {
-                      const count = archivedListings.filter(l => l.categoryKey === cat.id).length;
-                      if (count === 0) return null;
-                      return (
-                      <motion.div 
-                        key={cat.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
-                        whileHover={{ scale: 1.03, y: -8 }}
-                        onClick={() => setSelectedArchivedCategory(cat.id)}
-                        className="relative group text-center flex flex-col h-full cursor-pointer"
-                      >
-                        <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
-                          <img 
-                            src={cat.imageUrl} 
-                            alt={cat.id} 
-                            className="absolute inset-0 w-full h-full object-cover" 
-                          />
-                          <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
-                        </div>
-                        <div className="p-4 flex flex-col items-center">
-                          <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
-                            {getCategoryLabel(cat)}
-                          </h3>
-                          <p className="text-md text-[var(--color-text-secondary)]">
-                            {count} {t('admin_items')}
-                          </p>
-                        </div>
-                      </motion.div>
-                    )})
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-4 mb-6 md:mb-8">
-                  <button 
-                    onClick={() => setSelectedArchivedCategory(null)}
-                    className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)] relative z-10"
-                  >
-                    <span className="block"><ArrowLeft size={20} /></span>
-                  </button>
-                  <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
-                    {t('admin_archived')}: {getCategoryLabel(getCategoryObj(selectedArchivedCategory))}
-                  </h1>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                  {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).map(listing => {
-                    const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
-                    const daysLeft = Math.max(0, 14 - daysSinceArchived);
-                    const isExpired = daysLeft === 0;
-
-                    return (
-                      <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
-                        <div className="aspect-[4/5] relative opacity-60 grayscale">
-                          <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="p-4 flex-1 flex flex-col">
-                          <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{language === 'ar' ? listing.name.ar : listing.name.en}</h3>
-                          <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
-                            {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
-                          </div>
-                          <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
-                            <button 
-                              onClick={() => handleRecover(listing.id)}
-                              className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
-                            >
-                              <RefreshCw size={16} /> {t('admin_recover')}
-                            </button>
-                            {isExpired && (
-                              <button 
-                                onClick={() => handlePermanentDelete(listing.id)}
-                                className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
+                    {archivedListings.length === 0 ? (
+                      <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/10">
+                        {t('admin_no_listings')}
                       </div>
-                    );
-                  })}
-                  {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).length === 0 && (
-                    <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/20">
-                      {t('admin_no_archived')}
+                    ) : (
+                      categories
+                        .filter(cat => !categories.some(c => c.subCategories?.some(s => s.id === cat.id)))
+                        .map((cat, index) => {
+                          const count = getCategoryItemCount(cat, true);
+                          if (count === 0) return null;
+                          return (
+                          <motion.div 
+                            key={cat.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                            whileHover={{ scale: 1.03, y: -8 }}
+                            onClick={() => setSelectedArchivedCategory(cat.id)}
+                            className="relative group text-center flex flex-col h-full cursor-pointer"
+                          >
+                            <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
+                              <img 
+                                src={cat.imageUrl} 
+                                alt={cat.id} 
+                                className="absolute inset-0 w-full h-full object-cover" 
+                              />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                            </div>
+                            <div className="p-4 flex flex-col items-center">
+                              <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                                {getCategoryLabel(cat)}
+                              </h3>
+                              <p className="text-md text-[var(--color-text-secondary)]">
+                                {count} {t('admin_items')}
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              ) : currentArchivedCat ? (
+                <>
+                  <div className="flex items-center gap-4 mb-6 md:mb-8">
+                    <button 
+                      onClick={() => {
+                        let parentId = null;
+                        for (const cat of categories) {
+                          if (cat.subCategories?.some(s => s.id === selectedArchivedCategory)) {
+                            parentId = cat.id;
+                            break;
+                          }
+                        }
+                        setSelectedArchivedCategory(parentId);
+                      }}
+                      className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)] relative z-10"
+                    >
+                      <span className="block"><ArrowLeft size={20} /></span>
+                    </button>
+                    <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">
+                      {t('admin_archived')}: {getCategoryLabel(currentArchivedCat)}
+                    </h1>
+                  </div>
+
+                  {/* Subcategories View in Archive */}
+                  {currentArchivedCat.subCategories && currentArchivedCat.subCategories.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12 mb-12">
+                      {currentArchivedCat.subCategories.map((cat, index) => {
+                        const count = getCategoryItemCount(cat, true);
+                        if (count === 0) return null;
+                        return (
+                          <motion.div 
+                            key={cat.id}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: index * 0.1, ease: [0.25, 1, 0.5, 1] }}
+                            whileHover={{ scale: 1.03, y: -8 }}
+                            onClick={() => setSelectedArchivedCategory(cat.id)}
+                            className="relative group text-center flex flex-col h-full cursor-pointer"
+                          >
+                            <div className="bg-[var(--color-secondary)] rounded-3xl overflow-hidden mb-4 transition-shadow duration-300 hover:shadow-xl aspect-[4/5] w-full relative opacity-60 grayscale">
+                              <img 
+                                src={cat.imageUrl} 
+                                alt={cat.id} 
+                                className="absolute inset-0 w-full h-full object-cover" 
+                              />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+                            </div>
+                            <div className="p-4 flex flex-col items-center">
+                              <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mt-auto">
+                                {getCategoryLabel(cat)}
+                              </h3>
+                              <p className="text-md text-[var(--color-text-secondary)]">
+                                {count} {t('admin_items')}
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
-              </>
-            )}
-          </motion.div>
-        )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                    {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).map(listing => {
+                      const daysSinceArchived = differenceInDays(new Date(), parseISO(listing.archivedAt));
+                      const daysLeft = Math.max(0, 14 - daysSinceArchived);
+                      const isExpired = daysLeft === 0;
+
+                      return (
+                        <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
+                          <div className="aspect-[4/5] relative opacity-60 grayscale">
+                            <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4 flex-1 flex flex-col">
+                            <h3 className="font-semibold text-[var(--color-text-primary)] truncate">{language === 'ar' ? listing.name.ar : listing.name.en}</h3>
+                            <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
+                              {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
+                              <button 
+                                onClick={() => handleRecover(listing.id)}
+                                className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
+                              >
+                                <RefreshCw size={16} /> {t('admin_recover')}
+                              </button>
+                              {isDeveloper && (
+                                <button 
+                                  onClick={() => handlePermanentDelete(listing.id)}
+                                  className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
+                                  title={t('admin_delete_perm')}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {archivedListings.filter(l => l.categoryKey === selectedArchivedCategory).length === 0 && 
+                     (!currentArchivedCat.subCategories || currentArchivedCat.subCategories.length === 0) && (
+                      <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/20">
+                        {t('admin_no_archived')}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </motion.div>
+          );
+        })()}
 
         {activeTab === 'logs' && isDeveloper && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -1237,11 +1329,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                             {displayName}
                           </td>
                           <td className="py-2 px-3 md:p-4 text-xs md:text-sm">
-                            <span className={`px-2 py-0.5 md:py-1 rounded-md text-[10px] md:text-xs font-bold ${
-                              log.action === 'CREATE' ? 'bg-green-500/10 text-green-500' :
-                              log.action === 'DELETE' ? 'bg-red-500/10 text-red-500' :
-                              log.action === 'ARCHIVE' ? 'bg-orange-500/10 text-orange-500' :
-                              'bg-blue-500/10 text-blue-500'
+                            <span className={`px-2 py-1 rounded-full text-[10px] md:text-xs font-medium ${
+                              log.action.includes('CREATE') ? 'bg-green-500/10 text-green-500' :
+                              log.action.includes('UPDATE') ? 'bg-blue-500/10 text-blue-500' :
+                              log.action.includes('DELETE') ? 'bg-red-500/10 text-red-500' :
+                              log.action.includes('ARCHIVE') ? 'bg-orange-500/10 text-orange-500' :
+                              log.action.includes('RECOVER') ? 'bg-indigo-500/10 text-indigo-500' :
+                              'bg-[var(--color-secondary)]/20 text-[var(--color-text-secondary)]'
                             }`}>
                               {log.action}
                             </span>
