@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - firstName: string (optional, 1-50 chars)
+    //   - lastName: string (optional, 1-50 chars)
+    //   - email: string (required, valid format)
+    //   - updatedAt: string (ISO 8601)
+    //
+    // Collection: users/{userId}/store
+    // Document ID: data
+    // Fields:
+    //   - cart: list of maps (CartItem)
+    //   - savedForLater: list of maps (CartItem)
+    //   - wishlist: list of strings (product IDs)
+    //
+    // Collection: admins
+    // Document ID: {email}
+    // Fields:
+    //   - role: string ('admin' | 'developer')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+      );
+    }
+
+    function isDeveloper() {
+      return isAdmin() && (
+        (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) && 
+         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.role == 'developer')
+      );
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email']) &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 50)) &&
+             (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 50));
+    }
+
+    function isValidStoreData(data) {
+      return (!('cart' in data) || (data.cart is list && data.cart.size() <= 100)) &&
+             (!('savedForLater' in data) || (data.savedForLater is list && data.savedForLater.size() <= 100)) &&
+             (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 200));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      // Store data subcollection
+      match /store/data {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && isValidStoreData(request.resource.data);
+      }
+    }
+
+    // Admin roles
+    match /admins/{email} {
+      allow read: if isAuthenticated() && (request.auth.token.email.lower() == email.lower() || isDeveloper());
+      allow write: if isDeveloper();
+    }
+
+    // Global user list
+    match /users/all_users_list {
+      allow read: if isAdmin();
+      // Allow users to add themselves to the list
+      allow create, update: if isAuthenticated(); 
+    }
+
+    // Products
+    match /products/{productId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    // Admin logs
+    match /admin_logs/{logId} {
+      allow read: if isDeveloper();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Logs should be immutable
+    }
+
+    // Categories
+    match /categories/{categoryId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    // Content
+    match /content/{docId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

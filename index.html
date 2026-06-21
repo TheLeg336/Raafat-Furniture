@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval';" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <title>Raafat Furniture - Luxury Furniture</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('themeMode');
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var root = document.documentElement;
+          if (theme === 'dark') {
+            root.style.setProperty('--color-primary', '#F0B429');
+            root.style.setProperty('--color-primary-hsl-values', '42, 87%, 54%');
+            root.style.setProperty('--color-secondary', '#14213D');
+            root.style.setProperty('--color-background', '#1A202C');
+            root.style.setProperty('--color-text-primary', '#E5E5E5');
+            root.style.setProperty('--color-text-secondary', '#A9A9A9');
+            root.style.setProperty('--color-success', '#F0B429');
+          } else {
+            root.style.setProperty('--color-primary', '#E8C547');
+            root.style.setProperty('--color-primary-hsl-values', '47, 81%, 60%');
+            root.style.setProperty('--color-secondary', '#14213D');
+            root.style.setProperty('--color-background', '#FFFFFF');
+            root.style.setProperty('--color-text-primary', '#1A202C');
+            root.style.setProperty('--color-text-secondary', '#4A5568');
+            root.style.setProperty('--color-success', '#DAB449');
+          }
+          root.style.backgroundColor = theme === 'dark' ? '#1A202C' : '#FFFFFF';
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      .font-body-luxe { font-family: 'Inter', sans-serif; }
+      .font-heading-luxe h1, .font-heading-luxe h2, .font-heading-luxe h3, .font-heading-luxe h4, .font-heading-luxe h5, .font-heading-luxe h6, .font-heading-luxe .font-heading { font-family: 'Cormorant Garamond', serif; }
+
+      .font-arabic, 
+      .font-arabic h1, .font-arabic h2, .font-arabic h3, .font-arabic h4, .font-arabic h5, .font-arabic h6,
+      .font-arabic .font-heading { 
+        font-family: 'Cairo', sans-serif; 
+      }
+      
+      /* Refined Shine Effect */
+      @keyframes subtle-shine-anim {
+        to {
+          transform: translateX(100%);
+        }
+      }
+      
+      .shine-effect {
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .shine-effect::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+          125deg,
+          rgba(255, 255, 255, 0) 40%,
+          rgba(255, 255, 255, 0.15) 50%,
+          rgba(255, 255, 255, 0) 60%
+        );
+        transform: translateX(-100%);
+      }
+      
+      .shine-onload::after {
+        animation: subtle-shine-anim 2s ease-in-out 0.3s;
+      }
+
+      .shine-effect:hover::after,
+      .shine-effect:active::after {
+        animation: subtle-shine-anim 0.9s ease-out;
+      }
+
+      /* RTL Shine Effect Overrides */
+      @keyframes subtle-shine-anim-rtl {
+          to {
+              transform: translateX(-100%);
+          }
+      }
+
+      html[dir="rtl"] .shine-effect::after {
+          transform: translateX(100%);
+          background: linear-gradient(
+              55deg, /* Opposite angle for RTL (180 - 125) */
+              rgba(255, 255, 255, 0) 40%,
+              rgba(255, 255, 255, 0.15) 50%,
+              rgba(255, 255, 255, 0) 60%
+          );
+      }
+      
+      html[dir="rtl"] .shine-onload::after,
+      html[dir="rtl"] .shine-effect:hover::after,
+      html[dir="rtl"] .shine-effect:active::after {
+          animation-name: subtle-shine-anim-rtl;
+      }
+
+      /* Nav Link Underline Effect */
+      .nav-link {
+          position: relative;
+          padding-bottom: 4px;
+      }
+      .nav-link::after {
+          content: '';
+          position: absolute;
+          width: 100%;
+          transform: scaleX(0);
+          height: 2px;
+          bottom: 0;
+          left: 0;
+          background-color: var(--color-primary);
+          transform-origin: center;
+          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          border-radius: 99px;
+      }
+      .nav-link:hover::after {
+          transform: scaleX(1);
+      }
+
+      .search-gloss {
+        border-radius: 9999px;
+        background: linear-gradient(135deg,
+            hsla(var(--color-primary-hsl-values), 0.15) 0%,
+            hsla(var(--color-primary-hsl-values), 0.05) 50%,
+            hsla(var(--color-primary-hsl-values), 0.15) 100%
+        );
+      }
+
+      /* Global Theme Transition */
+      html {
+        height: 100%;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      body {
+        min-height: 100dvh;
+        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+        touch-action: manipulation;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Ensure smooth transitions for all themed elements */
+      .transition-theme {
+        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+      }
+
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* Custom Scrollbar for Desktop Filters */
+      .custom-scrollbar {
+        scrollbar-width: thin !important;
+        scrollbar-color: var(--color-primary) transparent !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar {
+        display: block !important;
+        width: 4px !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: var(--color-primary) !important;
+        border-radius: 20px !important;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.12",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.2",
+    "vite": "https://aistudiocdn.com/vite@^7.1.5",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-21T00:00:00Z",
+  "title": "Design System: Raafat Furniture",
+  "extensions": {
+    "colorMeta": {
+      "champagne-gold": { "role": "primary", "displayName": "Champagne Gold", "canonical": "#E8C547", "tonalRamp": ["#3a3110", "#5c4d18", "#8a7424", "#b89a30", "#e8c547", "#eed074", "#f3dd9a", "#f9ecc6"] },
+      "midnight-navy": { "role": "secondary", "displayName": "Midnight Navy", "canonical": "#14213D", "tonalRamp": ["#0a1020", "#14213d", "#1f3258", "#2c4476", "#3a5a98", "#6480b3", "#94a8cd", "#c5d2e6"] },
+      "gilt-success": { "role": "tertiary", "displayName": "Gilt Success", "canonical": "#DAB449", "tonalRamp": ["#3a2f10", "#5c4a18", "#897024", "#b69430", "#dab449", "#e3c674", "#ecd89c", "#f5ebc6"] },
+      "ink": { "role": "neutral", "displayName": "Ink / Atelier Charcoal", "canonical": "#1A202C", "tonalRamp": ["#0d1017", "#1a202c", "#2d3748", "#4a5568", "#718096", "#a0aec0", "#cbd5e0", "#edf2f7"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only — Cormorant Garamond, capped at 6rem." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles (Shop, About, Visit Us)." },
+      "title": { "displayName": "Title", "purpose": "Category / product / card names." },
+      "body": { "displayName": "Body", "purpose": "Descriptions and form text — Inter, 65–75ch measure." },
+      "label": { "displayName": "Label", "purpose": "Uppercase CTA microcopy only — Inter, tracked." },
+      "arabic": { "displayName": "Arabic", "purpose": "Cairo replaces the entire stack when lang=ar." }
+    },
+    "shadows": [
+      { "name": "rest-lift", "value": "0 1px 2px rgba(0,0,0,0.05)", "purpose": "Sticky header at rest." },
+      { "name": "hover-lift", "value": "0 4px 6px rgba(0,0,0,0.1)", "purpose": "Pinned section header; card hover." },
+      { "name": "gold-glow", "value": "0 10px 15px hsla(47,81%,60%,0.2)", "purpose": "Signature accent glow on primary CTAs — accent elements cast their own color." },
+      { "name": "float", "value": "0 25px 50px rgba(0,0,0,0.25)", "purpose": "Cart drawer, mobile menu, modals — highest tier." }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Default reveal/entrance easing for content (fade + rise)." },
+      { "name": "ease-overshoot", "value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)", "purpose": "Nav-link underline scale-in — a gentle gilt overshoot." },
+      { "name": "spring-card", "value": "spring(stiffness 300, damping 20)", "purpose": "Card hover lift (scale 1.03, y -8)." },
+      { "name": "spring-morph", "value": "spring(stiffness 300, damping 35, mass 0.8)", "purpose": "Hero search pill morph between button and glass field." },
+      { "name": "theme-dissolve", "value": "background-color 0.5s ease, color 0.5s ease", "purpose": "Slow cross-dissolve when switching light/dark." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Pill CTA — champagne gold ground, navy label, gold glow. The single accent action on a screen.",
+      "html": "<button class=\"ds-btn-primary\">EXPLORE</button>",
+      "css": ".ds-btn-primary { background: #E8C547; color: #14213D; font-family: Inter, system-ui, sans-serif; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.875rem; padding: 14px 40px; border: none; border-radius: 9999px; box-shadow: 0 10px 15px hsla(47,81%,60%,0.2); cursor: pointer; transition: background 0.2s, box-shadow 0.2s, transform 0.15s; } .ds-btn-primary:hover { background: #F0B429; box-shadow: 0 14px 22px hsla(47,81%,60%,0.32); } .ds-btn-primary:focus-visible { outline: 2px solid #E8C547; outline-offset: 3px; } .ds-btn-primary:active { transform: scale(0.95); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ghost pill — transparent ground, gold border + gold label, fills gold at 5% on hover.",
+      "html": "<button class=\"ds-btn-secondary\">View Details</button>",
+      "css": ".ds-btn-secondary { background: transparent; color: #E8C547; font-family: Inter, system-ui, sans-serif; font-weight: 700; font-size: 1rem; padding: 12px 24px; border: 2px solid #E8C547; border-radius: 9999px; cursor: pointer; transition: background 0.2s, transform 0.15s; } .ds-btn-secondary:hover { background: rgba(232,197,71,0.05); } .ds-btn-secondary:focus-visible { outline: 2px solid #E8C547; outline-offset: 3px; } .ds-btn-secondary:active { transform: scale(0.95); }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Transparent field, navy 30% border, 12px radius; on focus the border vanishes and a gold ring becomes the edge.",
+      "html": "<input class=\"ds-input-field\" type=\"text\" placeholder=\"Search for furniture, styles, and more...\" />",
+      "css": ".ds-input-field { width: 100%; background: transparent; color: #1A202C; font-family: Inter, system-ui, sans-serif; font-size: 1rem; padding: 12px 16px; border: 1px solid rgba(20,33,61,0.3); border-radius: 12px; outline: none; transition: box-shadow 0.2s, border-color 0.2s; } .ds-input-field::placeholder { color: #4A5568; } .ds-input-field:focus { border-color: transparent; box-shadow: 0 0 0 2px #E8C547; }"
+    },
+    {
+      "name": "Category Card",
+      "kind": "card",
+      "refersTo": "card-category",
+      "description": "Image mounted on a midnight-navy ground at 4:5, 24px corners; flat at rest, lifts on hover. Title sits below the frame.",
+      "html": "<a class=\"ds-card-category\" href=\"#\"><div class=\"ds-card-frame\"><svg viewBox=\"0 0 400 500\" class=\"ds-card-img\" aria-hidden=\"true\"><rect width=\"400\" height=\"500\" fill=\"#14213D\"/><path d=\"M120 320h160v40H120z M140 200h120v120H140z\" fill=\"#2c4476\"/></svg><span class=\"ds-card-overlay\"></span></div><h3 class=\"ds-card-title\">Living Room</h3></a>",
+      "css": ".ds-card-category { display: flex; flex-direction: column; text-align: center; text-decoration: none; } .ds-card-frame { position: relative; background: #14213D; border-radius: 24px; overflow: hidden; aspect-ratio: 4/5; transition: box-shadow 0.3s; } .ds-card-category:hover .ds-card-frame { box-shadow: 0 20px 25px rgba(0,0,0,0.15); } .ds-card-img { display: block; width: 100%; height: 100%; object-fit: cover; } .ds-card-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.1); transition: background 0.3s; } .ds-card-category:hover .ds-card-overlay { background: transparent; } .ds-card-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.25rem; font-weight: 600; color: #1A202C; margin-top: 16px; }"
+    },
+    {
+      "name": "Nav Link",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Cormorant serif link; hover shifts to gold and draws a gold underline that scales in from center on a gentle overshoot.",
+      "html": "<a class=\"ds-nav-link\" href=\"#\">Shop</a>",
+      "css": ".ds-nav-link { position: relative; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.02em; color: #1A202C; text-decoration: none; padding-bottom: 4px; transition: color 0.3s; } .ds-nav-link::after { content: ''; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: #E8C547; border-radius: 99px; transform: scaleX(0); transform-origin: center; transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); } .ds-nav-link:hover { color: #E8C547; } .ds-nav-link:hover::after { transform: scaleX(1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Gilded Atelier",
+    "overview": "Raafat Furniture is a craftsman's studio rendered as an interface — warm, considered, and quietly opulent. Champagne gold appears the way gilt appears on dark wood: as a deliberate detail, never a coating. Midnight navy is the velvet the pieces rest against; the furniture photography is the hero, and the chrome steps back to frame it. The system is bilingual to the bone (English LTR and Arabic RTL) and dual-themed (a bright daylight showroom and a candlelit evening room), and each variant is first-class. Modern materials — backdrop blur, spring motion, a slow theme cross-dissolve — are present but earned. Restraint reads as the luxury; gold is punctuation. It rejects trendy AI-SaaS slop, generic IKEA/big-box density, and cold sterile minimalism alike.",
+    "keyCharacteristics": [
+      "Champagne gold + midnight navy on a white (day) or charcoal (night) ground.",
+      "Cormorant Garamond serif display over Inter body; Cairo carries Arabic in both roles.",
+      "Soft rounded-luxe geometry: pill CTAs, 24px cards, 12px inputs.",
+      "Spring-based, exponential-ease motion; signature shine sweep and morphing search pill.",
+      "Full EN/AR + light/dark parity, WCAG AA floor."
+    ],
+    "rules": [
+      { "name": "The Gilt Rule", "body": "Champagne gold covers ≤10% of any screen — gilt on dark wood, a detail or a single CTA, never a background fill. The rarity is the luxury.", "section": "colors" },
+      { "name": "The Ink-on-Gold Rule", "body": "Text on a gold surface is midnight navy or near-black ink, never white. White on champagne gold lands near 1.6:1 and fails AA; navy-on-gold clears it and reads richer.", "section": "colors" },
+      { "name": "The Constant-Navy Rule", "body": "Midnight navy never flips between themes. White and ink swap day-for-night; navy stays, so the brand reads continuously across both modes.", "section": "colors" },
+      { "name": "The Serif-Voice Rule", "body": "Cormorant carries voice (hero, headings, nav, toggles); Inter carries function (body, inputs, prices, fine print). Never set a paragraph in Cormorant or a heading in Inter.", "section": "typography" },
+      { "name": "The One-Family-Arabic Rule", "body": "When lang=ar, Cairo replaces the entire stack — no Cormorant, no Inter. Arabic gets its own coherent voice.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A shadow is a state (hover, focus, elevation), not a decoration.", "section": "elevation" },
+      { "name": "The Colored-Glow Rule", "body": "Accent elements cast accent-colored shadows (gold at ~20% alpha); structural surfaces cast neutral black. Don't mix them.", "section": "elevation" },
+      { "name": "The Purposeful-Glass Rule", "body": "Glass (backdrop-blur) is for floating layers only — header, search pill, auth panel. Forbidden as decorative card filler.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep champagne gold to ≤10% of any screen — gilt on dark wood, never a wash.",
+      "Do set text on gold in midnight navy / ink, never white.",
+      "Do let the furniture photography be the hero; chrome recedes behind it.",
+      "Do use Cormorant for voice and Inter for function.",
+      "Do swap the entire type stack to Cairo when lang=ar, and mirror padding with logical properties (ps-/pe-).",
+      "Do keep navy constant across light and dark; only white/ink flip.",
+      "Do cast gold-tinted glows on accent elements and neutral shadows on structural ones.",
+      "Do give every animation a prefers-reduced-motion: reduce fallback.",
+      "Do verify body text ≥4.5:1 and large text ≥3:1 in both themes before shipping."
+    ],
+    "donts": [
+      "Don't ship trendy AI-SaaS slop: cream/beige bodies, tracked-uppercase eyebrows over every section, identical icon-heading-text card grids, gradient text.",
+      "Don't drift into generic IKEA / big-box: cluttered product walls, loud sale banners, warehouse density.",
+      "Don't go cold, sterile, all-white gallery-empty — this is a warm home for furniture.",
+      "Don't use glass as decorative card filler; reserve it for floating layers.",
+      "Don't put white text on champagne gold, anywhere.",
+      "Don't set body copy in Cormorant or headings in Inter.",
+      "Don't use a colored side-stripe border (border-left > 1px) as an accent.",
+      "Don't leave shadows on at-rest surfaces for decoration — a shadow is a state.",
+      "Don't over-gild: heavy gold everywhere, gold gradients, gold-on-gold read as gaudy."
+    ]
+  }
+}
