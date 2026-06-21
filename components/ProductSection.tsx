@@ -6,6 +6,7 @@ import ProductSectionHeader from './ProductSectionHeader';
 import { Link } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
 import { revealItem } from './ui/Reveal';
+import { Button } from './ui/Button';
 
 const CategoryCard: React.FC<{ category: any; t: TFunction }> = ({ category, t }) => {
   const name = t(category.labelKey);
@@ -38,7 +39,8 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
 
   useEffect(() => {
     const onScroll = () => {
-      if (sentinelRef.current) setIsSticky(sentinelRef.current.getBoundingClientRect().top <= headerHeight + 1);
+      // Frost once the heading reaches the very top of the viewport.
+      if (sentinelRef.current) setIsSticky(sentinelRef.current.getBoundingClientRect().top <= 1);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -49,9 +51,13 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
     <section id="shop" className="relative bg-[var(--color-background)] transition-colors duration-500">
       <div className="relative">
         <div ref={sentinelRef} className="absolute w-full h-px pointer-events-none" />
-        <div className={`sticky z-10 transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-sm)]' : ''}`} style={{ top: 'var(--header-height)' }}>
-          <div className="container mx-auto px-6 pt-8 pb-4 md:pt-20 md:pb-10">
-            <ProductSectionHeader t={t} />
+        {/* Sticks to the very top of the screen and frosts into glass while the section scrolls. */}
+        <div
+          className={`sticky top-0 transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-md)]' : ''}`}
+          style={{ zIndex: 90 }}
+        >
+          <div className={`container mx-auto px-6 transition-all duration-300 ${isSticky ? 'py-4 md:py-5' : 'pt-8 pb-4 md:pt-20 md:pb-10'}`}>
+            <ProductSectionHeader t={t} compact={isSticky} />
           </div>
         </div>
 
@@ -64,7 +70,7 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
             </div>
           ) : (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pb-16 sm:pb-20 md:pb-28"
+              className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pb-10"
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.15 }}
@@ -75,6 +81,12 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
               ))}
             </motion.div>
           )}
+
+          <div className="flex justify-center pb-20 sm:pb-24 md:pb-28">
+            <Link to="/shop">
+              <Button size="lg">{t('explore_collections') || 'Explore the collections'}</Button>
+            </Link>
+          </div>
         </div>
       </div>
     </section>

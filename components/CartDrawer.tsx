@@ -70,16 +70,16 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsCartOpen(false)}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1200]"
           />
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] shadow-2xl z-50 flex flex-col overflow-hidden"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] shadow-2xl z-[1300] flex flex-col overflow-hidden"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[var(--color-primary)]/10">
+            <div className="flex items-center justify-between p-6 ">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <ShoppingBag className="text-[var(--color-primary)]" />
                 {t('cart') || 'Your Cart'}
@@ -177,7 +177,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
 
               {/* Saved for Later */}
               {savedForLater.length > 0 && (
-                <div className="pt-8 border-t border-[var(--color-primary)]/10">
+                <div className="pt-8 ">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Heart size={18} className="text-[var(--color-primary)]" />
                     {t('saved_for_later') || 'Saved for later'} ({savedForLater.length})
@@ -230,7 +230,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
 
             {/* Footer / Checkout */}
             {cart.length > 0 && (
-              <div className="p-6 bg-[var(--color-secondary)]/5 border-t border-[var(--color-primary)]/10">
+              <div className="p-6 bg-[var(--color-secondary)]/5 ">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[var(--color-text-secondary)]">{t('subtotal') || 'Subtotal'}</span>
                   <span className="text-2xl font-bold">{formatMoney(subtotal)}</span>

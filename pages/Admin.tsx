@@ -156,7 +156,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-background)] p-6">
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
+        <div className="bg-white/5 backdrop-blur-2xl p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <X size={32} />
           </div>
@@ -675,7 +675,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     <div className="h-screen bg-[var(--color-background)] flex flex-col md:flex-row overflow-hidden">
       {/* Desktop Sidebar */}
       <aside 
-        className={`hidden md:flex flex-col border-r border-[var(--color-secondary)]/5 bg-[var(--color-background)] z-30 transition-all duration-300 ease-in-out relative ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+        className={`hidden md:flex flex-col bg-[var(--color-background)] z-30 transition-all duration-300 ease-in-out relative ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
         <button 
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -684,7 +684,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className={`p-6 border-b border-[var(--color-secondary)]/5 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-4'}`}>
+        <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-4'}`}>
           {!isSidebarCollapsed && (
             <>
               <LogoIcon size={48} className="shrink-0 shadow-lg rounded-xl" />
@@ -744,7 +744,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           )}
         </nav>
 
-        <div className="p-4 border-t border-[var(--color-secondary)]/5 space-y-2">
+        <div className="p-4 space-y-2">
           <Link 
             to="/"
             title={isSidebarCollapsed ? t('admin_back_to_site') : ''}
@@ -765,7 +765,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--color-secondary)]/5 bg-[var(--color-background)] sticky top-0 z-20">
+      <div className="md:hidden flex items-center justify-between p-4 bg-[var(--color-background)] sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <LogoIcon size={32} className="rounded-lg shadow-sm" />
           <div className="overflow-hidden max-w-[150px]">
@@ -786,7 +786,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] border-t border-[var(--color-secondary)]/5 z-40 flex justify-around p-2 pb-safe">
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] z-40 flex justify-around p-2 pb-safe">
         <button onClick={() => { setActiveTab('categories'); setSelectedCategory(null); }} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'categories' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
           <Folder size={20} />
           <span className="text-[10px] mt-1 font-medium">{t('admin_tab_categories')}</span>
@@ -1179,7 +1179,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       const isExpired = daysLeft === 0;
 
                       return (
-                        <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm border border-[var(--color-secondary)]/10 flex flex-col">
+                        <div key={listing.id} className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden shadow-sm flex flex-col">
                           <div className="aspect-[4/5] relative opacity-60 grayscale">
                             <img src={listing.imageUrl} alt={listing.name.en} className="w-full h-full object-cover" />
                           </div>
@@ -1188,7 +1188,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                             <div className="mt-2 text-xs md:text-sm font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md inline-block w-fit">
                               {isExpired ? t('admin_pending_deletion') : `${daysLeft} ${t('admin_days_left')}`}
                             </div>
-                            <div className="mt-4 pt-4 border-t border-[var(--color-secondary)]/10 flex gap-2 mt-auto">
+                            <div className="mt-4 pt-4 flex gap-2 mt-auto">
                               <button 
                                 onClick={() => handleRecover(listing.id)}
                                 className="flex-1 py-2 bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg text-sm font-medium hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2"
@@ -1225,15 +1225,15 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         {activeTab === 'logs' && isDeveloper && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-6 md:mb-8">{t('admin_tab_logs')}</h1>
-            <div className="bg-[var(--color-secondary)]/5 rounded-2xl border border-[var(--color-secondary)]/10 overflow-hidden">
+            <div className="bg-[var(--color-secondary)]/5 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto scrollbar-hide touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full min-w-[600px] text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--color-secondary)]/10 text-[var(--color-text-secondary)] text-sm">
-                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-32 md:w-40">{t('admin_time')}</th>
-                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-40 md:w-48">{t('admin_admin')}</th>
-                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10 w-24 md:w-32">{t('admin_action')}</th>
-                      <th className="py-2 px-3 md:p-4 font-medium border-b border-[var(--color-secondary)]/10">{t('admin_details')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium w-32 md:w-40">{t('admin_time')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium w-40 md:w-48">{t('admin_admin')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium w-24 md:w-32">{t('admin_action')}</th>
+                      <th className="py-2 px-3 md:p-4 font-medium ">{t('admin_details')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1249,7 +1249,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       });
 
                       return (
-                        <tr key={log.id} className="border-b border-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/5 transition-colors">
+                        <tr key={log.id} className="hover:bg-[var(--color-secondary)]/5 transition-colors">
                           <td className="py-2 px-3 md:p-4 text-xs md:text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
                             {formattedTime}
                           </td>
@@ -1298,9 +1298,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
-            <div className="p-4 md:p-6 border-b border-[var(--color-secondary)]/10 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
+            <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
                 {editingListing ? t('admin_edit_listing') || 'Edit Listing' : t('admin_create_new')}
               </h2>
@@ -1321,29 +1321,29 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_en')}</label>
-                  <input type="text" value={nameEn} onChange={e => setNameEn(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_name_en')} />
+                  <input type="text" value={nameEn} onChange={e => setNameEn(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_name_en')} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_ar')}</label>
-                  <input type="text" value={nameAr} onChange={e => setNameAr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right" placeholder={t('admin_placeholder_name_ar')} dir="rtl" />
+                  <input type="text" value={nameAr} onChange={e => setNameAr(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right" placeholder={t('admin_placeholder_name_ar')} dir="rtl" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_desc_en')}</label>
-                  <textarea value={descEn} onChange={e => setDescEn(e.target.value)} rows={3} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none" placeholder={t('admin_placeholder_desc_en')}></textarea>
+                  <textarea value={descEn} onChange={e => setDescEn(e.target.value)} rows={3} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none" placeholder={t('admin_placeholder_desc_en')}></textarea>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_desc_ar')}</label>
-                  <textarea value={descAr} onChange={e => setDescAr(e.target.value)} rows={3} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none text-right" placeholder={t('admin_placeholder_desc_ar')} dir="rtl"></textarea>
+                  <textarea value={descAr} onChange={e => setDescAr(e.target.value)} rows={3} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none text-right" placeholder={t('admin_placeholder_desc_ar')} dir="rtl"></textarea>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_category')}</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none appearance-none">
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none appearance-none">
                     {categories.map(cat => (
                       <optgroup key={cat.id} label={t(cat.labelKey)}>
                         <option value={cat.id}>{t(cat.labelKey)} (Main)</option>
@@ -1356,7 +1356,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_price')} ({t('admin_optional')})</label>
-                  <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_price')} />
+                  <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_price')} />
                 </div>
               </div>
 
@@ -1364,17 +1364,17 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_materials') || 'Materials'} ({t('admin_comma_separated') || 'comma-separated'})</label>
-                  <input type="text" value={materialsStr} onChange={e => setMaterialsStr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Oak, Walnut, Linen" />
+                  <input type="text" value={materialsStr} onChange={e => setMaterialsStr(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Oak, Walnut, Linen" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_colors') || 'Colours'} ({t('admin_comma_separated') || 'comma-separated'})</label>
-                  <input type="text" value={colorsStr} onChange={e => setColorsStr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Charcoal, Beige, Navy" />
+                  <input type="text" value={colorsStr} onChange={e => setColorsStr(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Charcoal, Beige, Navy" />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_dimensions') || 'Dimensions'} ({t('admin_optional')})</label>
-                  <input type="text" value={dimensions} onChange={e => setDimensions(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="W 220cm × D 95cm × H 80cm" />
+                  <input type="text" value={dimensions} onChange={e => setDimensions(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="W 220cm × D 95cm × H 80cm" />
                 </div>
-                <label className="sm:col-span-2 flex items-center gap-3 p-3 rounded-xl border border-[var(--color-secondary)]/10 cursor-pointer">
+                <label className="sm:col-span-2 flex items-center gap-3 p-3 rounded-xl cursor-pointer">
                   <input type="checkbox" checked={customDimensionsEnabled} onChange={e => setCustomDimensionsEnabled(e.target.checked)} className="w-4 h-4 accent-[var(--color-primary)]" />
                   <span className="text-sm text-[var(--color-text-primary)]">{t('admin_allow_custom_dims') || 'Allow customers to request custom dimensions (made to order)'}</span>
                 </label>
@@ -1422,7 +1422,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                       <div className="flex flex-wrap gap-3 mt-4 justify-center relative z-20">
                         {/* Existing Images */}
                         {existingImages.map((url, idx) => (
-                          <div key={`existing-${idx}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-white/10 group">
+                          <div key={`existing-${idx}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden group">
                             <img src={url} alt={`existing ${idx}`} className="w-full h-full object-cover" />
                             <button
                               type="button"
@@ -1483,7 +1483,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
+              <div className="pt-4 flex justify-end gap-3">
                 <button 
                   type="button" 
                   onClick={() => {
@@ -1516,9 +1516,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/10"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto "
           >
-            <div className="p-4 md:p-6 border-b border-[var(--color-secondary)]/10 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
+            <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
                 {editingCategory ? 'Edit Category' : (selectedCategory ? 'Add Sub-categories' : 'Add New Category')}
               </h2>
@@ -1545,7 +1545,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         type="text" 
                         value={editingCategoryName.en} 
                         onChange={e => setEditingCategoryName({ ...editingCategoryName, en: e.target.value })}
-                        className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                        className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1554,7 +1554,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         type="text" 
                         value={editingCategoryName.ar} 
                         onChange={e => setEditingCategoryName({ ...editingCategoryName, ar: e.target.value })}
-                        className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right"
+                        className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-right"
                         dir="rtl"
                       />
                     </div>
@@ -1580,7 +1580,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <div className="space-y-4">
                     <label className="block text-sm font-medium text-[var(--color-text-secondary)]">Categories</label>
                     {newCategories.map((cat, idx) => (
-                      <div key={idx} className="flex flex-col gap-3 p-4 border border-[var(--color-secondary)]/10 rounded-xl bg-[var(--color-secondary)]/5">
+                      <div key={idx} className="flex flex-col gap-3 p-4 rounded-xl bg-[var(--color-secondary)]/5">
                         <div className="flex gap-2">
                           <input 
                             type="text" 
@@ -1590,7 +1590,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                               updated[idx].name = e.target.value;
                               setNewCategories(updated);
                             }}
-                            className="flex-1 bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                            className="flex-1 bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                             placeholder="Enter category name..."
                           />
                           {newCategories.length > 1 && (
@@ -1600,7 +1600,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                           )}
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-[var(--color-secondary)]/10 flex items-center justify-center relative">
+                          <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-[var(--color-secondary)]/10 flex items-center justify-center relative">
                             {cat.file ? (
                               <img src={URL.createObjectURL(cat.file)} alt="preview" className="w-full h-full object-cover" />
                             ) : (
@@ -1631,19 +1631,19 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   </div>
 
                   {selectedCategory && listingsToRedistribute.length > 0 && (
-                    <div className="space-y-4 pt-6 border-t border-[var(--color-secondary)]/10">
+                    <div className="space-y-4 pt-6 ">
                       <h3 className="font-bold text-[var(--color-text-primary)]">Distribute Existing Listings</h3>
                       <p className="text-sm text-[var(--color-text-secondary)]">Choose which sub-category each listing should move to.</p>
                       <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                         {listingsToRedistribute.map(listing => (
-                          <div key={listing.id} className="flex items-center justify-between p-3 bg-[var(--color-secondary)]/5 rounded-xl border border-[var(--color-secondary)]/10">
+                          <div key={listing.id} className="flex items-center justify-between p-3 bg-[var(--color-secondary)]/5 rounded-xl ">
                             <span className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[200px]">
                               {language === 'ar' ? listing.name.ar : listing.name.en}
                             </span>
                             <select 
                               value={redistributionMap[listing.id] || ''} 
                               onChange={e => setRedistributionMap({...redistributionMap, [listing.id]: e.target.value})}
-                              className="bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-lg px-2 py-1 text-xs outline-none"
+                              className="bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-lg px-2 py-1 text-xs outline-none"
                             >
                               <option value="">Keep in Main</option>
                               {newCategories.filter(c => c.name.trim()).map(cat => (
@@ -1658,7 +1658,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
               )}
 
-              <div className="pt-6 border-t border-[var(--color-secondary)]/10 flex justify-end gap-3">
+              <div className="pt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => { setIsCategoryModalOpen(false); setEditingCategory(null); setEditingCategoryName({ en: '', ar: '' }); setNewCategories([{ name: '', file: null }]); }} className="px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors">
                   Cancel
                 </button>
@@ -1681,7 +1681,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center border border-white/10"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center "
           >
             <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <Trash2 size={32} />

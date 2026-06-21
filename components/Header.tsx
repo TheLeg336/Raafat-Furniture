@@ -139,9 +139,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   const Controls: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (
     <div className={`flex items-center gap-6 ${isMobile ? 'flex-col gap-4' : ''}`}>
-      <Link 
-        to={user ? (isAdmin ? "/admin" : "/account") : "/login"} 
-        className="${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+      <Link
+        to={user ? (isAdmin ? "/admin" : "/account") : "/login"}
+        className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
         aria-label={t('aria_account')}
       >
         <UserIcon size={20} />
@@ -149,7 +149,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       {!isMobile && (
         <button
           onClick={() => setIsCartOpen(!isCartOpen)}
-          className="relative ${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+          className={`relative ${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
           aria-label={t('cart')}
         >
           <ShoppingBag size={20} />
@@ -290,7 +290,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               aria-hidden="true"
             />
             <motion.div
-              className={`fixed top-0 h-full w-[80vw] max-w-sm z-50 bg-[var(--color-background)] shadow-2xl start-0 border-e border-white/10 rounded-e-3xl`}
+              className={`fixed top-0 h-full w-[80vw] max-w-sm z-50 bg-[var(--color-background)] shadow-2xl start-0 rounded-e-3xl`}
               initial={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}

@@ -104,7 +104,7 @@ export const Modal: React.FC<ModalProps> = ({
           <motion.div
             ref={panelRef}
             tabIndex={-1}
-            className={`relative w-full ${widths[size]} bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-[var(--shadow-2xl)] outline-none max-h-[92dvh] overflow-y-auto`}
+            className={`relative w-full ${widths[size]} bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-[var(--shadow-2xl)] outline-none max-h-[92dvh] overflow-y-auto`}
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.98 }}

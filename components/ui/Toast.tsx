@@ -77,7 +77,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-                  className="pointer-events-auto flex items-center gap-3 max-w-md w-full sm:w-auto bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-[var(--radius-pill)] shadow-[var(--shadow-lg)] ps-4 pe-2 py-2.5"
+                  className="pointer-events-auto flex items-center gap-3 max-w-md w-full sm:w-auto bg-[var(--color-surface)] text-[var(--color-text-primary)] rounded-[var(--radius-pill)] shadow-[var(--shadow-2xl)] ps-4 pe-2 py-2.5"
                 >
                   {icons[t.tone]}
                   <span className="text-sm flex-1">{t.message}</span>

@@ -1,12 +1,12 @@
 import React from 'react';
 
 const fieldBase =
-  'w-full bg-transparent text-[var(--color-text-primary)] rounded-[var(--radius-md)] ' +
-  'border border-[var(--color-border-strong)] px-4 py-3 outline-none ' +
-  'transition-[box-shadow,border-color] duration-200 ' +
+  'w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-[var(--radius-md)] ' +
+  'px-4 py-3 outline-none ' +
+  'transition-[box-shadow] duration-200 ' +
   'placeholder:text-[var(--color-text-secondary)] ' +
-  'focus:border-transparent focus:shadow-[0_0_0_2px_var(--color-primary)] ' +
-  'disabled:opacity-55 aria-[invalid=true]:border-[var(--color-danger)]';
+  'focus:shadow-[0_0_0_2px_hsla(var(--color-primary-hsl-values),0.55)] ' +
+  'disabled:opacity-55 aria-[invalid=true]:shadow-[0_0_0_2px_var(--color-danger)]';
 
 interface FieldShellProps {
   label?: string;

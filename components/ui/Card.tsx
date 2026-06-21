@@ -13,7 +13,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card: React.FC<CardProps> = ({ as: Tag = 'div', inset, hover, className = '', children, ...props }) => (
   <Tag
     className={
-      `rounded-[var(--radius-lg)] border border-[var(--color-border)] ` +
+      `rounded-[var(--radius-lg)] shadow-[var(--shadow-glass)] ` +
       `${inset ? 'bg-[var(--color-surface-2)]' : 'bg-[var(--color-surface)]'} ` +
       `${hover ? 'transition-[box-shadow,transform] duration-300 hover:shadow-[var(--shadow-lg)] hover:-translate-y-1' : ''} ` +
       className

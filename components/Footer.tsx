@@ -34,67 +34,22 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                 viewport={{once: true, amount: 0.3}} 
                 variants={containerVariants}
             >
-                <motion.h2 
-                    variants={titleVariants}
-                    className="text-3xl sm:text-4xl text-center font-bold mb-12"
-                >
-                    {t('footer_locations_title')}
-                </motion.h2>
+                <motion.div variants={titleVariants} className="text-center mb-10">
+                    <div className="font-heading text-3xl sm:text-4xl tracking-wide">RAAFAT</div>
+                    <div className="font-heading tracking-[0.35em] text-sm opacity-80 mt-1">FURNITURE</div>
+                    <div className="h-0.5 w-12 bg-[var(--color-primary)] mx-auto mt-5 rounded-full" />
+                </motion.div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 text-center sm:text-start">
-                    <motion.div variants={itemVariants}>
-                        <h3 className="text-xl font-bold text-[var(--color-primary)] mb-3">
-                            {t('footer_cairo_branch_title')}
-                        </h3>
-                        <p className="opacity-80 leading-relaxed">
-                            {t('footer_cairo_branch_address')}
-                        </p>
-                        <p className="opacity-70 text-sm mt-2">
-                            {t('footer_hours')}
-                        </p>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                        <h3 className="text-xl font-bold text-[var(--color-primary)] mb-3">
-                           {t('footer_minya_branch_title')}
-                        </h3>
-                        <p className="opacity-80 leading-relaxed">
-                             {t('footer_minya_branch_address')}
-                        </p>
-                        <p className="opacity-70 text-sm mt-2">
-                            {t('footer_hours')}
-                        </p>
-                    </motion.div>
-                    
-                    <motion.div variants={itemVariants}>
-                        <h3 className="text-xl font-bold text-[var(--color-primary)] mb-3">
-                             {t('footer_new_minya_branch_title')}
-                        </h3>
-                        <p className="opacity-80 leading-relaxed">
-                             {t('footer_new_minya_branch_address')}
-                        </p>
-                        <p className="opacity-70 text-sm mt-2">
-                             {t('footer_hours')}
-                        </p>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                        <h3 className="text-xl font-bold text-[var(--color-primary)] mb-3">
-                            {t('footer_phone_title')}
-                        </h3>
-                        <p className="opacity-80 leading-relaxed">
-                          {t('footer_phone_label')}
-                          {' '}
-                          <span className="inline-block" dir="ltr">
-                             {t('footer_phone_number')}
-                          </span>
-                        </p>
-                    </motion.div>
-                </div>
+                <motion.div variants={itemVariants} className="flex flex-col items-center gap-3 mb-12">
+                    <a href={`tel:${t('footer_phone_number')}`} className="text-lg font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity" dir="ltr">
+                        {t('footer_phone_number')}
+                    </a>
+                    <p className="opacity-70 text-sm">{t('footer_hours')}</p>
+                </motion.div>
 
                 <motion.div
                     variants={itemVariants}
-                    className="mt-16 pt-8 border-t border-[var(--color-background)]/20 flex flex-col sm:flex-row justify-between items-center gap-5 text-sm"
+                    className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-5 text-sm"
                 >
                     <p className="opacity-70 order-2 sm:order-1">
                         {t('footer_copyright')}

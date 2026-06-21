@@ -329,6 +329,8 @@ export const TEXTS: Record<string, Record<string, string>> = {
     admin_dimensions: 'Dimensions',
     admin_comma_separated: 'comma-separated',
     admin_allow_custom_dims: 'Allow customers to request custom dimensions (made to order)',
+    explore_collections: 'Explore the collections',
+    our_branches: 'Our Branches',
   },
   ar: {
     nav_home: 'الرئيسية',
@@ -613,6 +615,8 @@ export const TEXTS: Record<string, Record<string, string>> = {
     admin_dimensions: 'الأبعاد',
     admin_comma_separated: 'مفصولة بفواصل',
     admin_allow_custom_dims: 'السماح للعملاء بطلب أبعاد مخصّصة (تُصنع حسب الطلب)',
+    explore_collections: 'استكشف مجموعاتنا',
+    our_branches: 'فروعنا',
   }
 };
 

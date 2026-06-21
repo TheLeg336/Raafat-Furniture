@@ -149,9 +149,15 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     return result;
   }, [searchResultsBeforeFilters, sortBy, priceRange, selectedColor]);
 
+  // Reset view + filters whenever the category or search changes, so switching
+  // between categories never carries stale filters into the next one.
   React.useEffect(() => {
     window.scrollTo(0, 0);
     setSearchInput(searchQuery || '');
+    setSelectedColor('all');
+    setPriceRange([0, 10000]);
+    setSortBy('relevance');
+    setShowFilters(false);
   }, [categoryId, searchQuery]);
 
   return (
@@ -181,7 +187,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={t('search_placeholder')}
-                className="w-full bg-[var(--color-secondary)]/5 border border-[var(--color-primary)]/20 text-[var(--color-text-primary)] rounded-full py-3 md:py-4 ps-12 pe-12 outline-none focus:bg-[var(--color-secondary)]/10 focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all placeholder:text-[var(--color-text-secondary)]/40 shadow-inner"
+                className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-full py-3 md:py-4 ps-12 pe-12 outline-none transition-shadow placeholder:text-[var(--color-text-secondary)] focus:shadow-[0_0_0_2px_hsla(var(--color-primary-hsl-values),0.5)]"
               />
               {searchInput && (
                 <button 
@@ -213,7 +219,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden border-b border-[var(--color-secondary)]/10 mb-8"
+                    className="overflow-hidden mb-8"
                   >
                     <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                       {/* Sort By */}
@@ -351,7 +357,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 <div className="lg:hidden">
                   <button 
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors backdrop-blur-md ${showFilters ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'bg-black/30 text-white hover:bg-black/50 border border-white/20'}`}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors backdrop-blur-md ${showFilters ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'bg-black/30 text-white hover:bg-black/50 '}`}
                   >
                     <SlidersHorizontal size={18} />
                     <span className="text-sm font-medium">Filters</span>
@@ -370,7 +376,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden border-b border-[var(--color-secondary)]/10 mb-8"
+                    className="overflow-hidden mb-8"
                   >
                     <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                       {/* Sort By */}
@@ -507,7 +513,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden border-b border-[var(--color-secondary)]/10 mb-8"
+                    className="overflow-hidden mb-8"
                   >
                     <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                       {/* Sort By */}

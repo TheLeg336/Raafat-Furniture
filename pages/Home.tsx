@@ -4,7 +4,6 @@ import type { TFunction } from '../types';
 import Hero from '../components/Hero';
 import ProductSection from '../components/ProductSection';
 import VisitUsSection from '../components/VisitUsSection';
-import Craftsmanship from '../components/home/Craftsmanship';
 
 interface HomeProps {
   t: TFunction;
@@ -72,7 +71,6 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
         <Hero t={t} />
       </div>
       <ProductSection t={t} headerHeight={headerHeight} />
-      <Craftsmanship t={t} />
       <VisitUsSection t={t} />
     </main>
   );

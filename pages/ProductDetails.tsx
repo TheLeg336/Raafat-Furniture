@@ -161,7 +161,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
                   </div>
                 </>
               )}
-              <button onClick={() => toggleWishlist(product.id)} className="absolute top-5 end-5 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all z-10" aria-label={t('toggle_wishlist') || 'Toggle wishlist'}>
+              <button onClick={() => toggleWishlist(product.id)} className="absolute top-5 end-5 p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all z-10" aria-label={t('toggle_wishlist') || 'Toggle wishlist'}>
                 <Heart className={`w-5 h-5 transition-colors ${isWishlisted ? 'fill-[var(--color-primary)] text-[var(--color-primary)]' : 'text-white'}`} />
               </button>
             </div>

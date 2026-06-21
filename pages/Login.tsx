@@ -114,7 +114,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
         className="absolute top-[20%] right-[5%] w-[70%] md:w-[30%] h-[40%] md:h-[30%] bg-[var(--color-secondary)] opacity-20 md:opacity-10 rounded-full blur-[50px] md:blur-[80px] z-0"
       />
 
-      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 px-6 md:px-10 py-6 md:py-12 rounded-3xl shadow-2xl max-w-md w-full text-center relative z-10">
+      <div className="bg-white/5 backdrop-blur-2xl px-6 md:px-10 py-6 md:py-12 rounded-3xl shadow-2xl max-w-md w-full text-center relative z-10">
         <button 
           onClick={() => navigate(-1)}
           className="absolute top-4 start-4 md:top-6 md:start-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
@@ -135,7 +135,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
           </p>
 
           {error && (
-            <div className="mb-3 md:mb-6 p-2 md:p-3 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg text-sm">
+            <div className="mb-3 md:mb-6 p-2 md:p-3 bg-red-500/10 text-red-500 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -150,7 +150,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
+                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-[var(--color-surface-2)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
                 placeholder={t('login_email')}
               />
             </div>
@@ -163,7 +163,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
+                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-[var(--color-surface-2)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
                 placeholder={t('login_password')}
               />
             </div>
@@ -189,7 +189,7 @@ const Login: React.FC<LoginProps> = ({ t }) => {
           <button
             onClick={handleGoogleLogin}
             type="button"
-            className="w-full py-2.5 md:py-3 px-4 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-text-primary)]/5 transition-colors flex items-center justify-center gap-3 mb-4 md:mb-6"
+            className="w-full py-2.5 md:py-3 px-4 bg-[var(--color-surface-2)] rounded-xl text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-text-primary)]/5 transition-colors flex items-center justify-center gap-3 mb-4 md:mb-6"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
             {t('login_google')}
