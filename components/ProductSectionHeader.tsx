@@ -2,28 +2,18 @@ import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import type { TFunction } from '../types';
 
-interface ProductSectionHeaderProps {
-  t: TFunction;
-}
-
-const ProductSectionHeader: React.FC<ProductSectionHeaderProps> = ({ t }) => {
-  const headerVariants: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.25, 1, 0.5, 1] } }
+const ProductSectionHeader: React.FC<{ t: TFunction }> = ({ t }) => {
+  const v: Variants = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.25, 1, 0.5, 1] } },
   };
-
   return (
-    <motion.div
-      className="text-center"
-      variants={headerVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.5 }}
-    >
-      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-text-primary)]">
+    <motion.div className="text-center" variants={v} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.5 }}>
+      <p className="font-heading text-[var(--color-primary)] text-lg mb-2">{t('collections_kicker') || 'Collections'}</p>
+      <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] text-balance">
         {t('products_title')}
       </h2>
-      <p className="text-md sm:text-lg text-[var(--color-text-secondary)] mt-4 max-w-2xl mx-auto">
+      <p className="text-md sm:text-lg text-[var(--color-text-secondary)] mt-4 max-w-2xl mx-auto measure">
         {t('products_subtitle')}
       </p>
     </motion.div>

@@ -137,3 +137,93 @@
   );
   border: 0;
 }
+
+/* ============================================================
+   Premium effects layer — glass, grain, aurora, shimmer, glow
+   All reduced-motion-aware (see the global reduce rule above).
+   ============================================================ */
+
+/* Glassmorphism — purposeful floating layers only (DESIGN.md) */
+.glass {
+  background: hsla(0, 0%, 100%, 0.07);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid hsla(0, 0%, 100%, 0.12);
+}
+:root.dark .glass {
+  background: hsla(0, 0%, 100%, 0.05);
+  border-color: hsla(0, 0%, 100%, 0.10);
+}
+.glass-panel {
+  background: color-mix(in oklab, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid var(--color-border);
+}
+
+/* Film grain — adds tactile warmth over hero imagery */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Aurora — slow drifting gold/navy light, for hero & auth backdrops */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(-8%, -6%, 0) scale(1.1) rotate(0deg); }
+  50%  { transform: translate3d(8%, 6%, 0) scale(1.25) rotate(8deg); }
+  100% { transform: translate3d(-8%, -6%, 0) scale(1.1) rotate(0deg); }
+}
+.aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  filter: blur(60px);
+  background:
+    radial-gradient(40% 40% at 30% 30%, hsla(var(--color-primary-hsl-values), 0.30), transparent 60%),
+    radial-gradient(38% 38% at 72% 64%, color-mix(in oklab, var(--color-secondary) 60%, transparent), transparent 60%);
+  animation: aurora-drift 26s ease-in-out infinite;
+}
+
+/* Shimmer sweep — for skeletons and gold accents */
+@keyframes shimmer-x { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.shimmer {
+  background: linear-gradient(100deg, transparent 30%, hsla(var(--color-primary-hsl-values), 0.18) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer-x 2.4s linear infinite;
+}
+
+/* Gold glow ring on hover (cards, media) */
+.glow-on-hover { transition: box-shadow var(--dur) var(--ease-out-quart), transform var(--dur) var(--ease-out-quart); }
+.glow-on-hover:hover { box-shadow: var(--gold-glow-strong); }
+
+/* Animated scroll-down cue */
+@keyframes scroll-cue { 0%,100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(8px); opacity: 1; } }
+.scroll-cue { animation: scroll-cue 1.8s ease-in-out infinite; }
+
+/* Kinetic underline that draws in (nav already has one; this is for headings/links) */
+.draw-underline {
+  background-image: linear-gradient(var(--color-primary), var(--color-primary));
+  background-size: 0% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--dur) var(--ease-out-quart);
+}
+.draw-underline:hover { background-size: 100% 2px; }
+
+/* Marquee for a moving brand strip */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { display: inline-flex; white-space: nowrap; animation: marquee 32s linear infinite; }
+
+/* Image zoom container */
+.zoom-img { overflow: hidden; }
+.zoom-img img { transition: transform 0.7s var(--ease-out-quart); }
+.zoom-img:hover img { transform: scale(1.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .shimmer, .marquee-track, .scroll-cue { animation: none !important; }
+}

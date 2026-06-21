@@ -56,15 +56,14 @@ const Login: React.FC<LoginProps> = ({ t }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 md:p-6 relative overflow-hidden bg-[var(--color-background)]">
-      {/* Single calm brand wash — not decorative glass, just atmosphere */}
-      <div className="absolute -top-1/4 -end-1/4 w-[60vmax] h-[60vmax] rounded-full pointer-events-none opacity-60"
-        style={{ background: 'radial-gradient(circle, hsla(var(--color-primary-hsl-values),0.10) 0%, transparent 60%)' }} aria-hidden="true" />
+      {/* Drifting brand aurora behind the glass */}
+      <div className="aurora opacity-70" aria-hidden="true" />
 
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-        className="relative w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-2xl)] px-7 py-8 md:px-10 md:py-12"
+        className="relative w-full max-w-md glass-panel rounded-[var(--radius-lg)] shadow-[var(--shadow-2xl)] px-7 py-8 md:px-10 md:py-12"
       >
         <Link to="/" className="absolute top-5 start-5 p-2 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-2)] transition-colors" aria-label={t('product_return_home') || 'Home'}>
           <ArrowLeft size={20} />

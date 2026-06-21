@@ -2,6 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import { sendOrderConfirmation } from './server/email';
 import { verifyIdToken, getDb } from './server/firebaseAdmin';
@@ -13,11 +14,14 @@ const PORT = Number(process.env.PORT) || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+// Server-only Gemini key (no VITE_ prefix → never bundled to the client).
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 cloudinary.config({
   cloud_name: process.env.VITE_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.VITE_CLOUDINARY_API_KEY,
-  api_secret: process.env.VITE_CLOUDINARY_API_SECRET,
+  api_key: process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY,
+  // Secret must stay server-side. Prefer the non-VITE name; fall back for back-compat.
+  api_secret: process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET,
 });
 
 let stripeClient: any = null;
@@ -52,6 +56,7 @@ async function startServer() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+  app.use(compression()); // gzip/br responses
 
   // ---- Security headers (CSP is handled by the meta tag in index.html) ----
   app.use((_req, res, next) => {
@@ -198,6 +203,48 @@ async function startServer() {
     }
   });
 
+  // ---- Translation proxy (Gemini, server-side key) ----
+  app.post('/api/translate', rateLimit(20), async (req: Request, res: Response) => {
+    if (!GEMINI_API_KEY) return res.status(503).json({ error: 'Translation is not configured.' });
+    // Admin-gate when Firebase Admin is available.
+    const adminDb = await getDb();
+    if (adminDb) {
+      const decoded = await verifyIdToken(req.headers.authorization);
+      if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { nameEn = '', nameAr = '', descEn = '', descAr = '' } = req.body || {};
+    try {
+      const { GoogleGenAI, Type } = await import('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      const prompt =
+        `You are a professional translator for a luxury furniture brand. Fill in any missing fields ` +
+        `between English and Arabic, keeping provided fields exactly. Return ONLY JSON.\n` +
+        JSON.stringify({ nameEn, nameAr, descEn, descAr }, null, 2);
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              nameEn: { type: Type.STRING }, nameAr: { type: Type.STRING },
+              descEn: { type: Type.STRING }, descAr: { type: Type.STRING },
+            },
+            required: ['nameEn', 'nameAr', 'descEn', 'descAr'],
+          },
+        },
+      });
+      let text = (response.text || '{}').replace(/```json|```/g, '').trim();
+      const a = text.indexOf('{'); const b = text.lastIndexOf('}');
+      if (a !== -1 && b >= a) text = text.slice(a, b + 1);
+      res.json(JSON.parse(text || '{}'));
+    } catch (e: any) {
+      console.error('[translate] error:', e.message);
+      res.status(500).json({ error: 'Translation failed.' });
+    }
+  });
+
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
   // ---- Vite / static ----
@@ -206,8 +253,17 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req: Request, res: Response) => res.sendFile(path.join(distPath, 'index.html')));
+    // Long-cache fingerprinted assets; never cache the HTML shell.
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache');
+      },
+    }));
+    app.get('*', (_req: Request, res: Response) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
   }
 
   app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));

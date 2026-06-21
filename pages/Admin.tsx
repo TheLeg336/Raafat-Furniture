@@ -8,9 +8,10 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { GoogleGenAI, Type } from '@google/genai';
 import { useCategories } from '../hooks/useCategories';
 import { useSettings } from '../hooks/useSettings';
+import { compressImage as compressImageFile, validateImageFile } from '../lib/imageCompression';
+import { translateProductFields } from '../lib/translate';
 import { Edit, PlusCircle } from 'lucide-react';
 import LogoIcon from '../components/LogoIcon';
 import { LanguageOption, type TFunction, LocalizedString } from '../types';
@@ -80,6 +81,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isTestListing, setIsTestListing] = useState(false);
+  const [materialsStr, setMaterialsStr] = useState('');
+  const [colorsStr, setColorsStr] = useState('');
+  const [dimensions, setDimensions] = useState('');
+  const [customDimensionsEnabled, setCustomDimensionsEnabled] = useState(false);
+  const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { updateSettings } = useSettings();
@@ -346,52 +352,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     }
   };
 
+  // Robust compression (handles oversized source files safely) — see lib/imageCompression.
   const compressImage = (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          // Max dimensions to ensure high quality but low storage
-          const MAX_WIDTH = 1920;
-          const MAX_HEIGHT = 1080;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          // Convert to WebP format with 80% quality (excellent balance of quality and size)
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('Canvas to Blob failed'));
-            }
-          }, 'image/webp', 0.8);
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
+    const problem = validateImageFile(file);
+    if (problem) return Promise.reject(new Error(problem));
+    return compressImageFile(file, { maxEdge: 1920, maxBytes: 340 * 1024, mimeType: 'image/webp' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -437,60 +402,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         finalDescAr = "هذا إدراج تجريبي افتراضي تم إنشاؤه بواسطة مطور للتحقق من النظام.";
       } else if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
         try {
-          const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-          if (!apiKey) {
-            throw new Error("Gemini API Key is not configured. Please add VITE_GEMINI_API_KEY to your environment variables.");
-          }
-          const ai = new GoogleGenAI({ apiKey });
-          const prompt = `You are a professional translator for a luxury furniture brand. 
-          Translate the missing fields between English and Arabic.
-          
-          Rules:
-          1. Return ONLY a valid JSON object.
-          2. Do not include any markdown formatting (no \`\`\`json).
-          3. If a field is already provided, keep it exactly as is.
-          4. If English fields (nameEn, descEn) are missing, translate them from the Arabic fields.
-          5. If Arabic fields (nameAr, descAr) are missing, translate them from the English fields.
-          6. Ensure the translations are elegant and professional.
-          
-          Current Data:
-          ${JSON.stringify({
-            nameEn: finalNameEn,
-            nameAr: finalNameAr,
-            descEn: finalDescEn,
-            descAr: finalDescAr
-          }, null, 2)}`;
-          
-          const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  nameEn: { type: Type.STRING },
-                  nameAr: { type: Type.STRING },
-                  descEn: { type: Type.STRING },
-                  descAr: { type: Type.STRING }
-                },
-                required: ["nameEn", "nameAr", "descEn", "descAr"]
-              }
-            }
+          // Translation runs server-side (keeps the Gemini key off the client).
+          const result = await translateProductFields({
+            nameEn: finalNameEn, nameAr: finalNameAr, descEn: finalDescEn, descAr: finalDescAr,
           });
-          
-          const rawText = response.text || "{}";
-          let cleanText = rawText.replace(/```json|```/g, '').trim();
-          
-          // Extract JSON object if there's extra text
-          const firstBrace = cleanText.indexOf('{');
-          const lastBrace = cleanText.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
-            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-          }
-          
-          const result = JSON.parse(cleanText || "{}");
-          
           finalNameEn = result.nameEn || finalNameEn;
           finalNameAr = result.nameAr || finalNameAr;
           finalDescEn = result.descEn || finalDescEn;
@@ -552,7 +467,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       }
 
       const parsedPrice = price ? parseFloat(price) : null;
-      
+      const variantFields = {
+        materials: splitList(materialsStr),
+        colors: splitList(colorsStr),
+        dimensions: dimensions.trim() || null,
+        customDimensionsEnabled,
+      };
+
       if (editingListing) {
         // Update existing listing
         await updateDoc(doc(db, 'products', editingListing.id), {
@@ -562,6 +483,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           imageUrl: finalImageUrl,
           images: finalImages,
           price: parsedPrice,
+          ...variantFields,
           updatedAt: new Date().toISOString()
         });
 
@@ -575,6 +497,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           imageUrl: finalImageUrl,
           images: finalImages,
           price: parsedPrice,
+          ...variantFields,
           createdAt: new Date().toISOString(),
           archivedAt: null,
           isTest: isTestListing
@@ -586,6 +509,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       // Reset form
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
       setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPrice('');
+      setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
       setIsTestListing(false);
       setIsCreateModalOpen(false);
       setEditingListing(null);
@@ -1068,6 +992,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setDescAr(listing.description.ar);
                         setCategory(listing.categoryKey);
                         setPrice(listing.price?.toString() || '');
+                        setMaterialsStr((listing.materials || []).join(', '));
+                        setColorsStr((listing.colors || []).join(', '));
+                        setDimensions(listing.dimensions || '');
+                        setCustomDimensionsEnabled(!!listing.customDimensionsEnabled);
                         setExistingImages(listing.images || [listing.imageUrl]);
                         setIsCreateModalOpen(true);
                       }}
@@ -1382,6 +1310,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setEditingListing(null);
                   setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
                   setCategory(categories[0]?.id || ''); setPrice(''); setImageFiles([]);
+                  setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
                 }} 
                 className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
               >
@@ -1429,6 +1358,26 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_price')} ({t('admin_optional')})</label>
                   <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_price')} />
                 </div>
+              </div>
+
+              {/* Variants: materials / colours / dimensions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_materials') || 'Materials'} ({t('admin_comma_separated') || 'comma-separated'})</label>
+                  <input type="text" value={materialsStr} onChange={e => setMaterialsStr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Oak, Walnut, Linen" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_colors') || 'Colours'} ({t('admin_comma_separated') || 'comma-separated'})</label>
+                  <input type="text" value={colorsStr} onChange={e => setColorsStr(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="Charcoal, Beige, Navy" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_dimensions') || 'Dimensions'} ({t('admin_optional')})</label>
+                  <input type="text" value={dimensions} onChange={e => setDimensions(e.target.value)} className="w-full bg-transparent border border-[var(--color-secondary)]/10 text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="W 220cm × D 95cm × H 80cm" />
+                </div>
+                <label className="sm:col-span-2 flex items-center gap-3 p-3 rounded-xl border border-[var(--color-secondary)]/10 cursor-pointer">
+                  <input type="checkbox" checked={customDimensionsEnabled} onChange={e => setCustomDimensionsEnabled(e.target.checked)} className="w-4 h-4 accent-[var(--color-primary)]" />
+                  <span className="text-sm text-[var(--color-text-primary)]">{t('admin_allow_custom_dims') || 'Allow customers to request custom dimensions (made to order)'}</span>
+                </label>
               </div>
 
               {isDeveloper && !editingListing && (
@@ -1542,6 +1491,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     setEditingListing(null);
                     setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
                     setCategory(categories[0]?.id || ''); setPrice(''); setImageFiles([]);
+                  setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
                   }} 
                   className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors"
                 >

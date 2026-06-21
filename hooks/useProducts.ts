@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { PRODUCTS as FALLBACK_PRODUCTS } from '../constants';
 import { Product } from '../types';
@@ -16,8 +16,8 @@ export const useProducts = () => {
       return;
     }
 
-    // Fetch products where archivedAt is null
-    const q = query(collection(db, 'products'), where('archivedAt', '==', null));
+    // Active products only; bounded read to protect quota/bandwidth.
+    const q = query(collection(db, 'products'), where('archivedAt', '==', null), limit(300));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedProducts = snapshot.docs.map(doc => ({

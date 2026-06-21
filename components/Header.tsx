@@ -27,6 +27,21 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScroll = React.useRef(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 24);
+      if (!isMenuOpen) setHidden(y > 460 && y > lastScroll.current + 4);
+      lastScroll.current = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isMenuOpen]);
+
   const handleLogoClick = () => {
     setIsMenuOpen(false);
     setIsCartOpen(false);
@@ -97,7 +112,13 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     }
   };
 
-  const headerClass = 'sticky top-0 z-[100] bg-[var(--color-background)] bg-opacity-80 backdrop-blur-xl shadow-sm';
+  const onHome = location.pathname === '/';
+  const overHero = onHome && !scrolled && !isMenuOpen;
+  const headerClass = `sticky top-0 z-[100] transition-[background-color,box-shadow,backdrop-filter] duration-500 ${
+    overHero ? 'bg-transparent' : 'glass-panel shadow-[var(--shadow-md)]'
+  }`;
+  const fg = overHero ? 'text-white' : 'text-[var(--color-text-primary)]';
+  const fgMuted = overHero ? 'text-white/85' : 'text-[var(--color-text-secondary)]';
   const navClass = 'text-lg font-medium tracking-wide font-heading';
 
   const NavLinks: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (
@@ -107,7 +128,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
           <Link 
             to={link.href} 
             onClick={(e) => handleNavClick(e, link.href)} 
-            className={`nav-link text-[var(--color-text-primary)] hover:text-[var(--color-primary)] transition-colors duration-300 ${isMobile ? 'leading-loose' : ''}`}
+            className={`nav-link ${isMobile ? 'text-[var(--color-text-primary)]' : fg} hover:text-[var(--color-primary)] transition-colors duration-300 ${isMobile ? 'leading-loose' : ''}`}
           >
             {t(link.key)}
           </Link>
@@ -120,7 +141,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     <div className={`flex items-center gap-6 ${isMobile ? 'flex-col gap-4' : ''}`}>
       <Link 
         to={user ? (isAdmin ? "/admin" : "/account") : "/login"} 
-        className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+        className="${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
         aria-label={t('aria_account')}
       >
         <UserIcon size={20} />
@@ -128,7 +149,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       {!isMobile && (
         <button
           onClick={() => setIsCartOpen(!isCartOpen)}
-          className="relative text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
+          className="relative ${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
           aria-label={t('cart')}
         >
           <ShoppingBag size={20} />
@@ -150,16 +171,16 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       <div className="flex items-center">
         <motion.button 
           onClick={() => setLanguage(LanguageOption.English)}
-          className={`text-base font-semibold font-heading ${language === LanguageOption.English ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
+          className={`text-base font-semibold font-heading ${language === LanguageOption.English ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >
           {t('lang_toggle_en')}
         </motion.button>
-        <span className="text-[var(--color-text-secondary)] mx-2">/</span>
+        <span className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} mx-2`}>/</span>
         <motion.button 
           onClick={() => setLanguage(LanguageOption.Arabic)}
-          className={`text-base font-semibold font-heading ${language === LanguageOption.Arabic ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]'}`}
+          className={`text-base font-semibold font-heading ${language === LanguageOption.Arabic ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -172,7 +193,11 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   return (
     <>
-      <header ref={ref} className={`${headerClass} transition-colors duration-500 shine-effect ${isShineAnimating ? 'shine-onload' : ''} ${isMenuOpen ? 'bg-transparent shadow-none backdrop-blur-none' : ''}`}>
+      <header
+        ref={ref}
+        style={{ transform: hidden ? 'translateY(-100%)' : 'translateY(0)', transition: 'transform 0.45s cubic-bezier(0.25,1,0.5,1)' }}
+        className={`${headerClass} shine-effect ${isShineAnimating ? 'shine-onload' : ''} ${isMenuOpen ? 'bg-transparent shadow-none backdrop-blur-none' : ''}`}
+      >
         <div className="container mx-auto px-6 py-4">
           {/* Desktop Layout */}
           <div className="hidden md:grid grid-cols-3 items-center">
@@ -180,7 +205,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               <NavLinks />
             </nav>
             
-            <div className="justify-self-center text-[var(--color-text-primary)]">
+            <div className={`justify-self-center ${fg}`}>
                <Link to="/" onClick={handleLogoClick}>
                   <Logo t={t} />
                </Link>
@@ -195,9 +220,9 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
           <div className="md:hidden flex justify-between items-center relative z-50">
             <div className="relative z-50">
               <button 
-                onClick={() => { setIsMenuOpen(!isMenuOpen); setIsCartOpen(false); }} 
-                aria-label={isMenuOpen ? t('aria_close_menu') : t('aria_open_menu')} 
-                className="text-[var(--color-text-primary)] p-2 -ml-2 relative z-50"
+                onClick={() => { setIsMenuOpen(!isMenuOpen); setIsCartOpen(false); }}
+                aria-label={isMenuOpen ? t('aria_close_menu') : t('aria_open_menu')}
+                className={`${fg} p-2 -ml-2 relative z-50`}
               >
                 <motion.div 
                   animate={{ rotate: isMenuOpen ? 180 : 0 }}
@@ -223,7 +248,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               </button>
             </div>
 
-            <div className={`absolute left-1/2 transform -translate-x-1/2 text-[var(--color-text-primary)] z-10 transition-opacity duration-300 ${isMenuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`absolute left-1/2 transform -translate-x-1/2 ${fg} z-10 transition-opacity duration-300 ${isMenuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                <Link to="/" onClick={handleLogoClick}>
                   <Logo t={t} />
                </Link>
@@ -233,7 +258,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               {cartCount > 0 && (
                 <button
                   onClick={() => setIsCartOpen(!isCartOpen)}
-                  className="relative text-[var(--color-text-primary)] p-2 -mr-2"
+                  className={`relative ${fg} p-2 -mr-2`}
                   aria-label={t('cart')}
                 >
                   <ShoppingBag size={24} />

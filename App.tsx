@@ -22,6 +22,7 @@ import { StoreProvider } from './contexts/StoreContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { CookieConsent } from './components/CookieConsent';
+import { SmoothScroll } from './components/SmoothScroll';
 import { initAnalytics, trackPageView } from './lib/analytics';
 import { db } from './lib/firebase';
 
@@ -207,6 +208,7 @@ const AppContent: React.FC = () => {
   return (
     <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
       <a href="#main-content" className="skip-link">{t('skip_to_content') || 'Skip to content'}</a>
+      <SmoothScroll />
       <Routes>
         <Route path="/admin" element={<Admin t={t} language={language} />} />
         <Route path="/admin/orders" element={<AdminOrders t={t} />} />
