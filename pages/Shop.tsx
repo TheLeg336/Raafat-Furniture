@@ -28,7 +28,10 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [selectedColor, setSelectedColor] = useState<string>('all');
 
-  const MOCK_COLORS = ['black', 'white', 'brown', 'grey', 'beige', 'blue'];
+  const availableColors = useMemo(
+    () => Array.from(new Set(products.flatMap(p => p.colors || []))).slice(0, 12),
+    [products],
+  );
 
   const getCategoryObj = (catId: string | null) => {
     if (!catId) return null;
@@ -248,7 +251,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           >
                             All
                           </button>
-                          {MOCK_COLORS.map(color => (
+                          {availableColors.map(color => (
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
@@ -405,7 +408,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           >
                             All
                           </button>
-                          {MOCK_COLORS.map(color => (
+                          {availableColors.map(color => (
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
@@ -542,7 +545,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           >
                             All
                           </button>
-                          {MOCK_COLORS.map(color => (
+                          {availableColors.map(color => (
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
@@ -691,7 +694,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         >
                           All
                         </button>
-                        {MOCK_COLORS.map(color => (
+                        {availableColors.map(color => (
                           <button
                             key={color}
                             onClick={() => setSelectedColor(color)}

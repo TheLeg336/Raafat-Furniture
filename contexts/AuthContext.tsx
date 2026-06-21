@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 
 interface AuthContextType {
@@ -64,36 +64,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsDeveloper(currentDeveloperStatus);
 
             if (!currentAdminStatus) {
-              // Save non-admin emails to a single list for marketing/personalization
-              // Do this asynchronously so it doesn't block the UI or state updates
+              // Ensure every customer has a profile document. One doc per user
+              // (scalable — admins list the `users` collection) instead of an
+              // ever-growing array on a single doc.
               try {
-                await updateDoc(doc(db, 'users', 'all_users_list'), {
-                  users: arrayUnion({
-                    email: currentUser.email,
-                    uid: currentUser.uid,
-                    firstName: fName,
-                    lastName: lName,
-                    joinedAt: new Date().toISOString()
-                  })
-                });
-              } catch (error: any) {
-                if (error.code === 'not-found') {
-                  try {
-                    await setDoc(doc(db, 'users', 'all_users_list'), {
-                      users: [{
-                        email: currentUser.email,
-                        uid: currentUser.uid,
-                        firstName: fName,
-                        lastName: lName,
-                        joinedAt: new Date().toISOString()
-                      }]
-                    });
-                  } catch (innerError) {
-                    console.error("Failed to create all_users_list:", innerError);
-                  }
-                } else {
-                  console.error("Failed to update all_users_list:", error);
-                }
+                await setDoc(
+                  doc(db, 'users', currentUser.uid),
+                  { email: currentUser.email, lastSeenAt: new Date().toISOString() },
+                  { merge: true },
+                );
+              } catch (error) {
+                console.error('Failed to upsert user profile:', error);
               }
             }
           } catch (error) {
