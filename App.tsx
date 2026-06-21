@@ -12,9 +12,17 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import UserAccount from './pages/UserAccount';
 import Onboarding from './pages/Onboarding';
+import Checkout from './pages/Checkout';
+import OrderConfirmation from './pages/OrderConfirmation';
+import Legal from './pages/Legal';
+import AdminOrders from './pages/AdminOrders';
+import AdminScans from './pages/AdminScans';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StoreProvider } from './contexts/StoreContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/ui/Toast';
+import { CookieConsent } from './components/CookieConsent';
+import { initAnalytics, trackPageView } from './lib/analytics';
 import { db } from './lib/firebase';
 
 type ThemeMode = 'light' | 'dark';
@@ -143,6 +151,9 @@ const AppContent: React.FC = () => {
     root.style.setProperty('--color-success', scheme.success);
     root.style.backgroundColor = scheme.background;
     root.style.color = scheme.textPrimary;
+    // Expose theme as a class so CSS token overrides (styles/theme.css) apply.
+    root.classList.toggle('dark', themeMode === 'dark');
+    root.setAttribute('data-theme', themeMode);
   }, [colorScheme, themeMode]);
 
   useEffect(() => {
@@ -159,7 +170,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('language', language);
     document.documentElement.lang = language;
-    document.documentElement.dir = 'ltr';
+    document.documentElement.dir = language === LanguageOption.Arabic ? 'rtl' : 'ltr';
 
     setIsShineAnimating(false);
     const timer = setTimeout(() => {
@@ -167,6 +178,10 @@ const AppContent: React.FC = () => {
     }, 10);
     return () => clearTimeout(timer);
   }, [language]);
+
+  // Analytics: init once (consent-gated), then track route changes.
+  useEffect(() => { initAnalytics(); }, []);
+  useEffect(() => { trackPageView(location.pathname + location.search); }, [location.pathname, location.search]);
   
   const t: TFunction = useCallback((key: string): string => {
     let text;
@@ -191,8 +206,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
+      <a href="#main-content" className="skip-link">{t('skip_to_content') || 'Skip to content'}</a>
       <Routes>
         <Route path="/admin" element={<Admin t={t} language={language} />} />
+        <Route path="/admin/orders" element={<AdminOrders t={t} />} />
+        <Route path="/admin/scans" element={<AdminScans t={t} />} />
         <Route path="/login" element={<Login t={t} />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/account" element={<UserAccount t={t} />} />
@@ -207,14 +225,17 @@ const AppContent: React.FC = () => {
               themeMode={themeMode}
               setThemeMode={setThemeMode}
             />
-            <div className="flex-grow">
+            <main id="main-content" className="flex-grow">
               <Routes>
                 <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
                 <Route path="/shop" element={<Shop t={t} />} />
                 <Route path="/product/:id" element={<ProductDetails t={t} />} />
+                <Route path="/checkout" element={<Checkout t={t} />} />
+                <Route path="/order/confirmation" element={<OrderConfirmation t={t} />} />
+                <Route path="/legal/:slug" element={<Legal t={t} />} />
               </Routes>
-            </div>
-            <Footer 
+            </main>
+            <Footer
               t={t}
             />
             <CartDrawer t={t} />
@@ -222,6 +243,7 @@ const AppContent: React.FC = () => {
           </>
         } />
       </Routes>
+      <CookieConsent t={t} />
     </div>
   );
 };
@@ -231,9 +253,11 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <AuthProvider>
         <StoreProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <ToastProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </ToastProvider>
         </StoreProvider>
       </AuthProvider>
     </ErrorBoundary>

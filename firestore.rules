@@ -131,6 +131,48 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---------------------------------------------------------------
+    // Orders
+    // ---------------------------------------------------------------
+    function isValidOrder(d) {
+      return d.keys().hasAll(['orderNumber', 'items', 'total', 'contact', 'status', 'fulfillment', 'paymentMethod']) &&
+             d.orderNumber is string && d.orderNumber.size() <= 32 &&
+             d.items is list && d.items.size() > 0 && d.items.size() <= 100 &&
+             d.total is number && d.total >= 0 &&
+             d.contact.email is string && isValidEmail(d.contact.email) &&
+             d.contact.fullName is string && d.contact.fullName.size() <= 120 &&
+             // a logged-in customer may only create their own order; guests use null
+             (!('userId' in d) || d.userId == null || d.userId == request.auth.uid);
+    }
+
+    match /orders/{orderId} {
+      // Owner or admin can read. Guest orders (userId == null) are readable by
+      // anyone holding the random order number (it is the access secret).
+      // NOTE: tighten to a Cloud Function lookup before production to prevent
+      // enumeration of guest contact details. See REWORK_PLAN.md.
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.userId == request.auth.uid)
+                  || resource.data.userId == null;
+
+      // Customers/guests create orders; payment & status are server/admin-trusted.
+      allow create: if isValidOrder(request.resource.data)
+                    && request.resource.data.paymentStatus == 'unpaid';
+
+      // Only admins change order/payment status (or the Stripe webhook via Admin SDK,
+      // which bypasses these rules).
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // 3D scan jobs (admin tooling)
+    // ---------------------------------------------------------------
+    match /scans/{scanId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isDeveloper();
+    }
+
     // Default deny
     match /{path=**} {
       allow read, write: if false;

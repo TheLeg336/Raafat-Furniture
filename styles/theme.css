@@ -1,0 +1,139 @@
+/* ============================================================
+   Raafat Furniture — Design Tokens  ("The Gilded Atelier")
+   Layered ON TOP of the per-theme --color-* vars that App.tsx
+   / index.html inject. Theme-variant tokens key off :root.dark.
+   See DESIGN.md for the normative system.
+   ============================================================ */
+
+:root {
+  /* Radii — soft rounded-luxe */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+  --radius-pill: 9999px;
+
+  /* Semantic colors (layered on injected --color-*) */
+  --color-ink-on-gold: #14213d;          /* navy — text on gold, BOTH themes (AA-safe) */
+  --color-surface: #ffffff;              /* elevated panel ground */
+  --color-surface-2: #f6f7f9;            /* subtle inset ground */
+  --color-border: rgba(20, 33, 61, 0.12);
+  --color-border-strong: rgba(20, 33, 61, 0.22);
+  --color-danger: #b3402e;
+  --color-danger-bg: rgba(179, 64, 46, 0.08);
+  --color-overlay: rgba(10, 16, 32, 0.55);
+
+  /* Elevation — neutral for structure, gold glow for accents */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.12);
+  --shadow-2xl: 0 28px 64px rgba(0, 0, 0, 0.22);
+  --gold-glow: 0 10px 22px hsla(var(--color-primary-hsl-values), 0.22);
+  --gold-glow-strong: 0 14px 30px hsla(var(--color-primary-hsl-values), 0.34);
+
+  /* Motion */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --dur-fast: 160ms;
+  --dur: 280ms;
+  --dur-slow: 500ms;
+
+  /* Semantic z-index scale (never use arbitrary 999/9999) */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-drawer-backdrop: 1200;
+  --z-drawer: 1300;
+  --z-modal-backdrop: 1400;
+  --z-modal: 1500;
+  --z-toast: 1600;
+  --z-tooltip: 1700;
+
+  /* Layout */
+  --container-max: 1280px;
+  --header-height: 72px;
+}
+
+:root.dark {
+  --color-surface: #232b3a;
+  --color-surface-2: #1e2530;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-danger: #ff7a6e;
+  --color-danger-bg: rgba(255, 122, 110, 0.12);
+  --color-overlay: rgba(0, 0, 0, 0.62);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.45);
+  --shadow-2xl: 0 28px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- Base accessibility & polish ---- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+/* Don't show the ring for mouse users who don't get :focus-visible */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: hsla(var(--color-primary-hsl-values), 0.28);
+  color: var(--color-text-primary);
+}
+
+/* Skip-to-content link */
+.skip-link {
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%) translateY(-160%);
+  z-index: var(--z-tooltip);
+  background: var(--color-primary);
+  color: var(--color-ink-on-gold);
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--dur) var(--ease-out-quart);
+}
+.skip-link:focus {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Respect reduced motion globally as a safety net.
+   Components still ship explicit reduced-motion alternatives. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Utility: clamp prose measure */
+.measure {
+  max-width: 68ch;
+}
+
+/* Utility: hairline divider in brand voice */
+.rule-gold {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsla(var(--color-primary-hsl-values), 0.5),
+    transparent
+  );
+  border: 0;
+}

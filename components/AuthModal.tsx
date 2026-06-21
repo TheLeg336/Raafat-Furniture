@@ -55,7 +55,7 @@ export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
                     setShowAuthModal(false);
                     navigate('/login');
                   }}
-                  className="w-full py-3 px-6 bg-[var(--color-primary)] text-white rounded-full font-bold hover:bg-[var(--color-primary)]/90 transition-all shadow-lg shadow-[var(--color-primary)]/20"
+                  className="w-full py-3 px-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-bold hover:brightness-105 transition-all shadow-[var(--gold-glow)]"
                 >
                   {t('sign_in') || 'Sign In'}
                 </button>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import type { TFunction } from '../types';
+import { openCookieSettings } from './CookieConsent';
 
 interface FooterProps {
     t: TFunction;
@@ -90,13 +92,19 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                     </motion.div>
                 </div>
 
-                <motion.div 
-                    variants={itemVariants} 
-                    className="text-center text-sm text-[var(--color-text-secondary)] mt-16 pt-8 border-t border-[var(--color-secondary)]/30 flex flex-col sm:flex-row justify-between items-center gap-4"
+                <motion.div
+                    variants={itemVariants}
+                    className="mt-16 pt-8 border-t border-[var(--color-background)]/20 flex flex-col sm:flex-row justify-between items-center gap-5 text-sm"
                 >
-                    <p>
+                    <p className="opacity-70 order-2 sm:order-1">
                         {t('footer_copyright')}
                     </p>
+                    <nav className="order-1 sm:order-2 flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label={t('legal') || 'Legal'}>
+                        <Link to="/legal/privacy" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('privacy_policy') || 'Privacy Policy'}</Link>
+                        <Link to="/legal/cookies" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_policy') || 'Cookie Policy'}</Link>
+                        <Link to="/legal/terms" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('terms') || 'Terms'}</Link>
+                        <button onClick={openCookieSettings} className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_settings') || 'Cookie settings'}</button>
+                    </nav>
                 </motion.div>
             </motion.div>
         </footer>

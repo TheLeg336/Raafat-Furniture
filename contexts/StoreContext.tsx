@@ -32,7 +32,7 @@ export interface FirestoreErrorInfo {
 }
 
 export interface CartItem {
-  id: string; // unique id for the cart item (productId + color + material)
+  id: string; // unique id for the cart item (productId + color + material + dims)
   productId: string | number;
   name: string;
   price?: number;
@@ -40,6 +40,7 @@ export interface CartItem {
   quantity: number;
   color?: string;
   material?: string;
+  customDimensions?: string;
 }
 
 interface StoreContextType {
@@ -53,6 +54,7 @@ interface StoreContextType {
   moveToCart: (id: string) => void;
   removeFromSavedForLater: (id: string) => void;
   toggleWishlist: (productId: string | number) => void;
+  clearCart: () => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   showAuthModal: boolean;
@@ -281,6 +283,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (sanitized.color === undefined) delete sanitized.color;
       if (sanitized.material === undefined) delete sanitized.material;
       if (sanitized.price === undefined) delete sanitized.price;
+      if (sanitized.customDimensions === undefined) delete sanitized.customDimensions;
       return sanitized;
     };
 
@@ -304,7 +307,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
     console.log("Adding to cart:", item.name);
-    const id = `${item.productId}-${item.color || 'default'}-${item.material || 'default'}`;
+    const id = `${item.productId}-${item.color || 'default'}-${item.material || 'default'}-${item.customDimensions || ''}`;
     const existingItem = cart.find(c => c.id === id);
     if (existingItem) {
       setCart(cart.map(c => c.id === id ? { ...c, quantity: c.quantity + item.quantity } : c));
@@ -348,6 +351,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSavedForLater(savedForLater.filter(c => c.id !== id));
   };
 
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const toggleWishlist = (productId: string | number) => {
     if (!user) {
       setShowAuthModal(true);
@@ -373,6 +380,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       moveToCart,
       removeFromSavedForLater,
       toggleWishlist,
+      clearCart,
       isCartOpen,
       setIsCartOpen,
       showAuthModal,

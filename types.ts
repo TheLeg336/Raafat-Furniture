@@ -58,6 +58,139 @@ export interface Product {
   dimensions?: string;
   materials?: string[];
   colors?: string[];
+  model3d?: Model3D;              // optional 3D / AR model
+  customDimensionsEnabled?: boolean; // allow user-entered custom dimensions
 }
 
 export type TFunction = (key: string) => string;
+
+// ============================================================
+//  3D / AR models
+// ============================================================
+
+export interface ModelVariant {
+  id: string;
+  label: LocalizedString | string;   // e.g. "Walnut", "Charcoal Linen"
+  swatch?: string;                   // hex colour or small image URL for the chip
+  gltfVariant?: string;              // name of a glTF material variant baked into the GLB
+  materialName?: string;             // target material in the GLB (for programmatic override)
+  colorHex?: string;                 // base-colour-factor override (#RRGGBB)
+  textureUrl?: string;              // optional base-colour texture override
+  roughness?: number;
+  metalness?: number;
+}
+
+export interface Model3D {
+  url: string;                       // GLB / glTF (required)
+  iosUrl?: string;                   // USDZ for iOS Quick Look AR
+  poster?: string;                   // poster image while loading
+  alt?: string;
+  variants?: ModelVariant[];
+  // real-world size so AR places the object at accurate scale
+  dimensions?: { width?: number; height?: number; depth?: number; unit?: 'm' | 'cm' };
+  createdVia?: 'upload' | 'scan';
+  scanId?: string;
+}
+
+// ============================================================
+//  Guided photogrammetry scan jobs
+// ============================================================
+
+export type ScanStatus =
+  | 'capturing'
+  | 'uploading'
+  | 'queued'
+  | 'processing'
+  | 'ready'
+  | 'failed';
+
+export interface ScanJob {
+  id: string;
+  createdBy: string;                 // admin email/uid
+  status: ScanStatus;
+  frameCount: number;
+  frameUrls?: string[];
+  realDimensions?: { width?: number; height?: number; depth?: number; unit?: 'm' | 'cm' };
+  modelUrl?: string;                 // populated once reconstruction completes
+  productId?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
+//  Orders
+// ============================================================
+
+export type FulfillmentType = 'pickup' | 'shipping' | 'custom';
+
+export type OrderStatus =
+  | 'pending_payment'
+  | 'paid'
+  | 'confirmed'
+  | 'in_production'
+  | 'ready'
+  | 'shipped'
+  | 'completed'
+  | 'cancelled'
+  | 'refunded';
+
+export type PaymentMethod =
+  | 'stripe'
+  | 'cash_on_pickup'
+  | 'cash_on_delivery'
+  | 'bank_transfer';
+
+export type PaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'partially_refunded';
+
+export interface OrderItem {
+  productId: string;
+  name: LocalizedString | string;
+  imageUrl?: string;
+  price: number;          // unit price at time of order
+  quantity: number;
+  color?: string;
+  material?: string;
+  customDimensions?: string;
+}
+
+export interface OrderContact {
+  fullName: string;
+  phone: string;
+  email: string;
+  line1?: string;
+  city?: string;
+  governorate?: string;
+  country?: string;
+  postalCode?: string;
+}
+
+export interface OrderStatusEvent {
+  status: OrderStatus;
+  at: string;             // ISO
+  by?: string;            // admin email or 'system'
+  note?: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;    // human-readable, e.g. RF-7K3M9Q
+  userId?: string | null; // null/undefined for guest checkout
+  items: OrderItem[];
+  currency: string;
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  fulfillment: FulfillmentType;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  statusHistory: OrderStatusEvent[];
+  contact: OrderContact;
+  customerNote?: string;
+  adminNotes?: string;
+  stripe?: { sessionId?: string; paymentIntentId?: string };
+  createdAt: string;
+  updatedAt: string;
+}

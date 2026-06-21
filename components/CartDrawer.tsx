@@ -4,6 +4,7 @@ import { X, Trash2, Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useStore } from '../contexts/StoreContext';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../hooks/useProducts';
+import { formatMoney } from '../lib/format';
 
 export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   const { 
@@ -103,7 +104,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                         setIsCartOpen(false);
                         navigate('/#shop');
                       }}
-                      className="mt-6 px-6 py-2 bg-[var(--color-primary)] text-white rounded-full font-medium"
+                      className="mt-6 px-6 py-2 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-medium"
                     >
                       {t('continue_shopping') || 'Continue Shopping'}
                     </button>
@@ -130,12 +131,13 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                                   {synced.name}
                                 </button>
                                 <span className="font-bold text-[var(--color-primary)]">
-                                  {synced.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(synced.price) : t('price_on_request')}
+                                  {synced.price ? formatMoney(synced.price) : t('price_on_request')}
                                 </span>
                               </div>
-                              <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex gap-2">
-                                {item.color && <span>Color: {item.color}</span>}
-                                {item.material && <span>Material: {item.material}</span>}
+                              <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex flex-wrap gap-x-2">
+                                {item.color && <span>{t('color') || 'Color'}: {item.color}</span>}
+                                {item.material && <span>{t('material') || 'Material'}: {item.material}</span>}
+                                {item.customDimensions && <span className="w-full">{t('dimensions') || 'Dimensions'}: {item.customDimensions}</span>}
                               </div>
                             </div>
                             <div className="flex items-center justify-between mt-2">
@@ -200,7 +202,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                                 {synced.name}
                               </button>
                               <span className="font-bold text-sm">
-                                {synced.price ? new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(synced.price) : t('price_on_request')}
+                                {synced.price ? formatMoney(synced.price) : t('price_on_request')}
                               </span>
                             </div>
                             <div className="flex items-center justify-between mt-1">
@@ -231,7 +233,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
               <div className="p-6 bg-[var(--color-secondary)]/5 border-t border-[var(--color-primary)]/10">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[var(--color-text-secondary)]">{t('subtotal') || 'Subtotal'}</span>
-                  <span className="text-2xl font-bold">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</span>
+                  <span className="text-2xl font-bold">{formatMoney(subtotal)}</span>
                 </div>
                 <p className="text-xs text-[var(--color-text-secondary)] mb-6">
                   {t('shipping_taxes_calculated') || 'Shipping and taxes calculated at checkout.'}
@@ -242,7 +244,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                       setIsCartOpen(false);
                       navigate('/checkout');
                     }}
-                    className="w-full py-4 bg-[var(--color-primary)] text-white rounded-full font-bold text-lg flex items-center justify-center gap-2 hover:bg-[var(--color-primary)]/90 transition-colors shadow-lg shadow-[var(--color-primary)]/20"
+                    className="w-full py-4 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-bold text-lg flex items-center justify-center gap-2 hover:brightness-105 transition-all shadow-[var(--gold-glow)]"
                   >
                     {t('checkout') || 'Checkout'}
                     <ArrowRight size={20} />

@@ -136,7 +136,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                   relative flex items-center justify-center origin-center overflow-hidden rounded-full
                   ${isSearchVisible 
                     ? 'w-full max-w-lg h-14 search-gloss backdrop-blur-lg shadow-lg' 
-                    : 'h-14 px-10 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
+                    : 'h-14 px-10 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] hover:brightness-105 shine-effect cursor-pointer'}
                 `}
                 transition={{ 
                   layout: { type: "spring", stiffness: 300, damping: 35, mass: 0.8 },
@@ -146,7 +146,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                 <div className="relative w-full h-full flex items-center justify-center">
                     {/* Explore Text */}
                     <motion.span
-                        className="font-bold text-white whitespace-nowrap uppercase tracking-widest text-sm"
+                        className="font-bold text-[var(--color-ink-on-gold)] whitespace-nowrap uppercase tracking-widest text-sm"
                         animate={{ opacity: isSearchVisible ? 0 : 1 }}
                         transition={{ duration: 0.15 }}
                     >
