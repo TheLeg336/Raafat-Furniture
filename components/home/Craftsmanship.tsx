@@ -28,7 +28,6 @@ const Craftsmanship: React.FC<{ t: TFunction }> = ({ t }) => {
 
         <div>
           <Reveal>
-            <p className="font-heading text-[var(--color-primary)] text-lg mb-3">{t('craft_kicker') || 'Our craft'}</p>
             <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight text-balance mb-6">
               {t('craft_title') || 'Made by hand, made to last'}
             </h2>

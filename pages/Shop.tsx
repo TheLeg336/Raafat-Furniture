@@ -238,7 +238,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => setSelectedColor('all')}
-                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                           >
                             All
                           </button>
@@ -246,7 +246,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
-                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                             >
                               {color}
                             </button>
@@ -395,7 +395,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => setSelectedColor('all')}
-                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                           >
                             All
                           </button>
@@ -403,7 +403,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
-                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                             >
                               {color}
                             </button>
@@ -469,7 +469,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             setSelectedColor('all');
                             setPriceRange([0, 10000]);
                           }}
-                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-primary)]/5 transition-colors"
+                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-2)] transition-colors"
                         >
                           Reset All Filters
                         </button>
@@ -532,7 +532,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => setSelectedColor('all')}
-                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                           >
                             All
                           </button>
@@ -540,7 +540,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             <button
                               key={color}
                               onClick={() => setSelectedColor(color)}
-                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                             >
                               {color}
                             </button>
@@ -606,7 +606,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             setSelectedColor('all');
                             setPriceRange([0, 10000]);
                           }}
-                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-primary)]/5 transition-colors"
+                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-2)] transition-colors"
                         >
                           Reset All Filters
                         </button>
@@ -681,7 +681,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       <div className="grid grid-cols-3 gap-2">
                         <button
                           onClick={() => setSelectedColor('all')}
-                          className={`px-2 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                          className={`px-2 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                         >
                           All
                         </button>
@@ -689,7 +689,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           <button
                             key={color}
                             onClick={() => setSelectedColor(color)}
-                            className={`px-2 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-secondary)]/20 text-[var(--color-text-secondary)] hover:border-[var(--color-primary)]'}`}
+                            className={`px-2 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
                           >
                             {color}
                           </button>
@@ -757,7 +757,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           setSelectedColor('all');
                           setPriceRange([0, 10000]);
                         }}
-                        className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-xl hover:bg-[var(--color-primary)]/5 transition-colors"
+                        className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-2)] transition-colors"
                       >
                         Reset All Filters
                       </button>

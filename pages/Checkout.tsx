@@ -112,7 +112,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
             <div className="grid sm:grid-cols-3 gap-3">
               {fulfillmentOptions.map((o) => (
                 <button type="button" key={o.id} onClick={() => setFulfillment(o.id)}
-                  className={`text-start p-4 rounded-[var(--radius-md)] border-2 transition-colors ${fulfillment === o.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
+                  className={`text-start p-4 rounded-[var(--radius-md)] border-2 transition-colors ${fulfillment === o.id ? 'border-[var(--color-text-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
                   <span className="text-[var(--color-primary)]">{o.icon}</span>
                   <span className="block font-semibold mt-2">{o.label}</span>
                   <span className="block text-xs text-[var(--color-text-secondary)] mt-0.5">{o.desc}</span>
@@ -151,7 +151,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
             <div className="grid sm:grid-cols-2 gap-3">
               {paymentOptions.filter((o) => o.show).map((o) => (
                 <button type="button" key={o.id} onClick={() => setPayment(o.id)}
-                  className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border-2 transition-colors ${payment === o.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
+                  className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border-2 transition-colors ${payment === o.id ? 'border-[var(--color-text-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
                   <span className="text-[var(--color-primary)]">{o.icon}</span>
                   <span className="font-semibold">{o.label}</span>
                 </button>

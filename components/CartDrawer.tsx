@@ -141,7 +141,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                               </div>
                             </div>
                             <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center border border-[var(--color-primary)]/20 rounded-full">
+                              <div className="flex items-center border border-[var(--color-border)] rounded-full">
                                 <button 
                                   onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                                   className="w-8 h-8 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"

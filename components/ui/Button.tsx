@@ -41,8 +41,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-[var(--gold-glow)] ' +
         'hover:shadow-[var(--gold-glow-strong)] hover:brightness-[1.03]',
       secondary:
-        'bg-transparent text-[var(--color-primary)] border-2 border-[var(--color-primary)] ' +
-        'hover:bg-[hsla(var(--color-primary-hsl-values),0.06)]',
+        'bg-[var(--color-surface-2)] text-[var(--color-text-primary)] border border-[var(--color-border)] ' +
+        'hover:bg-[var(--color-surface)] hover:border-[var(--color-border-strong)]',
       ghost:
         'bg-transparent text-[var(--color-text-primary)] ' +
         'hover:bg-[var(--color-surface-2)]',

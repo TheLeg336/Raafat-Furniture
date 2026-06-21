@@ -1,138 +1,215 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
-import { type TFunction } from '../types';
-import { Button } from '../components/ui/Button';
-import { useToast } from '../components/ui/Toast';
-import { PageSpinner } from '../components/ui/Spinner';
+import { Mail, Lock, User as UserIcon, ArrowLeft } from 'lucide-react';
 
-interface LoginProps { t: TFunction; }
+import { type TFunction } from '../types';
+
+interface LoginProps {
+  t: TFunction;
+}
 
 const Login: React.FC<LoginProps> = ({ t }) => {
   const { user, isAdmin, loading, loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const toast = useToast();
-
-  const [isSignUp, setIsSignUp] = useState(params.get('signup') === 'true' || sessionStorage.getItem('isSignUp') === 'true');
+  const [isSignUp, setIsSignUp] = useState(() => {
+    return sessionStorage.getItem('isSignUp') === 'true';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => { sessionStorage.setItem('isSignUp', String(isSignUp)); }, [isSignUp]);
   useEffect(() => {
-    if (!loading && user) navigate(isAdmin ? '/admin' : '/');
+    sessionStorage.setItem('isSignUp', isSignUp.toString());
+  }, [isSignUp]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    }
   }, [user, isAdmin, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (isSignUp && password.length < 6) { setError(t('password_too_short') || 'Password must be at least 6 characters.'); return; }
-    setSubmitting(true);
+    setIsSubmitting(true);
     try {
-      if (isSignUp) await signupWithEmail(email, password);
-      else await loginWithEmail(email, password);
+      if (isSignUp) {
+        await signupWithEmail(email, password);
+      } else {
+        await loginWithEmail(email, password);
+      }
     } catch (err: any) {
-      const msg = friendlyAuthError(err?.code) || err?.message || 'Authentication failed.';
-      setError(msg);
+      console.error(err);
+      setError(err.message || 'An error occurred during authentication.');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogle = async () => {
+  const handleGoogleLogin = async () => {
     setError('');
-    try { await loginWithGoogle(); }
-    catch (err: any) { toast.error(friendlyAuthError(err?.code) || 'Google sign-in failed.'); }
+    try {
+      await loginWithGoogle();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An error occurred with Google Sign-In.');
+    }
   };
 
-  if (loading || user) return <PageSpinner />;
-
-  const fieldCls =
-    'w-full ps-11 pe-4 py-3 bg-transparent text-[var(--color-text-primary)] border border-[var(--color-border-strong)] rounded-[var(--radius-md)] outline-none transition-[box-shadow,border-color] focus:border-transparent focus:shadow-[0_0_0_2px_var(--color-primary)] placeholder:text-[var(--color-text-secondary)]';
+  if (loading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-6 relative overflow-hidden bg-[var(--color-background)]">
-      {/* Drifting brand aurora behind the glass */}
-      <div className="aurora opacity-70" aria-hidden="true" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-background)] p-4 md:p-6 relative overflow-hidden">
+      {/* Liquid Glass Background Blobs */}
+      <motion.div 
+        animate={{
+          x: [0, 50, 0],
+          y: [0, 30, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute top-[-5%] left-[-5%] w-[80%] md:w-[40%] h-[50%] md:h-[40%] bg-[var(--color-primary)] opacity-30 md:opacity-20 rounded-full blur-[60px] md:blur-[100px] z-0"
+      />
+      <motion.div 
+        animate={{
+          x: [0, -40, 0],
+          y: [0, 60, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute bottom-[-5%] right-[-5%] w-[90%] md:w-[45%] h-[60%] md:h-[45%] bg-[var(--color-primary)] opacity-25 md:opacity-15 rounded-full blur-[60px] md:blur-[100px] z-0"
+      />
+      <motion.div 
+        animate={{
+          x: [0, 30, 0],
+          y: [0, -50, 0],
+          scale: [1, 1.3, 1],
+        }}
+        transition={{
+          duration: 18,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="absolute top-[20%] right-[5%] w-[70%] md:w-[30%] h-[40%] md:h-[30%] bg-[var(--color-secondary)] opacity-20 md:opacity-10 rounded-full blur-[50px] md:blur-[80px] z-0"
+      />
 
-      <motion.div
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-        className="relative w-full max-w-md glass-panel rounded-[var(--radius-lg)] shadow-[var(--shadow-2xl)] px-7 py-8 md:px-10 md:py-12"
-      >
-        <Link to="/" className="absolute top-5 start-5 p-2 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-2)] transition-colors" aria-label={t('product_return_home') || 'Home'}>
-          <ArrowLeft size={20} />
-        </Link>
+      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 px-6 md:px-10 py-6 md:py-12 rounded-3xl shadow-2xl max-w-md w-full text-center relative z-10">
+        <button 
+          onClick={() => navigate(-1)}
+          className="absolute top-4 start-4 md:top-6 md:start-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
+          title="Go Back"
+        >
+          <span className="block"><ArrowLeft size={20} /></span>
+        </button>
 
-        <div className="text-center mb-8">
-          <div className="font-heading text-2xl tracking-wide text-[var(--color-secondary)] dark:text-[var(--color-primary)]">RAAFAT</div>
-          <div className="h-0.5 w-10 bg-[var(--color-primary)] mx-auto mt-2 mb-6 rounded-full" />
-          <h1 className="font-heading text-3xl font-bold text-balance">
-            {isSignUp ? (t('login_create_account') || 'Create your account') : (t('login_welcome_back') || 'Welcome back')}
+        <div className="relative z-10">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-[var(--color-primary)]/20 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-3 md:mb-6 shadow-lg shadow-[var(--color-primary)]/20">
+            <UserIcon size={24} className="md:w-8 md:h-8" />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2 text-[var(--color-text-primary)]">
+            {isSignUp ? t('login_create_account') : t('login_welcome_back')}
           </h1>
-          <p className="text-[var(--color-text-secondary)] mt-2">
-            {isSignUp ? (t('login_signup_desc') || 'Save your wishlist and track orders.') : (t('login_signin_desc') || 'Sign in to continue.')}
+          <p className="text-[var(--color-text-secondary)] text-sm md:text-base mb-4 md:mb-8">
+            {isSignUp ? t('login_signup_desc') : t('login_signin_desc')}
+          </p>
+
+          {error && (
+            <div className="mb-3 md:mb-6 p-2 md:p-3 bg-red-500/10 border border-red-500/50 text-red-500 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4 mb-4 md:mb-6">
+            <div className="relative">
+              <div className="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
+                <Mail size={18} className="text-[var(--color-text-secondary)]" />
+              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
+                placeholder={t('login_email')}
+              />
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none">
+                <Lock size={18} className="text-[var(--color-text-secondary)]" />
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full ps-10 pe-4 py-2.5 md:py-3 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
+                placeholder={t('login_password')}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 md:py-3 px-4 bg-[var(--color-primary)] text-white rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center"
+            >
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                isSignUp ? t('login_btn_create') : t('login_btn_signin')
+              )}
+            </button>
+          </form>
+
+          <div className="flex items-center gap-4 mb-4 md:mb-6">
+            <div className="flex-1 border-t border-[var(--color-secondary)]/30"></div>
+            <span className="text-[var(--color-text-secondary)] text-xs md:text-sm font-medium">{t('login_or_continue')}</span>
+            <div className="flex-1 border-t border-[var(--color-secondary)]/30"></div>
+          </div>
+
+          <button
+            onClick={handleGoogleLogin}
+            type="button"
+            className="w-full py-2.5 md:py-3 px-4 bg-transparent border border-[var(--color-secondary)]/30 rounded-xl text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-text-primary)]/5 transition-colors flex items-center justify-center gap-3 mb-4 md:mb-6"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+            {t('login_google')}
+          </button>
+
+          <p className="text-[var(--color-text-secondary)] text-xs md:text-sm">
+            {isSignUp ? (
+              <button onClick={() => setIsSignUp(false)} className="text-[var(--color-primary)] hover:underline font-medium">
+                {t('login_already_have')}
+              </button>
+            ) : (
+              <button onClick={() => setIsSignUp(true)} className="text-[var(--color-primary)] hover:underline font-medium">
+                {t('login_dont_have')}
+              </button>
+            )}
           </p>
         </div>
-
-        {error && (
-          <div className="mb-5 p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger)] text-[var(--color-danger)] rounded-[var(--radius-md)] text-sm" role="alert">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-5">
-          <div className="relative">
-            <Mail size={18} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] pointer-events-none" />
-            <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} placeholder={t('login_email') || 'Email'} aria-label={t('login_email') || 'Email'} />
-          </div>
-          <div className="relative">
-            <Lock size={18} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] pointer-events-none" />
-            <input type="password" required autoComplete={isSignUp ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} className={fieldCls} placeholder={t('login_password') || 'Password'} aria-label={t('login_password') || 'Password'} />
-          </div>
-          <Button type="submit" loading={submitting} fullWidth size="lg">
-            {isSignUp ? (t('login_btn_create') || 'Create account') : (t('login_btn_signin') || 'Sign in')}
-          </Button>
-        </form>
-
-        <div className="flex items-center gap-4 mb-5">
-          <div className="flex-1 h-px bg-[var(--color-border)]" />
-          <span className="text-[var(--color-text-secondary)] text-xs">{t('login_or_continue') || 'or'}</span>
-          <div className="flex-1 h-px bg-[var(--color-border)]" />
-        </div>
-
-        <Button variant="secondary" fullWidth onClick={handleGoogle} type="button"
-          iconLeft={<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-5 h-5" />}>
-          {t('login_google') || 'Continue with Google'}
-        </Button>
-
-        <p className="text-center text-[var(--color-text-secondary)] text-sm mt-6">
-          <button onClick={() => setIsSignUp((v) => !v)} className="text-[var(--color-primary)] hover:underline font-medium">
-            {isSignUp ? (t('login_already_have') || 'Already have an account? Sign in') : (t('login_dont_have') || "Don't have an account? Create one")}
-          </button>
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 };
-
-function friendlyAuthError(code?: string): string | null {
-  switch (code) {
-    case 'auth/invalid-email': return 'That email address looks invalid.';
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential': return 'Email or password is incorrect.';
-    case 'auth/email-already-in-use': return 'An account with this email already exists.';
-    case 'auth/weak-password': return 'Please choose a stronger password (6+ characters).';
-    case 'auth/too-many-requests': return 'Too many attempts. Please try again later.';
-    case 'auth/popup-closed-by-user': return 'Sign-in was cancelled.';
-    default: return null;
-  }
-}
 
 export default Login;

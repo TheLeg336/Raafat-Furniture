@@ -64,7 +64,7 @@ export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
                     setShowAuthModal(false);
                     navigate('/login?signup=true');
                   }}
-                  className="w-full py-3 px-6 bg-transparent border-2 border-[var(--color-primary)] text-[var(--color-primary)] rounded-full font-bold hover:bg-[var(--color-primary)]/5 transition-all"
+                  className="w-full py-3 px-6 bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-full font-bold hover:bg-[var(--color-surface)] transition-all"
                 >
                   {t('create_account') || 'Create Account'}
                 </button>

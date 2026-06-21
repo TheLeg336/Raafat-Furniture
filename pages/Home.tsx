@@ -4,9 +4,7 @@ import type { TFunction } from '../types';
 import Hero from '../components/Hero';
 import ProductSection from '../components/ProductSection';
 import VisitUsSection from '../components/VisitUsSection';
-import BrandMarquee from '../components/home/BrandMarquee';
 import Craftsmanship from '../components/home/Craftsmanship';
-import ARHighlight from '../components/home/ARHighlight';
 
 interface HomeProps {
   t: TFunction;
@@ -73,10 +71,8 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
       <div id="hero">
         <Hero t={t} />
       </div>
-      <BrandMarquee t={t} />
       <ProductSection t={t} headerHeight={headerHeight} />
       <Craftsmanship t={t} />
-      <ARHighlight t={t} />
       <VisitUsSection t={t} />
     </main>
   );

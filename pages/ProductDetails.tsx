@@ -232,7 +232,7 @@ const Selector: React.FC<{ label: string; options: string[]; value: string; onPi
           key={o}
           onClick={() => onPick(o)}
           aria-pressed={value === o}
-          className={`px-4 py-2 rounded-[var(--radius-pill)] border-2 text-sm capitalize transition-colors ${value === o ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
+          className={`px-4 py-2 rounded-[var(--radius-pill)] border text-sm capitalize transition-colors ${value === o ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] border-transparent' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
         >
           {o}
         </button>

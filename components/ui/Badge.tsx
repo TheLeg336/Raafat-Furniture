@@ -4,7 +4,7 @@ type Tone = 'neutral' | 'gold' | 'navy' | 'success' | 'danger' | 'info';
 
 const tones: Record<Tone, string> = {
   neutral: 'bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] border-[var(--color-border)]',
-  gold: 'bg-[hsla(var(--color-primary-hsl-values),0.14)] text-[var(--color-ink-on-gold)] border-[hsla(var(--color-primary-hsl-values),0.4)] dark:text-[var(--color-primary)]',
+  gold: 'bg-[hsla(var(--color-primary-hsl-values),0.16)] text-[var(--color-ink-on-gold)] border-transparent dark:text-[var(--color-primary)]',
   navy: 'bg-[var(--color-secondary)] text-white border-transparent',
   success: 'bg-[rgba(46,125,50,0.12)] text-[#2e7d32] border-[rgba(46,125,50,0.35)]',
   danger: 'bg-[var(--color-danger-bg)] text-[var(--color-danger)] border-[var(--color-danger)]',

@@ -9,7 +9,6 @@ const ProductSectionHeader: React.FC<{ t: TFunction }> = ({ t }) => {
   };
   return (
     <motion.div className="text-center" variants={v} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.5 }}>
-      <p className="font-heading text-[var(--color-primary)] text-lg mb-2">{t('collections_kicker') || 'Collections'}</p>
       <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] text-balance">
         {t('products_title')}
       </h2>
