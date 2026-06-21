@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { MapPin, Clock } from 'lucide-react';
 import type { TFunction } from '../types';
 import { openCookieSettings } from './CookieConsent';
 
@@ -9,6 +10,11 @@ interface FooterProps {
 }
 
 const Footer: React.FC<FooterProps> = ({ t }) => {
+    const branches = [
+        { name: t('footer_cairo_branch_title'), address: t('footer_cairo_branch_address') },
+        { name: t('footer_minya_branch_title'), address: t('footer_minya_branch_address') },
+        { name: t('footer_new_minya_branch_title'), address: t('footer_new_minya_branch_address') },
+    ];
     const containerVariants: Variants = {
         hidden: {},
         visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
@@ -34,17 +40,34 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                 viewport={{once: true, amount: 0.3}} 
                 variants={containerVariants}
             >
-                <motion.div variants={titleVariants} className="text-center mb-10">
+                <motion.div variants={titleVariants} className="text-center mb-12">
                     <div className="font-heading text-3xl sm:text-4xl tracking-wide">RAAFAT</div>
                     <div className="font-heading tracking-[0.35em] text-sm opacity-80 mt-1">FURNITURE</div>
                     <div className="h-0.5 w-12 bg-[var(--color-primary)] mx-auto mt-5 rounded-full" />
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="flex flex-col items-center gap-3 mb-12">
+                {/* Locations */}
+                <div className="grid sm:grid-cols-3 gap-5 mb-10">
+                    {branches.map((b, i) => (
+                        <motion.div
+                            key={i}
+                            variants={itemVariants}
+                            className="rounded-[var(--radius-lg)] bg-[var(--color-background)]/[0.06] p-6 flex flex-col"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] flex items-center justify-center mb-4">
+                                <MapPin size={18} />
+                            </div>
+                            <h3 className="font-heading text-lg font-bold text-[var(--color-primary)] mb-2">{b.name}</h3>
+                            <p className="opacity-80 text-sm leading-relaxed flex-1">{b.address}</p>
+                            <p className="opacity-70 text-sm mt-4 flex items-center gap-2"><Clock size={14} className="text-[var(--color-primary)]" /> {t('footer_hours')}</p>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <motion.div variants={itemVariants} className="flex justify-center mb-12">
                     <a href={`tel:${t('footer_phone_number')}`} className="text-lg font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity" dir="ltr">
                         {t('footer_phone_number')}
                     </a>
-                    <p className="opacity-70 text-sm">{t('footer_hours')}</p>
                 </motion.div>
 
                 <motion.div

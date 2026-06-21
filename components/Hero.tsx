@@ -99,7 +99,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
           on page load, preventing animation jank on the first click.
         */}
         <div
-          className="search-gloss backdrop-blur-lg shadow-lg rounded-full"
+          className="glass backdrop-blur-lg shadow-lg rounded-full"
           style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }}
           aria-hidden="true"
         />
@@ -135,7 +135,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                 className={`
                   relative flex items-center justify-center origin-center overflow-hidden rounded-full
                   ${isSearchVisible 
-                    ? 'w-full max-w-lg h-14 search-gloss backdrop-blur-lg shadow-lg' 
+                    ? 'w-full max-w-lg h-14 glass backdrop-blur-lg shadow-lg' 
                     : 'h-14 px-10 bg-[var(--color-primary)] text-white hover:bg-opacity-80 shine-effect cursor-pointer'}
                 `}
                 transition={{ 
@@ -184,7 +184,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             maxLength={100}
                             placeholder="Search for furniture, styles, and more..."
-                            className="w-full bg-transparent text-white placeholder-white/70 outline-none"
+                            className="w-full bg-transparent text-white placeholder-white/70 outline-none focus-visible:outline-none"
                         />
                         <motion.button
                             type="button"

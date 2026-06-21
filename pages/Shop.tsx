@@ -187,7 +187,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder={t('search_placeholder')}
-                className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-full py-3 md:py-4 ps-12 pe-12 outline-none transition-shadow placeholder:text-[var(--color-text-secondary)] focus:shadow-[0_0_0_2px_hsla(var(--color-primary-hsl-values),0.5)]"
+                className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-full py-3 md:py-4 ps-12 pe-12 outline-none focus-visible:outline-none transition-shadow placeholder:text-[var(--color-text-secondary)] focus:shadow-[0_0_0_2px_hsla(var(--color-primary-hsl-values),0.5)]"
               />
               {searchInput && (
                 <button 
