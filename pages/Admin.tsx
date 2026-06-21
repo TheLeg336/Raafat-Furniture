@@ -158,7 +158,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_not_authorized').replace('{email}', user.email || '')}</p>
           <button 
             onClick={logout}
-            className="w-full py-3 px-4 bg-[var(--color-primary)] text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            className="w-full py-3 px-4 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-medium hover:opacity-90 transition-opacity"
           >
             {t('account_signout')}
           </button>
@@ -755,7 +755,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       >
         <button 
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-10 w-6 h-6 bg-[var(--color-primary)] text-white rounded-full flex items-center justify-center shadow-lg z-40 hover:scale-110 transition-transform"
+          className="absolute -right-3 top-10 w-6 h-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full flex items-center justify-center shadow-lg z-40 hover:scale-110 transition-transform"
         >
           {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -801,7 +801,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               <>
                 <span className="truncate">{t('admin_tab_archive')}</span>
                 {archivedListings.length > 0 && (
-                  <span className="ms-auto bg-[var(--color-primary)] text-white text-xs py-0.5 px-2 rounded-full">
+                  <span className="ms-auto bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-xs py-0.5 px-2 rounded-full">
                     {archivedListings.length}
                   </span>
                 )}
@@ -1121,7 +1121,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setCategory(selectedCategory);
                   setIsCreateModalOpen(true);
                 }}
-                className="w-14 h-14 bg-[var(--color-primary)] text-white rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all"
+                className="w-14 h-14 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full shadow-lg shadow-[var(--color-primary)]/30 flex items-center justify-center hover:opacity-90 hover:scale-105 transition-all"
               >
                 <Plus size={24} />
               </button>
@@ -1492,7 +1492,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         {imageFiles.map((file, idx) => (
                           <div key={`new-${idx}`} className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-[var(--color-primary)] group">
                             <img src={URL.createObjectURL(file)} alt={`preview ${idx}`} className="w-full h-full object-cover" />
-                            <div className="absolute top-1 left-1 bg-[var(--color-primary)] text-white text-[8px] px-1 rounded uppercase font-bold">New</div>
+                            <div className="absolute top-1 left-1 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[8px] px-1 rounded uppercase font-bold">New</div>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1547,7 +1547,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 >
                   {t('admin_cancel')}
                 </button>
-                <button type="submit" disabled={isSubmitting} className="px-6 md:px-8 py-3 bg-[var(--color-primary)] text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70 flex items-center gap-2">
+                <button type="submit" disabled={isSubmitting} className="px-6 md:px-8 py-3 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-70 flex items-center gap-2">
                   {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (editingListing ? t('admin_update_listing') || 'Update Listing' : t('admin_post_listing'))}
                 </button>
               </div>
@@ -1808,7 +1808,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 <button 
                   type="submit" 
                   disabled={isUpdatingHero || !heroImageFile}
-                  className="w-full py-4 bg-[var(--color-primary)] text-white rounded-xl font-bold hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isUpdatingHero ? (
                     <>

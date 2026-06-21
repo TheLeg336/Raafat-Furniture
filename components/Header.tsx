@@ -139,7 +139,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="absolute top-0 right-0 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                className="absolute top-0 right-0 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
               >
                 {cartCount}
               </motion.span>
@@ -241,7 +241,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
                     key={cartCount}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 bg-[var(--color-primary)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                    className="absolute top-1 right-1 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
                   >
                     {cartCount}
                   </motion.span>
