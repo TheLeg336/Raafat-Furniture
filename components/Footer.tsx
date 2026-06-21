@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { MapPin, Clock } from 'lucide-react';
 import type { TFunction } from '../types';
 import { openCookieSettings } from './CookieConsent';
+import { Card } from './ui/Card';
 
 interface FooterProps {
     t: TFunction;
@@ -40,26 +41,24 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                 viewport={{once: true, amount: 0.3}} 
                 variants={containerVariants}
             >
-                <motion.div variants={titleVariants} className="text-center mb-12">
-                    <div className="font-heading text-3xl sm:text-4xl tracking-wide">RAAFAT</div>
-                    <div className="font-heading tracking-[0.35em] text-sm opacity-80 mt-1">FURNITURE</div>
-                    <div className="h-0.5 w-12 bg-[var(--color-primary)] mx-auto mt-5 rounded-full" />
-                </motion.div>
+                <motion.h2 variants={titleVariants} className="font-heading text-3xl sm:text-4xl font-bold text-center mb-12">
+                    {t('our_branches') || 'Our Branches'}
+                </motion.h2>
 
-                {/* Locations */}
-                <div className="grid sm:grid-cols-3 gap-5 mb-10">
+                {/* Locations — same cards as the Visit Us section */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                     {branches.map((b, i) => (
-                        <motion.div
-                            key={i}
-                            variants={itemVariants}
-                            className="rounded-[var(--radius-lg)] bg-[var(--color-background)]/[0.06] p-6 flex flex-col"
-                        >
-                            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] flex items-center justify-center mb-4">
-                                <MapPin size={18} />
-                            </div>
-                            <h3 className="font-heading text-lg font-bold text-[var(--color-primary)] mb-2">{b.name}</h3>
-                            <p className="opacity-80 text-sm leading-relaxed flex-1">{b.address}</p>
-                            <p className="opacity-70 text-sm mt-4 flex items-center gap-2"><Clock size={14} className="text-[var(--color-primary)]" /> {t('footer_hours')}</p>
+                        <motion.div key={i} variants={itemVariants}>
+                            <Card hover className="p-7 h-full flex flex-col text-start">
+                                <div className="w-11 h-11 rounded-full bg-[hsla(var(--color-primary-hsl-values),0.14)] text-[var(--color-primary)] flex items-center justify-center mb-5">
+                                    <MapPin size={20} />
+                                </div>
+                                <h3 className="font-heading text-xl font-bold mb-2 text-[var(--color-text-primary)]">{b.name}</h3>
+                                <p className="text-[var(--color-text-secondary)] leading-relaxed flex-1">{b.address}</p>
+                                <p className="mt-5 flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                                    <Clock size={15} className="text-[var(--color-primary)]" /> {t('footer_hours')}
+                                </p>
+                            </Card>
                         </motion.div>
                     ))}
                 </div>
