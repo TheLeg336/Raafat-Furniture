@@ -7,19 +7,17 @@ import { Link } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
 import { revealItem } from './ui/Reveal';
 
-const CategoryCard: React.FC<{ category: any; t: TFunction; index: number }> = ({ category, t, index }) => {
+const CategoryCard: React.FC<{ category: any; t: TFunction }> = ({ category, t }) => {
   const name = t(category.labelKey);
   return (
     <motion.div variants={revealItem}>
       <Link to={`/shop?category=${category.id}`} className="group relative block">
         <div className="zoom-img glow-on-hover relative rounded-[var(--radius-lg)] overflow-hidden bg-[var(--color-secondary)] aspect-[4/5]">
-          <img src={category.imageUrl} alt={name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={category.imageUrl} alt={name} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0'; }} className="absolute inset-0 w-full h-full object-cover" />
           {/* gradient scrim for legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
           {/* gold shine sweep on hover */}
           <div className="absolute inset-0 shine-effect pointer-events-none" />
-          {/* index marker */}
-          <span className="absolute top-4 start-4 text-white/60 text-xs font-mono tracking-widest">{String(index + 1).padStart(2, '0')}</span>
           {/* label */}
           <div className="absolute inset-x-0 bottom-0 p-5 flex items-end justify-between">
             <h3 className="font-heading text-2xl font-bold text-white drop-shadow-sm translate-y-1 group-hover:translate-y-0 transition-transform">{name}</h3>
@@ -72,8 +70,8 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
               viewport={{ once: true, amount: 0.15 }}
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
             >
-              {categories.map((cat, i) => (
-                <CategoryCard key={cat.id} category={cat} t={t} index={i} />
+              {categories.map((cat) => (
+                <CategoryCard key={cat.id} category={cat} t={t} />
               ))}
             </motion.div>
           )}

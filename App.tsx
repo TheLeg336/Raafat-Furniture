@@ -6,21 +6,25 @@ import { COLOR_SCHEMES, TEXTS } from './constants';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
-import Shop from './pages/Shop';
-import ProductDetails from './pages/ProductDetails';
-import Admin from './pages/Admin';
-import Login from './pages/Login';
-import UserAccount from './pages/UserAccount';
-import Onboarding from './pages/Onboarding';
-import Checkout from './pages/Checkout';
-import OrderConfirmation from './pages/OrderConfirmation';
-import Legal from './pages/Legal';
-import AdminOrders from './pages/AdminOrders';
-import AdminScans from './pages/AdminScans';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StoreProvider } from './contexts/StoreContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
+import { PageSpinner } from './components/ui/Spinner';
+
+// Code-split heavy / non-landing routes to shrink the initial bundle.
+const Shop = React.lazy(() => import('./pages/Shop'));
+const ProductDetails = React.lazy(() => import('./pages/ProductDetails'));
+const Admin = React.lazy(() => import('./pages/Admin'));
+const Login = React.lazy(() => import('./pages/Login'));
+const UserAccount = React.lazy(() => import('./pages/UserAccount'));
+const Onboarding = React.lazy(() => import('./pages/Onboarding'));
+const Checkout = React.lazy(() => import('./pages/Checkout'));
+const OrderConfirmation = React.lazy(() => import('./pages/OrderConfirmation'));
+const Legal = React.lazy(() => import('./pages/Legal'));
+const AdminOrders = React.lazy(() => import('./pages/AdminOrders'));
+const AdminScans = React.lazy(() => import('./pages/AdminScans'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
 import { CookieConsent } from './components/CookieConsent';
 import { SmoothScroll } from './components/SmoothScroll';
 import { initAnalytics, trackPageView } from './lib/analytics';
@@ -183,6 +187,22 @@ const AppContent: React.FC = () => {
   // Analytics: init once (consent-gated), then track route changes.
   useEffect(() => { initAnalytics(); }, []);
   useEffect(() => { trackPageView(location.pathname + location.search); }, [location.pathname, location.search]);
+
+  // Document title per route (lightweight SEO).
+  useEffect(() => {
+    const base = 'Raafat Furniture';
+    const p = location.pathname;
+    let title = `${base} — Luxury Furniture`;
+    if (p.startsWith('/shop')) title = `Shop — ${base}`;
+    else if (p.startsWith('/product')) title = `${base}`;
+    else if (p.startsWith('/checkout')) title = `Checkout — ${base}`;
+    else if (p.startsWith('/order')) title = `Your Order — ${base}`;
+    else if (p.startsWith('/account')) title = `My Account — ${base}`;
+    else if (p.startsWith('/login')) title = `Sign In — ${base}`;
+    else if (p.startsWith('/admin')) title = `Admin — ${base}`;
+    else if (p.startsWith('/legal')) title = `Legal — ${base}`;
+    document.title = title;
+  }, [location.pathname]);
   
   const t: TFunction = useCallback((key: string): string => {
     let text;
@@ -192,7 +212,9 @@ const AppContent: React.FC = () => {
     if (!text) {
       text = TEXTS[language]?.[key] || TEXTS[LanguageOption.English][key];
     }
-    return text || key;
+    // Return '' (not the key) for truly-missing strings so callers' `|| 'fallback'`
+    // works and raw i18n keys never leak into the UI.
+    return text || '';
   }, [language, dynamicTexts]);
   
   const getFontClasses = () => {
@@ -209,6 +231,7 @@ const AppContent: React.FC = () => {
     <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
       <a href="#main-content" className="skip-link">{t('skip_to_content') || 'Skip to content'}</a>
       <SmoothScroll />
+      <React.Suspense fallback={<PageSpinner />}>
       <Routes>
         <Route path="/admin" element={<Admin t={t} language={language} />} />
         <Route path="/admin/orders" element={<AdminOrders t={t} />} />
@@ -235,6 +258,7 @@ const AppContent: React.FC = () => {
                 <Route path="/checkout" element={<Checkout t={t} />} />
                 <Route path="/order/confirmation" element={<OrderConfirmation t={t} />} />
                 <Route path="/legal/:slug" element={<Legal t={t} />} />
+                <Route path="*" element={<NotFound t={t} />} />
               </Routes>
             </main>
             <Footer
@@ -245,6 +269,7 @@ const AppContent: React.FC = () => {
           </>
         } />
       </Routes>
+      </React.Suspense>
       <CookieConsent t={t} />
     </div>
   );

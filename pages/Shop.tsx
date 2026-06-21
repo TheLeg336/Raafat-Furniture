@@ -7,6 +7,7 @@ import { useCategories } from '../hooks/useCategories';
 import { TEXTS } from '../constants';
 import type { TFunction } from '../types';
 import { useStore } from '../contexts/StoreContext';
+import { formatMoney } from '../lib/format';
 
 interface ShopProps {
   t: TFunction;
@@ -822,6 +823,11 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         alt={product.name?.en} 
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                       />
+                      {product.model3d?.url && (
+                        <span className="absolute top-4 left-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-white text-[10px] font-bold tracking-wider">
+                          3D · AR
+                        </span>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -829,7 +835,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         }}
                         className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-md hover:bg-white transition-colors z-10"
                       >
-                        <Heart 
+                        <Heart
                           size={20} 
                           className={`transition-colors ${wishlist.includes(String(product.id)) ? 'text-[var(--color-primary)] fill-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'}`} 
                         />
@@ -842,6 +848,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                           return product.name?.[lang] || (product.nameKey ? t(product.nameKey) : '');
                         })()}
                       </h3>
+                      <p className="text-[var(--color-primary)] font-semibold">
+                        {product.price ? formatMoney(product.price) : t('price_on_request')}
+                      </p>
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-[var(--color-text-secondary)] font-medium">
                           {(() => {
