@@ -54,7 +54,9 @@ export interface Product {
   description?: LocalizedString; // CMS data
   imageUrl: string;
   images?: string[]; // Multiple images support
-  price?: number;
+  price?: number;      // legacy / base fallback (kept for older listings + price sorting)
+  priceEGP?: number;   // shown to Egypt (VAT-inclusive)
+  priceUSD?: number;   // shown internationally
   dimensions?: string;
   materials?: string[];
   colors?: string[];

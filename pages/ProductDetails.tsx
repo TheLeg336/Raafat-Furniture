@@ -15,6 +15,8 @@ import { ModelViewer3D } from '../components/ModelViewer3D';
 import { Reviews } from '../components/Reviews';
 import { formatMoney } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { priceFor } from '../lib/currency';
 
 interface ProductDetailsProps { t: TFunction; }
 
@@ -24,6 +26,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const { products, loading } = useProducts();
   const { categories } = useCategories();
   const { addToCart, toggleWishlist, wishlist } = useStore();
+  const { currency } = useCurrency();
   const toast = useToast();
 
   const product = products.find((p) => p.id.toString() === id);
@@ -96,14 +99,14 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
     addToCart({
       productId: product.id,
       name,
-      price: product.price,
+      price: priceFor(product, currency),
       imageUrl: product.imageUrl,
       quantity: 1,
       color: selectedColor || undefined,
       material: selectedMaterial || undefined,
       customDimensions: customDims.trim() || undefined,
     });
-    trackEvent('add_to_cart', { product: name, value: product.price });
+    trackEvent('add_to_cart', { product: name, value: priceFor(product, currency) });
     toast.success(t('added_to_cart') || 'Added to cart');
     setTimeout(() => setIsAdding(false), 800);
   };
@@ -174,7 +177,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           {category && <Badge tone="navy" className="self-start mb-4">{category}</Badge>}
           <h1 className="font-heading text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-3 text-balance">{name}</h1>
           <p className="text-2xl text-[var(--color-primary)] mb-6 font-semibold">
-            {product.price ? formatMoney(product.price) : t('price_on_request')}
+            {priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : t('price_on_request')}
           </p>
           <p className="text-[var(--color-text-secondary)] leading-relaxed mb-8 measure" style={{ textWrap: 'pretty' as any }}>{description}</p>
 

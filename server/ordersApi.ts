@@ -182,15 +182,20 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       if (paymentMethod === 'stripe' && !process.env.STRIPE_SECRET_KEY) return res.status(400).json({ error: 'Card payments are not configured' });
       if (paymentMethod === 'paymob' && !process.env.PAYMOB_API_KEY) return res.status(400).json({ error: 'Card payments are not configured' });
 
-      // ---- authoritative pricing from the catalog ----
+      // Charge currency is locked to the verified destination, not anything the client says.
+      const destination = fulfillment === 'shipping' ? toISO2(contact.country) : STORE_COUNTRY;
+      const currency = destination === 'EG' ? 'EGP' : 'USD';
+
+      // ---- authoritative pricing from the catalog (per-currency) ----
       const priced = [];
       for (const it of items) {
         const qty = Math.max(1, Math.min(99, Math.floor(Number(it.quantity) || 1)));
         const snap = await db.collection('products').doc(String(it.productId)).get();
         if (!snap.exists) return res.status(400).json({ error: `Product no longer available (${it.productId})` });
         const p = snap.data() as any;
-        const price = Number(p.price);
-        if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Product has no valid price (${it.productId})` });
+        const raw = currency === 'EGP' ? (p.priceEGP ?? p.price) : (p.priceUSD ?? p.price);
+        const price = Number(raw);
+        if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Item is not available in ${currency} (${it.productId})` });
         priced.push({
           productId: String(it.productId),
           name: p.name || p.nameKey || 'Item',
@@ -204,7 +209,6 @@ export function ordersRouter(rateLimit: (n: number) => any) {
 
       const subtotal = round2(priced.reduce((s, it) => s + it.price * it.quantity, 0));
       const shipping = 0; // quoted by the store after order; not charged online yet
-      const destination = fulfillment === 'shipping' ? toISO2(contact.country) : STORE_COUNTRY;
       const { tax, taxRate, taxIncluded } = computeTax(subtotal, destination);
       const total = round2(subtotal + shipping + (taxIncluded ? 0 : tax));
 
@@ -220,7 +224,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       const order = {
         orderNumber, userId,
         items: priced,
-        currency: process.env.STORE_CURRENCY || process.env.VITE_STORE_CURRENCY || 'USD',
+        currency,
         subtotal, shipping, tax, taxRate, taxIncluded, total,
         destinationCountry: destination,
         fulfillment, paymentMethod,

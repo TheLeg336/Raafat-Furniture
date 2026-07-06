@@ -8,6 +8,7 @@ import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 interface HeaderProps {
   language: LanguageOption;
@@ -23,6 +24,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, isWorker } = useAuth();
+  const { currency, setCurrency } = useCurrency();
   const { cart, setIsCartOpen, isCartOpen } = useStore();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -187,6 +189,23 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
         >
           {t('lang_toggle_ar')}
         </motion.button>
+      </div>
+      <div className="flex items-center">
+        <button
+          onClick={() => setCurrency('EGP')}
+          className={`text-sm font-semibold font-heading ${currency === 'EGP' ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
+          aria-label="Show prices in Egyptian Pounds"
+        >
+          EGP
+        </button>
+        <span className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} mx-1.5`}>/</span>
+        <button
+          onClick={() => setCurrency('USD')}
+          className={`text-sm font-semibold font-heading ${currency === 'USD' ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
+          aria-label="Show prices in US Dollars"
+        >
+          USD
+        </button>
       </div>
       <ThemeToggle themeMode={themeMode} setThemeMode={setThemeMode} t={t} />
     </div>

@@ -76,7 +76,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [descEn, setDescEn] = useState('');
   const [descAr, setDescAr] = useState('');
   const [category, setCategory] = useState('');
-  const [price, setPrice] = useState<string>('');
+  const [priceEgp, setPriceEgp] = useState<string>('');
+  const [priceUsd, setPriceUsd] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -466,7 +467,13 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         return;
       }
 
-      const parsedPrice = price ? parseFloat(price) : null;
+      const parsedEgp = priceEgp ? parseFloat(priceEgp) : null;
+      const parsedUsd = priceUsd ? parseFloat(priceUsd) : null;
+      const priceFields = {
+        priceEGP: parsedEgp,
+        priceUSD: parsedUsd,
+        price: parsedEgp ?? parsedUsd, // legacy base used for price sorting/fallback
+      };
       const variantFields = {
         materials: splitList(materialsStr),
         colors: splitList(colorsStr),
@@ -482,7 +489,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           categoryKey: category,
           imageUrl: finalImageUrl,
           images: finalImages,
-          price: parsedPrice,
+          ...priceFields,
           ...variantFields,
           updatedAt: new Date().toISOString()
         });
@@ -496,7 +503,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           categoryKey: category,
           imageUrl: finalImageUrl,
           images: finalImages,
-          price: parsedPrice,
+          ...priceFields,
           ...variantFields,
           createdAt: new Date().toISOString(),
           archivedAt: null,
@@ -508,7 +515,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
       // Reset form
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
-      setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPrice('');
+      setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPriceEgp(''); setPriceUsd('');
       setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
       setIsTestListing(false);
       setIsCreateModalOpen(false);
@@ -991,7 +998,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setDescEn(listing.description.en);
                         setDescAr(listing.description.ar);
                         setCategory(listing.categoryKey);
-                        setPrice(listing.price?.toString() || '');
+                        setPriceEgp((listing.priceEGP ?? listing.price)?.toString() || '');
+                        setPriceUsd(listing.priceUSD?.toString() || '');
                         setMaterialsStr((listing.materials || []).join(', '));
                         setColorsStr((listing.colors || []).join(', '));
                         setDimensions(listing.dimensions || '');
@@ -1309,7 +1317,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setIsCreateModalOpen(false);
                   setEditingListing(null);
                   setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
-                  setCategory(categories[0]?.id || ''); setPrice(''); setImageFiles([]);
+                  setCategory(categories[0]?.id || ''); setPriceEgp(''); setPriceUsd(''); setImageFiles([]);
                   setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
                 }} 
                 className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
@@ -1356,7 +1364,16 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_price')} ({t('admin_optional')})</label>
-                  <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder={t('admin_placeholder_price')} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <input type="number" step="0.01" min="0" value={priceEgp} onChange={e => setPriceEgp(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="EGP" />
+                      <span className="block text-xs text-[var(--color-text-secondary)] mt-1">{t('admin_price_egp') || 'EGP (Egypt, VAT-incl.)'}</span>
+                    </div>
+                    <div>
+                      <input type="number" step="0.01" min="0" value={priceUsd} onChange={e => setPriceUsd(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="USD" />
+                      <span className="block text-xs text-[var(--color-text-secondary)] mt-1">{t('admin_price_usd') || 'USD (international)'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1490,7 +1507,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     setIsCreateModalOpen(false);
                     setEditingListing(null);
                     setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
-                    setCategory(categories[0]?.id || ''); setPrice(''); setImageFiles([]);
+                    setCategory(categories[0]?.id || ''); setPriceEgp(''); setPriceUsd(''); setImageFiles([]);
                   setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
                   }} 
                   className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors"

@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StoreProvider } from './contexts/StoreContext';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { PageSpinner } from './components/ui/Spinner';
@@ -293,13 +294,15 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <StoreProvider>
-          <ToastProvider>
-            <Router>
-              <AppContent />
-            </Router>
-          </ToastProvider>
-        </StoreProvider>
+        <CurrencyProvider>
+          <StoreProvider>
+            <ToastProvider>
+              <Router>
+                <AppContent />
+              </Router>
+            </ToastProvider>
+          </StoreProvider>
+        </CurrencyProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

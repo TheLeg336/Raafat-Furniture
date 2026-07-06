@@ -5,6 +5,8 @@ import { useStore } from '../contexts/StoreContext';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../hooks/useProducts';
 import { formatMoney } from '../lib/format';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { priceFor } from '../lib/currency';
 
 export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   const { 
@@ -20,22 +22,24 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   } = useStore();
   const navigate = useNavigate();
   const { products } = useProducts();
+  const { currency } = useCurrency();
   const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
-
-  const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
   const getSyncedProduct = (item: any) => {
     const product = products.find(p => p.id.toString() === item.productId.toString());
     const lang = document.documentElement.lang as 'en' | 'ar';
-    
+
     if (!product) return { name: item.name, imageUrl: item.imageUrl, price: item.price };
 
     return {
       name: product.name?.[lang] || (product.nameKey ? t(product.nameKey) : item.name),
       imageUrl: product.images?.[0] || product.imageUrl || item.imageUrl,
-      price: product.price || item.price
+      // Resolve live in the active currency so a currency switch reprices the cart.
+      price: priceFor(product, currency) ?? item.price,
     };
   };
+
+  const subtotal = cart.reduce((sum, item) => sum + ((getSyncedProduct(item).price || 0) * item.quantity), 0);
 
   const handleProductClick = (productId: string | number) => {
     setIsCartOpen(false);
@@ -132,7 +136,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                                   {synced.name}
                                 </button>
                                 <span className="font-bold text-[var(--color-primary)]">
-                                  {synced.price ? formatMoney(synced.price) : t('price_on_request')}
+                                  {synced.price ? formatMoney(synced.price, { currency }) : t('price_on_request')}
                                 </span>
                               </div>
                               <div className="text-sm text-[var(--color-text-secondary)] mt-1 flex flex-wrap gap-x-2">
@@ -203,7 +207,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                                 {synced.name}
                               </button>
                               <span className="font-bold text-sm">
-                                {synced.price ? formatMoney(synced.price) : t('price_on_request')}
+                                {synced.price ? formatMoney(synced.price, { currency }) : t('price_on_request')}
                               </span>
                             </div>
                             <div className="flex items-center justify-between mt-1">
@@ -234,7 +238,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
               <div className="p-6 bg-[var(--color-secondary)]/5 ">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[var(--color-text-secondary)]">{t('subtotal') || 'Subtotal'}</span>
-                  <span className="text-2xl font-bold">{formatMoney(subtotal)}</span>
+                  <span className="text-2xl font-bold">{formatMoney(subtotal, { currency })}</span>
                 </div>
                 <p className="text-xs text-[var(--color-text-secondary)] mb-6">
                   {t('shipping_taxes_calculated') || 'Shipping and taxes calculated at checkout.'}

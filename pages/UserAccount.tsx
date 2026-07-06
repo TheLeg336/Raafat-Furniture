@@ -7,6 +7,8 @@ import { type TFunction, type Order, type OrderStatus } from '../types';
 import { subscribeUserOrders } from '../lib/orders';
 import { useStore } from '../contexts/StoreContext';
 import { useProducts } from '../hooks/useProducts';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { priceFor } from '../lib/currency';
 import { localized } from '../lib/format';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -27,6 +29,7 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
   const navigate = useNavigate();
   const { wishlist } = useStore();
   const { products } = useProducts();
+  const { currency } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const wishlistProducts = products.filter((p) => wishlist.includes(String(p.id)));
@@ -124,7 +127,7 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
                   </div>
                   <div className="p-3">
                     <p className="text-sm font-semibold truncate">{p.name ? localized(p.name) : t(p.nameKey || '')}</p>
-                    {p.price != null && <p className="text-xs text-[var(--color-text-secondary)]">{formatMoney(p.price)}</p>}
+                    {priceFor(p, currency) != null && <p className="text-xs text-[var(--color-text-secondary)]">{formatMoney(priceFor(p, currency), { currency })}</p>}
                   </div>
                 </Card>
               </Link>

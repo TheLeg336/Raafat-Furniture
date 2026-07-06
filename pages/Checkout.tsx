@@ -14,6 +14,8 @@ import { placeOrder } from '../lib/checkout';
 import { computeTotals } from '../lib/orders';
 import { getPaymentsConfig, type PaymentsConfig } from '../lib/api';
 import { countryOptions } from '../lib/countries';
+import { priceFor } from '../lib/currency';
+import { useProducts } from '../hooks/useProducts';
 
 interface Props { t: TFunction; }
 
@@ -22,6 +24,7 @@ const EG_VAT = 0.14;
 const Checkout: React.FC<Props> = ({ t }) => {
   const { cart, clearCart } = useStore();
   const { user, firstName, lastName } = useAuth();
+  const { products } = useProducts();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -43,16 +46,24 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const lang = (typeof document !== 'undefined' && document.documentElement.lang === 'ar') ? 'ar' : 'en';
   const countries = useMemo(() => countryOptions(lang as 'en' | 'ar'), [lang]);
 
+  // Charge currency is decided by destination (EGP for Egypt/pickup, USD for exports),
+  // matching what the server will charge — not the browse currency.
+  const destinationEG = fulfillment !== 'shipping' || form.country === 'EG';
+  const chargeCurrency = destinationEG ? 'EGP' : 'USD';
+
   const items: OrderItem[] = useMemo(
-    () => cart.map((c) => ({
-      productId: String(c.productId), name: c.name, imageUrl: c.imageUrl, price: c.price || 0,
-      quantity: c.quantity, color: c.color, material: c.material,
-    })),
-    [cart],
+    () => cart.map((c) => {
+      const product = products.find((p) => String(p.id) === String(c.productId));
+      const price = priceFor(product, chargeCurrency) ?? c.price ?? 0;
+      return {
+        productId: String(c.productId), name: c.name, imageUrl: c.imageUrl, price,
+        quantity: c.quantity, color: c.color, material: c.material,
+      };
+    }),
+    [cart, products, chargeCurrency],
   );
   const totals = computeTotals(items, 0, 0);
   // Preview only — the server recomputes everything from the catalog.
-  const destinationEG = fulfillment !== 'shipping' || form.country === 'EG';
   const vatIncluded = destinationEG ? Math.round((totals.subtotal - totals.subtotal / (1 + EG_VAT)) * 100) / 100 : 0;
 
   const cardAvailable = !!config?.cardProvider;
@@ -205,7 +216,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
         <Card className="p-6 lg:sticky lg:top-24">
           <h2 className="font-heading text-xl font-bold mb-4">{t('order_summary') || 'Order summary'}</h2>
           <div className="flex flex-col gap-4 max-h-72 overflow-y-auto pe-1">
-            {cart.map((c) => (
+            {cart.map((c, i) => (
               <div key={c.id} className="flex gap-3">
                 <div className="w-14 h-14 rounded-[var(--radius-sm)] overflow-hidden bg-[var(--color-secondary)] shrink-0">
                   {c.imageUrl && <img src={c.imageUrl} alt="" className="w-full h-full object-cover" />}
@@ -214,16 +225,16 @@ const Checkout: React.FC<Props> = ({ t }) => {
                   <p className="text-sm font-semibold truncate">{typeof c.name === 'string' ? c.name : localized(c.name)}</p>
                   <p className="text-xs text-[var(--color-text-secondary)]">{[c.color, c.material].filter(Boolean).join(' · ')} · ×{c.quantity}</p>
                 </div>
-                <p className="text-sm font-medium whitespace-nowrap">{formatMoney((c.price || 0) * c.quantity)}</p>
+                <p className="text-sm font-medium whitespace-nowrap">{formatMoney((items[i]?.price || 0) * c.quantity, { currency: chargeCurrency })}</p>
               </div>
             ))}
           </div>
           <hr className="rule-gold my-5" />
           <div className="flex flex-col gap-2 text-sm">
-            <Row label={t('subtotal') || 'Subtotal'} value={formatMoney(totals.subtotal)} />
+            <Row label={t('subtotal') || 'Subtotal'} value={formatMoney(totals.subtotal, { currency: chargeCurrency })} />
             <Row label={t('shipping') || 'Shipping'} value={fulfillment === 'shipping' ? (t('shipping_tbd') || 'Confirmed after order') : (t('free') || 'Free')} muted />
             {destinationEG ? (
-              <Row label={t('vat_included') || 'VAT 14% (included)'} value={formatMoney(vatIncluded)} muted />
+              <Row label={t('vat_included') || 'VAT 14% (included)'} value={formatMoney(vatIncluded, { currency: chargeCurrency })} muted />
             ) : (
               <Row label={t('tax_export') || 'Tax'} value={t('tax_export_value') || '0% (export)'} muted />
             )}
@@ -231,7 +242,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
           <hr className="rule-gold my-5" />
           <div className="flex justify-between items-baseline mb-2">
             <span className="font-heading text-lg font-bold">{t('total') || 'Total'}</span>
-            <span className="font-heading text-2xl font-bold">{formatMoney(totals.total)}</span>
+            <span className="font-heading text-2xl font-bold">{formatMoney(totals.total, { currency: chargeCurrency })}</span>
           </div>
           {!destinationEG && fulfillment === 'shipping' && (
             <p className="text-[11px] text-[var(--color-text-secondary)] mb-3">{t('duties_note') || 'Import duties and taxes, if any, are collected by your country on delivery.'}</p>
