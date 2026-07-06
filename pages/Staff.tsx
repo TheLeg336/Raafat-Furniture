@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, RefreshCw, Store, Truck, X } from 'lucide-react';
 import type { TFunction } from '../types';
+import { adminPath, LOGIN_PATH } from '../lib/paths';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchWorkerOrders, saveWorkerPrepared, completeWorkerOrder, type WorkerOrder } from '../lib/worker';
 import { Button } from '../components/ui/Button';
@@ -55,7 +56,7 @@ const Staff: React.FC<Props> = ({ t }) => {
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={LOGIN_PATH} replace />;
   if (!isWorker && !isAdmin) return <Navigate to="/" replace />;
 
   const toggle = async (o: WorkerOrder, idx: number) => {
@@ -89,8 +90,8 @@ const Staff: React.FC<Props> = ({ t }) => {
             {isAdmin && (
               <>
                 <span className="text-[var(--color-text-secondary)] opacity-40">·</span>
-                <Link to="/admin" className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Catalog</Link>
-                <Link to="/admin/orders" className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Orders</Link>
+                <Link to={adminPath()} className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Catalog</Link>
+                <Link to={adminPath('orders')} className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Orders</Link>
               </>
             )}
           </div>
@@ -114,8 +115,8 @@ const Staff: React.FC<Props> = ({ t }) => {
           <p className="font-semibold mb-2">Workshop access issue</p>
           <p className="text-sm text-[var(--color-text-secondary)] mb-3">{loadError}</p>
           <ul className="text-sm text-[var(--color-text-secondary)] list-disc ps-5 space-y-1">
-            <li>Your Google/email login must be added in <strong>Admin → Team</strong> with role <em>worker</em> (or sign in as admin).</li>
-            <li>Workers use <code>/staff</code> — not Admin → Orders. No prices or customer names are shown here by design.</li>
+            <li>Your login must be added in the developer <strong>Team</strong> panel with role <em>worker</em>.</li>
+            <li>This workshop view shows specs only: no prices or customer names.</li>
             <li>Orders appear when status is <em>paid</em>, <em>confirmed</em>, or <em>in_production</em> (after a real checkout).</li>
           </ul>
         </Card>

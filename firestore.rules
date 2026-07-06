@@ -202,6 +202,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Launch waitlist — server-only (Admin SDK via /api/launch/*).
+    match /launch_waitlist/{email} {
+      allow read, write: if false;
+    }
+
     // ---------------------------------------------------------------
     // admin_logs — append-only audit trail
     // ---------------------------------------------------------------

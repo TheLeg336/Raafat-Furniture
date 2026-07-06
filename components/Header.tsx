@@ -9,6 +9,7 @@ import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
 import { scrollToY } from '../lib/scrollNav';
+import { adminPath, STAFF_PATH, LOGIN_PATH } from '../lib/paths';
 interface HeaderProps {
   language: LanguageOption;
   setLanguage: (lang: LanguageOption) => void;
@@ -120,7 +121,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const Controls: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (
     <div className={`flex items-center gap-6 ${isMobile ? 'flex-col gap-4' : ''}`}>
       <Link
-        to={user ? (isAdmin ? "/admin" : isWorker ? "/staff" : "/account") : "/login"}
+        to={user ? (isAdmin ? adminPath() : isWorker ? STAFF_PATH : "/account") : LOGIN_PATH}
         className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
         aria-label={t('aria_account')}
       >

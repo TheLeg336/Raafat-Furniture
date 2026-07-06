@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, User as UserIcon, ArrowLeft } from 'lucide-react';
 
 import { type TFunction } from '../types';
+import { adminPath, STAFF_PATH } from '../lib/paths';
 
 interface LoginProps {
   t: TFunction;
@@ -27,8 +28,8 @@ const Login: React.FC<LoginProps> = ({ t }) => {
 
   useEffect(() => {
     if (!loading && user) {
-      if (isAdmin) navigate('/admin');
-      else if (isWorker) navigate('/staff');
+      if (isAdmin) navigate(adminPath());
+      else if (isWorker) navigate(STAFF_PATH);
       else navigate('/');
     }
   }, [user, isAdmin, isWorker, loading, navigate]);

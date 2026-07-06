@@ -28,9 +28,9 @@ export const SITE = {
     // 'https://www.tiktok.com/@...',
   ] as string[],
   branches: [
-    { name: 'Raafat Furniture — Cairo', street: '66 Mohamed Refaat Street, next to KFC, El Nozha El Gadida', city: 'Cairo', region: 'Cairo', country: 'EG' },
-    { name: 'Raafat Furniture — Minya', street: '6 Mostafa Kamel Street, Ard Sultan', city: 'Minya', region: 'Minya', country: 'EG' },
-    { name: 'Raafat Furniture — New Minya', street: 'Corner Plaza Mall, 2nd Floor, Third District', city: 'New Minya', region: 'Minya', country: 'EG' },
+    { name: 'Raafat Furniture, Cairo', street: '66 Mohamed Refaat Street, next to KFC, El Nozha El Gadida', city: 'Cairo', region: 'Cairo', country: 'EG' },
+    { name: 'Raafat Furniture, Minya', street: '6 Mostafa Kamel Street, Ard Sultan', city: 'Minya', region: 'Minya', country: 'EG' },
+    { name: 'Raafat Furniture, New Minya', street: 'Corner Plaza Mall, 2nd Floor, Third District', city: 'New Minya', region: 'Minya', country: 'EG' },
   ],
 };
 

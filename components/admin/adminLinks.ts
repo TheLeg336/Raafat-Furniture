@@ -1,15 +1,21 @@
+import { adminPath } from '../../lib/paths';
+
 export interface AdminLink {
   to: string;
   label: string;
   exact?: boolean;
 }
 
-/** Cross-section admin routes — shared by AdminLayout sidebar and mobile nav. */
+/** Admin + developer routes — shared by AdminLayout sidebar and mobile nav. */
 export const ADMIN_LINKS: AdminLink[] = [
-  { to: '/admin', label: 'Catalog', exact: true },
-  { to: '/admin/orders', label: 'Orders' },
-  { to: '/admin/scans', label: 'Scans & 3D' },
-  { to: '/admin/team', label: 'Team' },
+  { to: adminPath(), label: 'Catalog', exact: true },
+  { to: adminPath('orders'), label: 'Orders' },
+];
+
+/** Developer-only: team management and launch / dev tools. */
+export const DEV_ONLY_LINKS: AdminLink[] = [
+  { to: adminPath('team'), label: 'Team' },
+  { to: adminPath('dev'), label: 'Dev' },
 ];
 
 export function isAdminLinkActive(pathname: string, link: AdminLink): boolean {

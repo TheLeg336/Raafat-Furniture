@@ -189,6 +189,9 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       // ---- authoritative pricing from the catalog (per-currency) ----
       const priced = [];
       for (const it of items) {
+        if ('price' in it || 'total' in it || 'subtotal' in it) {
+          return res.status(400).json({ error: 'Invalid items payload' });
+        }
         const qty = Math.max(1, Math.min(99, Math.floor(Number(it.quantity) || 1)));
         const snap = await db.collection('products').doc(String(it.productId)).get();
         if (!snap.exists) return res.status(400).json({ error: `Product no longer available (${it.productId})` });

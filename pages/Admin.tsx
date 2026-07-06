@@ -5,7 +5,7 @@ import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'fireb
 import { ref, deleteObject } from 'firebase/storage';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, Image as ImageIcon, X, RefreshCw, Beaker } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Image as ImageIcon, X, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCategories } from '../hooks/useCategories';
 import { useSettings } from '../hooks/useSettings';
@@ -14,18 +14,10 @@ import { translateProductFields } from '../lib/translate';
 import { apiFetch } from '../lib/api';
 import { Edit, PlusCircle } from 'lucide-react';
 import { CatalogSubNav } from '../components/admin/CatalogSubNav';
+import { Product3DFields } from '../components/admin/Product3DFields';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
-import { LanguageOption, type TFunction, LocalizedString } from '../types';
+import { LanguageOption, type TFunction, LocalizedString, type Model3D } from '../types';
 
-const TEST_IMAGES = [
-  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=800&q=80'
-];
-
-// Safety limit to prevent exceeding Firebase Spark free tier limits
 const MAX_LISTINGS = 100;
 
 interface AdminProps {
@@ -78,7 +70,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [isTestListing, setIsTestListing] = useState(false);
+  const [model3d, setModel3d] = useState<Model3D | null>(null);
   const [materialsStr, setMaterialsStr] = useState('');
   const [colorsStr, setColorsStr] = useState('');
   const [dimensions, setDimensions] = useState('');
@@ -315,7 +307,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || (imageFiles.length === 0 && !isTestListing && !editingListing)) return;
+    if (!db || (imageFiles.length === 0 && !editingListing)) return;
     
     // Safety check: Prevent exceeding free tier limits
     if (!editingListing && listings.length >= MAX_LISTINGS) {
@@ -331,30 +323,19 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
     let finalDescAr = descAr.trim();
 
     // Validation
-    const isActuallyEmpty = !finalNameEn && !finalNameAr && !finalDescEn && !finalDescAr;
-    const isDeveloperTest = isTestListing && isDeveloper;
-
-    if (!isDeveloperTest || !isActuallyEmpty) {
-      if (!finalNameEn && !finalNameAr) {
-        alert(t('admin_alert_name_required'));
-        setIsSubmitting(false);
-        return;
-      }
-      if (!finalDescEn && !finalDescAr) {
-        alert(t('admin_alert_desc_required'));
-        setIsSubmitting(false);
-        return;
-      }
+    if (!finalNameEn && !finalNameAr) {
+      alert(t('admin_alert_name_required'));
+      setIsSubmitting(false);
+      return;
+    }
+    if (!finalDescEn && !finalDescAr) {
+      alert(t('admin_alert_desc_required'));
+      setIsSubmitting(false);
+      return;
     }
 
     try {
-      if (isDeveloperTest && isActuallyEmpty) {
-        // Default test listing
-        finalNameEn = `Test Product ${listings.length + 1}`;
-        finalNameAr = `منتج تجريبي ${listings.length + 1}`;
-        finalDescEn = "This is a default test listing created by a developer for system verification.";
-        finalDescAr = "هذا إدراج تجريبي افتراضي تم إنشاؤه بواسطة مطور للتحقق من النظام.";
-      } else if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
+      if (!finalNameEn || !finalNameAr || !finalDescEn || !finalDescAr) {
         try {
           // Translation runs server-side (keeps the Gemini key off the client).
           const result = await translateProductFields({
@@ -375,11 +356,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       let finalImageUrl = existingImages[0] || '';
       let finalImages = [...existingImages];
       
-      if (isTestListing && isDeveloper && imageFiles.length === 0 && existingImages.length === 0 && !editingListing) {
-        // Use one of the test images
-        finalImageUrl = TEST_IMAGES[Math.floor(Math.random() * TEST_IMAGES.length)];
-        finalImages = [finalImageUrl];
-      } else if (imageFiles.length > 0) {
+      if (imageFiles.length > 0) {
         // Try Cloudinary first, fallback to Firebase Storage if configured
         const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -434,6 +411,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         customDimensionsEnabled,
       };
 
+      const modelField = model3d ? { model3d } : (editingListing?.model3d ? { model3d: null } : {});
+
       if (editingListing) {
         // Update existing listing
         await updateDoc(doc(db, 'products', editingListing.id), {
@@ -444,6 +423,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           images: finalImages,
           ...priceFields,
           ...variantFields,
+          ...modelField,
           updatedAt: new Date().toISOString()
         });
 
@@ -458,9 +438,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           images: finalImages,
           ...priceFields,
           ...variantFields,
+          ...(model3d ? { model3d } : {}),
           createdAt: new Date().toISOString(),
           archivedAt: null,
-          isTest: isTestListing
         });
 
         await logActivity('CREATE_LISTING', `Created new listing: ${finalNameEn}`);
@@ -470,7 +450,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
       setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPriceEgp(''); setPriceUsd('');
       setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
-      setIsTestListing(false);
+      setModel3d(null);
       setIsCreateModalOpen(false);
       setEditingListing(null);
     } catch (error: any) {
@@ -819,6 +799,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setDimensions(listing.dimensions || '');
                         setCustomDimensionsEnabled(!!listing.customDimensionsEnabled);
                         setExistingImages(listing.images || [listing.imageUrl]);
+                        setModel3d(listing.model3d || null);
                         setIsCreateModalOpen(true);
                       }}
                       className="absolute top-3 start-3 p-2 bg-white/90 backdrop-blur-sm text-blue-600 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-blue-50 shadow-sm z-10"
@@ -1132,6 +1113,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
                   setCategory(categories[0]?.id || ''); setPriceEgp(''); setPriceUsd(''); setImageFiles([]);
                   setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
+                  setModel3d(null);
                 }} 
                 className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
               >
@@ -1210,31 +1192,17 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </label>
               </div>
 
-              {isDeveloper && !editingListing && (
-                <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl">
-                  <input 
-                    type="checkbox" 
-                    id="test-listing" 
-                    checked={isTestListing} 
-                    onChange={e => setIsTestListing(e.target.checked)}
-                    className="w-5 h-5 accent-[var(--color-primary)]"
-                  />
-                  <label htmlFor="test-listing" className="text-sm font-medium text-[var(--color-text-primary)] flex items-center gap-2">
-                    <Beaker size={16} className="text-blue-500" />
-                    Create as Test Listing
-                  </label>
-                </div>
-              )}
+              <Product3DFields value={model3d} onChange={setModel3d} />
 
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                   {editingListing ? t('admin_change_photo') || 'Change Photos' : t('admin_photo_min')}
                 </label>
-                <div className={`border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative ${isTestListing && imageFiles.length === 0 && existingImages.length === 0 ? 'opacity-50' : ''}`}>
+                <div className="border-2 border-dashed border-[var(--color-text-primary)]/10 rounded-xl p-6 md:p-8 text-center hover:bg-[var(--color-text-primary)]/5 transition-colors relative">
                   <input 
                     type="file" 
                     multiple
-                    required={!isTestListing && !editingListing && imageFiles.length === 0 && existingImages.length === 0}
+                    required={!editingListing && imageFiles.length === 0 && existingImages.length === 0}
                     accept="image/*"
                     onChange={e => {
                       if (e.target.files) {
@@ -1287,12 +1255,6 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         ))}
                       </div>
                       <p className="text-xs text-[var(--color-text-secondary)] mt-3">Click or drag to add more images</p>
-                    </div>
-                  ) : isTestListing ? (
-                    <div className="flex flex-col items-center">
-                      <Beaker size={32} className="text-blue-500 mb-2" />
-                      <p className="text-sm font-medium text-[var(--color-text-primary)]">Using Random Test Image</p>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">Click or drag to override with custom images</p>
                     </div>
                   ) : editingListing ? (
                     <div className="flex flex-col items-center">

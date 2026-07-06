@@ -8,6 +8,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LaunchProvider } from './contexts/LaunchContext';
 import { StoreProvider } from './contexts/StoreContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -25,17 +26,19 @@ const Checkout = React.lazy(() => import('./pages/Checkout'));
 const OrderConfirmation = React.lazy(() => import('./pages/OrderConfirmation'));
 const Legal = React.lazy(() => import('./pages/Legal'));
 const AdminOrders = React.lazy(() => import('./pages/AdminOrders'));
-const AdminScans = React.lazy(() => import('./pages/AdminScans'));
 const Staff = React.lazy(() => import('./pages/Staff'));
 const AdminTeam = React.lazy(() => import('./pages/AdminTeam'));
+const AdminDev = React.lazy(() => import('./pages/AdminDev'));
 const Contact = React.lazy(() => import('./pages/Contact'));
 const FAQ = React.lazy(() => import('./pages/FAQ'));
 const TrackOrder = React.lazy(() => import('./pages/TrackOrder'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 import { CookieConsent } from './components/CookieConsent';
+import { ComingSoonOverlay } from './components/ComingSoonOverlay';
 import { SmoothScroll } from './components/SmoothScroll';
 import { initAnalytics, trackPageView } from './lib/analytics';
 import { db } from './lib/firebase';
+import { ADMIN_BASE, STAFF_BASE, LOGIN_PATH } from './lib/paths';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -195,25 +198,10 @@ const AppContent: React.FC = () => {
   useEffect(() => { initAnalytics(); }, []);
   useEffect(() => { trackPageView(location.pathname + location.search); }, [location.pathname, location.search]);
 
-  // Titles for private/utility routes only. Public pages set their own richer SEO
-  // via useSeo() (which also handles description/canonical/OG/JSON-LD) — leaving
-  // those out here avoids this parent effect overwriting the page-level title.
   useEffect(() => {
-    const base = 'Raafat Furniture';
-    const p = location.pathname;
-    const privateTitles: [string, string][] = [
-      ['/checkout', `Checkout — ${base}`],
-      ['/order', `Your Order — ${base}`],
-      ['/account', `My Account — ${base}`],
-      ['/login', `Sign In — ${base}`],
-      ['/admin', `Admin — ${base}`],
-      ['/staff', `Workshop — ${base}`],
-      ['/track', `Track Order — ${base}`],
-    ];
-    const match = privateTitles.find(([prefix]) => p.startsWith(prefix));
-    if (match) document.title = match[1];
+    document.title = 'Raafat Furniture';
   }, [location.pathname]);
-  
+
   const t: TFunction = useCallback((key: string): string => {
     let text;
     if (dynamicTexts && dynamicTexts[language]) {
@@ -244,13 +232,16 @@ const AppContent: React.FC = () => {
       <React.Suspense fallback={<PageSpinner />}>
       <Routes>
         <Route element={<AdminLayout t={t} />}>
-          <Route path="/admin" element={<Admin t={t} language={language} />} />
-          <Route path="/admin/orders" element={<AdminOrders t={t} />} />
-          <Route path="/admin/scans" element={<AdminScans t={t} />} />
-          <Route path="/admin/team" element={<AdminTeam t={t} />} />
+          <Route path={ADMIN_BASE} element={<Admin t={t} language={language} />} />
+          <Route path={`${ADMIN_BASE}/orders`} element={<AdminOrders t={t} />} />
+          <Route path={`${ADMIN_BASE}/team`} element={<AdminTeam t={t} />} />
+          <Route path={`${ADMIN_BASE}/dev`} element={<AdminDev t={t} />} />
         </Route>
-        <Route path="/staff" element={<Staff t={t} />} />
-        <Route path="/login" element={<Login t={t} />} />
+        <Route path={STAFF_BASE} element={<Staff t={t} />} />
+        <Route path={LOGIN_PATH.slice(1)} element={<Login t={t} />} />
+        <Route path="admin/*" element={<NotFound t={t} />} />
+        <Route path="staff/*" element={<NotFound t={t} />} />
+        <Route path="login" element={<NotFound t={t} />} />
         <Route path="/onboarding" element={<Onboarding t={t} />} />
         <Route path="/account" element={<UserAccount t={t} />} />
         <Route path="*" element={
@@ -288,6 +279,7 @@ const AppContent: React.FC = () => {
       </Routes>
       </React.Suspense>
       <CookieConsent t={t} />
+      <ComingSoonOverlay t={t} />
     </div>
   );
 };
@@ -296,6 +288,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <LaunchProvider>
         <CurrencyProvider>
           <StoreProvider>
             <ToastProvider>
@@ -305,6 +298,7 @@ const App: React.FC = () => {
             </ToastProvider>
           </StoreProvider>
         </CurrencyProvider>
+        </LaunchProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

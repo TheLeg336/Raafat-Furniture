@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { adminPath } from '../../lib/paths';
 import type { TFunction } from '../../types';
 
 type CatalogTab = 'categories' | 'archive' | 'logs';
@@ -28,7 +29,7 @@ export const CatalogSubNav: React.FC<Props> = ({ t, isDeveloper, archiveCount = 
         return (
           <Link
             key={item.id}
-            to={item.id === 'categories' ? '/admin' : `/admin?tab=${item.id}`}
+            to={item.id === 'categories' ? adminPath() : `${adminPath()}?tab=${item.id}`}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-sm font-medium transition-colors ${
               active
                 ? 'bg-[var(--color-background)] text-[var(--color-primary)] shadow-sm'

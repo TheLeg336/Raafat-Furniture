@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { LOGIN_PATH } from '../lib/paths';
 import { useAuth } from '../contexts/AuthContext';
 import { User as UserIcon, ArrowRight } from 'lucide-react';
 
@@ -15,7 +16,7 @@ const Onboarding: React.FC<{ t?: (k: string) => string }> = ({ t }) => {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/login');
+      navigate(LOGIN_PATH);
     } else if (!loading && firstName && lastName) {
       navigate('/');
     }

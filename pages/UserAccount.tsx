@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
+import { adminPath, LOGIN_PATH } from '../lib/paths';
 import { formatMoney, formatDate } from '../lib/format';
 
 interface UserAccountProps { t: TFunction; }
@@ -41,8 +42,8 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
   }, [user]);
 
   if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (!user) return <Navigate to={LOGIN_PATH} replace />;
+  if (isAdmin) return <Navigate to={adminPath()} replace />;
 
   const fullName = firstName && lastName ? `${firstName} ${lastName}` : null;
   const statusLabel = (s: OrderStatus) => t(`order_status_${s}`) || s.replace(/_/g, ' ');

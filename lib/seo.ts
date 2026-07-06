@@ -36,7 +36,7 @@ export function useSeo({ title, description, path, image, type = 'website', json
   const img = image || OG_IMAGE;
 
   useEffect(() => {
-    document.title = title;
+    document.title = SITE.name;
     upsertMeta('name', 'description', desc);
     upsertLink('canonical', url);
     upsertMeta('property', 'og:title', title);

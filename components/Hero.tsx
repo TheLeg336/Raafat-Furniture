@@ -83,7 +83,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
           </h1>
 
           <motion.p variants={fadeUp} className="text-white/80 max-w-xl mx-auto mb-9 text-base md:text-lg measure">
-            {t('hero_subtitle') || 'Furniture made to be lived with — crafted, considered, and yours.'}
+            {t('hero_subtitle') || 'Furniture made to be lived with, crafted, considered, and yours.'}
           </motion.p>
 
           <motion.div variants={fadeUp} className="relative flex items-center justify-center">

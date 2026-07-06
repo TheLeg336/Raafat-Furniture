@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MapPin, Phone } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import type { TFunction } from '../types';
 import { openCookieSettings } from './CookieConsent';
 
@@ -35,13 +35,6 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
             <Phone size={18} aria-hidden />
             {t('footer_phone_number')}
           </a>
-          <Link
-            to="/#visit-us"
-            className="inline-flex items-center gap-2 text-sm font-semibold opacity-90 hover:text-[var(--color-primary)] transition-colors"
-          >
-            <MapPin size={16} aria-hidden />
-            {t('footer_showrooms_link') || 'Our showrooms — Cairo, Minya & New Minya'}
-          </Link>
         </motion.div>
 
         <motion.div

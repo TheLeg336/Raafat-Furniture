@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { adminPath } from '../lib/paths';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { ShieldCheck, Hammer, Trash2, UserPlus, Code2, Smartphone } from 'lucide-react';
 import type { TFunction } from '../types';
@@ -23,7 +25,7 @@ const roleIcon: Record<string, React.ReactNode> = {
 /**
  * Team management: grant admin / worker access by email.
  * Writes to admins/{email}; Firestore rules restrict writes to developers.
- * Workers see only the /staff workshop view (no prices, no customer data).
+ * Workers sign in and land on the workshop checklist (specs only, no prices).
  */
 const AdminTeam: React.FC<Props> = () => {
   const { user, isAdmin, isDeveloper } = useAuth();
@@ -39,6 +41,8 @@ const AdminTeam: React.FC<Props> = () => {
       (snap) => setStaff(snap.docs.map((d) => ({ email: d.id, role: (d.data().role || 'admin') as StaffDoc['role'] }))),
       () => setStaff([]));
   }, [isAdmin]);
+
+  if (!isDeveloper) return <Navigate to={adminPath()} replace />;
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +67,7 @@ const AdminTeam: React.FC<Props> = () => {
     <>
       <AdminPageHeader
         title="Team"
-        description="Admins manage catalog and orders. Workers use /staff — no prices or customer details."
+        description="Grant admin or workshop-worker access by email. Workers see order specs only after sign-in."
       />
 
       <Card className="p-5 mb-6">

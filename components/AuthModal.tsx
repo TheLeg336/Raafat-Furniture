@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart } from 'lucide-react';
 import { useStore } from '../contexts/StoreContext';
 import { useNavigate } from 'react-router-dom';
+import { LOGIN_PATH } from '../lib/paths';
 
 export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
   const { showAuthModal, setShowAuthModal } = useStore();
@@ -53,7 +54,7 @@ export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
                 <button
                   onClick={() => {
                     setShowAuthModal(false);
-                    navigate('/login');
+                    navigate(LOGIN_PATH);
                   }}
                   className="w-full py-3 px-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-bold hover:brightness-105 transition-all shadow-[var(--gold-glow)]"
                 >
@@ -62,7 +63,7 @@ export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
                 <button
                   onClick={() => {
                     setShowAuthModal(false);
-                    navigate('/login?signup=true');
+                    navigate(`${LOGIN_PATH}?signup=true`);
                   }}
                   className="w-full py-3 px-6 bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-full font-bold hover:bg-[var(--color-surface)] transition-all"
                 >

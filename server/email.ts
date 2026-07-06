@@ -3,6 +3,7 @@
  * Absent → logs the email instead of sending (safe in dev; no hard failure).
  */
 import { buildOrderEmail, buildStatusEmail, type OrderEmailData } from './orderEmail';
+import { buildLaunchEmail, type LaunchEmailData } from './launchEmail';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Raafat Furniture <orders@example.com>';
@@ -44,6 +45,12 @@ export async function sendOrderConfirmation(to: string, data: OrderEmailData): P
 /** Ready-for-pickup / shipped-with-tracking notification. */
 export async function sendOrderStatus(to: string, order: any, type: 'ready' | 'shipped'): Promise<boolean> {
   const { subject, html, text } = buildStatusEmail(order, type);
+  return send(to, subject, html, text);
+}
+
+/** Launch announcement to waitlist signups. */
+export async function sendLaunchAnnouncement(to: string, data: LaunchEmailData): Promise<boolean> {
+  const { subject, html, text } = buildLaunchEmail(data);
   return send(to, subject, html, text);
 }
 

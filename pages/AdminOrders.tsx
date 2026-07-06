@@ -143,9 +143,8 @@ const AdminOrders: React.FC<Props> = () => {
           <p className="font-semibold text-[var(--color-danger,#dc2626)] mb-2">Could not load orders</p>
           <p className="text-sm text-[var(--color-text-secondary)] mb-4">{ordersError}</p>
           <ul className="text-sm text-[var(--color-text-secondary)] list-disc ps-5 space-y-1">
-            <li>Sign in with an account listed in <strong>Admin → Team</strong> with role <em>admin</em> or <em>developer</em>.</li>
-            <li>First-time setup: in Firebase Console → Firestore → create <code>admins/{'{your-email}'}</code> with field <code>role: developer</code>.</li>
-            <li>Orders only exist after checkout works — set <code>FIREBASE_SERVICE_ACCOUNT</code> on the server (Vercel env or local <code>.env</code>).</li>
+            <li>Sign in with an account in the <strong>Team</strong> panel (developer only) with role <em>admin</em> or <em>developer</em>.</li>
+            <li>Ensure <code>FIREBASE_SERVICE_ACCOUNT</code> is set on the server so checkout can create orders.</li>
           </ul>
         </Card>
       ) : ordersLoading ? (
@@ -155,8 +154,7 @@ const AdminOrders: React.FC<Props> = () => {
           <p className="mb-3">{view === 'pending' ? 'No pending orders yet.' : 'No completed orders yet.'}</p>
           {orders.length === 0 && view === 'pending' && (
             <p className="text-sm max-w-md mx-auto">
-              Place a test order from the shop (checkout needs <code>FIREBASE_SERVICE_ACCOUNT</code> configured).
-              Workers see orders at <code>/staff</code> once status is paid, confirmed, or in production.
+              Orders appear here after customers complete checkout. Workshop staff see active orders on their checklist once payment is confirmed.
             </p>
           )}
         </Card>

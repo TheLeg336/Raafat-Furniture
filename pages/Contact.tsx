@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, MessageCircle, Send } from 'lucide-react';
+import { Mail, Phone, MessageCircle, Send } from 'lucide-react';
 import type { TFunction } from '../types';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea } from '../components/ui/Input';
@@ -66,13 +66,6 @@ const Contact: React.FC<Props> = ({ t }) => {
               </div>
             </Card>
           </a>
-          <Card className="p-5 flex items-center gap-4">
-            <MapPin size={22} className="text-[var(--color-primary)] shrink-0" />
-            <div>
-              <p className="font-semibold">{t('contact_visit') || 'Visit a showroom'}</p>
-              <p className="text-sm text-[var(--color-text-secondary)]">{t('contact_visit_desc') || 'Branch addresses are in the footer below.'}</p>
-            </div>
-          </Card>
         </div>
 
         <Card className="p-6 md:p-8">

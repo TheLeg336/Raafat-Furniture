@@ -10,6 +10,7 @@ import { getDb } from './firebaseAdmin';
 import { orderToEmail } from './orderEmail';
 import { ordersRouter, staffFromReq, isAdminRole } from './ordersApi';
 import { paymobRouter } from './paymob';
+import { launchRouter } from './launchApi';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -125,6 +126,7 @@ export function createApiApp() {
   app.use(express.json({ limit: '1mb' }));
 
   app.use(ordersRouter(rateLimit));
+  app.use(launchRouter(rateLimit));
   app.use(paymobRouter(rateLimit));
 
   // ---- Cloudinary delete (admin only) ----

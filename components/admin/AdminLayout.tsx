@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Home, LogOut, Menu, X, LayoutGrid, ClipboardList, Box, Users, Hammer } from 'lucide-react';
+import { Home, LogOut, Menu, X, LayoutGrid, ClipboardList, Users, Code2 } from 'lucide-react';
 import type { TFunction } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import LogoIcon from '../LogoIcon';
 import { PageSpinner } from '../ui/Spinner';
-import { ADMIN_LINKS, isAdminLinkActive } from './adminLinks';
+import { ADMIN_LINKS, DEV_ONLY_LINKS, isAdminLinkActive } from './adminLinks';
+import { LOGIN_PATH } from '../../lib/paths';
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
   Catalog: <LayoutGrid size={18} />,
   Orders: <ClipboardList size={18} />,
-  'Scans & 3D': <Box size={18} />,
   Team: <Users size={18} />,
-  Workshop: <Hammer size={18} />,
+  Dev: <Code2 size={18} />,
 };
 
 interface AdminLayoutProps {
@@ -21,12 +21,19 @@ interface AdminLayoutProps {
 
 /** Shared shell for every /admin/* route — sidebar on desktop, bottom bar on mobile. */
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
-  const { user, isAdmin, loading, logout, firstName, lastName } = useAuth();
+  const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="robots"]');
+    const prev = meta?.getAttribute('content') || '';
+    if (meta) meta.setAttribute('content', 'noindex, nofollow');
+    return () => { if (meta) meta.setAttribute('content', prev); };
+  }, []);
+
   if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={LOGIN_PATH} replace />;
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] p-6">
@@ -83,7 +90,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
         {ADMIN_LINKS.map((link) => (
           <NavLink key={link.to} {...link} onClick={() => setMobileOpen(false)} />
         ))}
-        <NavLink to="/staff" label="Workshop" onClick={() => setMobileOpen(false)} />
+        {isDeveloper && DEV_ONLY_LINKS.map((link) => (
+          <NavLink key={link.to} {...link} onClick={() => setMobileOpen(false)} />
+        ))}
       </nav>
 
       <div className="p-2 border-t border-[var(--color-surface-2)] space-y-0.5">
@@ -149,7 +158,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
 
           {/* Mobile bottom nav */}
           <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 flex justify-around items-stretch border-t border-[var(--color-surface-2)] bg-[var(--color-background)]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
-            {ADMIN_LINKS.map((link) => {
+            {[...ADMIN_LINKS, ...(isDeveloper ? DEV_ONLY_LINKS : [])].map((link) => {
               const active = isAdminLinkActive(location.pathname, link);
               return (
                 <Link
@@ -164,15 +173,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
                 </Link>
               );
             })}
-            <Link
-              to="/staff"
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold ${
-                location.pathname === '/staff' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
-              }`}
-            >
-              <Hammer size={18} />
-              <span>Shop</span>
-            </Link>
           </nav>
         </div>
       </div>
