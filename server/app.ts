@@ -14,6 +14,9 @@ import { paymobRouter } from './paymob';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// gemini-3-flash-preview was decommissioned. gemini-2.5-flash is the current
+// free-tier default; override with GEMINI_MODEL (e.g. gemini-2.0-flash) if needed.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const isProd = process.env.NODE_ENV === 'production';
 
 cloudinary.config({
@@ -242,11 +245,19 @@ export function createApiApp() {
       const { GoogleGenAI, Type } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
       const prompt =
-        `You are a professional translator for a luxury furniture brand. Fill in any missing fields ` +
-        `between English and Arabic, keeping provided fields exactly. Return ONLY JSON.\n` +
+        `You are the bilingual copywriter for Raafat Furniture, an upscale Egyptian furniture house that ships worldwide.\n` +
+        `Task: complete the missing fields so each product has BOTH an English and an Arabic version of its name and description.\n\n` +
+        `Rules:\n` +
+        `- Arabic must be natural, warm EGYPTIAN dialect (اللهجة المصرية) as written by a refined Cairo showroom — elegant and premium, never stiff textbook Arabic and never street slang.\n` +
+        `- English must read like polished boutique product copy (clean, confident, not flowery).\n` +
+        `- Translate MEANING and feel, not word-for-word. Keep it faithful to any field already provided.\n` +
+        `- NEVER change a field that already has text — only fill the empty ones. Keep names concise; keep descriptions roughly the same length as their counterpart.\n` +
+        `- Keep measurements, materials, and numbers accurate. Do not invent features that aren't described.\n` +
+        `- Return ONLY the JSON object, nothing else.\n\n` +
+        `Current fields (translate to fill any empty string):\n` +
         JSON.stringify({ nameEn, nameAr, descEn, descAr }, null, 2);
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: GEMINI_MODEL,
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
