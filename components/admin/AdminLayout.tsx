@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Home, LogOut, Menu, LayoutGrid, ClipboardList, Users, Code2 } from 'lucide-react';
 import type { TFunction } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import LogoIcon from '../LogoIcon';
 import { PageSpinner } from '../ui/Spinner';
 import { MobilePillNav } from '../ui/MobilePillNav';
+import { MobileBottomSheet } from '../ui/MobileBottomSheet';
 import { ADMIN_LINKS, DEV_ONLY_LINKS, isAdminLinkActive } from './adminLinks';
 import { LOGIN_PATH } from '../../lib/paths';
 
@@ -26,7 +26,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
   const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="robots"]');
@@ -139,30 +138,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
             </div>
           </header>
 
-          <AnimatePresence>
-            {mobileOpen && (
-              <>
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="md:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
-                  aria-label="Close menu"
-                  onClick={() => setMobileOpen(false)}
-                />
-                <motion.aside
-                  initial={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
-                  animate={{ x: 0 }}
-                  exit={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-                  className="md:hidden fixed z-50 w-[min(85vw,18rem)] start-3 top-3 bottom-3 flex flex-col rounded-3xl border border-[var(--color-border)]/30 bg-[var(--color-background)] shadow-2xl overflow-hidden"
-                >
-                  {sidebar}
-                </motion.aside>
-              </>
-            )}
-          </AnimatePresence>
+          <MobileBottomSheet
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ariaLabel={t('mobile_nav') || 'Admin menu'}
+          >
+            <div className="flex flex-col min-h-[12rem] px-2 pb-2">
+              {sidebar}
+            </div>
+          </MobileBottomSheet>
 
           <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 md:px-6 md:py-6 max-md:pb-[var(--mobile-tab-offset)]">
             <div className="mx-auto w-full max-w-5xl">

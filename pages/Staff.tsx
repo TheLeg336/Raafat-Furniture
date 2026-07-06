@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, Menu, RefreshCw, Store, Truck, X } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, Menu, RefreshCw, Store, Truck, X, LayoutGrid } from 'lucide-react';
 import type { TFunction } from '../types';
 import { adminPath, LOGIN_PATH, STAFF_PATH } from '../lib/paths';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
 import { MobilePillNav } from '../components/ui/MobilePillNav';
+import { MobileBottomSheet } from '../components/ui/MobileBottomSheet';
 import { useToast } from '../components/ui/Toast';
 import { formatDate, localized } from '../lib/format';
 
@@ -34,7 +35,6 @@ const Staff: React.FC<Props> = ({ t }) => {
   const [celebrate, setCelebrate] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 
   const load = useCallback(async () => {
     try {
@@ -121,41 +121,26 @@ const Staff: React.FC<Props> = ({ t }) => {
         <Button variant="secondary" size="sm" onClick={load} iconLeft={<RefreshCw size={15} />}>{t('refresh') || 'Refresh'}</Button>
       </div>
 
-      <AnimatePresence>
-        {menuOpen && (
-          <>
-            <motion.button
-              type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
-              aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
-              animate={{ x: 0 }}
-              exit={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-              className="md:hidden fixed z-50 w-[min(85vw,18rem)] start-3 top-3 bottom-3 rounded-3xl border border-[var(--color-border)]/30 bg-[var(--color-background)] shadow-2xl p-4 flex flex-col gap-1"
-            >
-              <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">
-                <Home size={18} /> {t('nav_home') || 'Store'}
+      <MobileBottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} ariaLabel={t('mobile_nav') || 'Workshop menu'}>
+        <nav className="flex flex-col gap-1 px-4 pb-2">
+          <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">
+            <Home size={18} /> {t('nav_home') || 'Store'}
+          </Link>
+          {isAdmin && (
+            <>
+              <Link to={adminPath()} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">
+                <LayoutGrid size={18} /> Catalog
               </Link>
-              {isAdmin && (
-                <>
-                  <Link to={adminPath()} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">Catalog</Link>
-                  <Link to={adminPath('orders')} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">Orders</Link>
-                </>
-              )}
-              <button type="button" onClick={() => { setMenuOpen(false); logout(); }} className="mt-auto flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium text-[var(--color-danger,#dc2626)] hover:bg-[var(--color-danger-bg)]">
-                <LogOut size={18} /> {t('account_signout') || 'Sign out'}
-              </button>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <Link to={adminPath('orders')} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">
+                <ClipboardList size={18} /> Orders
+              </Link>
+            </>
+          )}
+          <button type="button" onClick={() => { setMenuOpen(false); logout(); }} className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] text-sm font-medium text-[var(--color-danger,#dc2626)] hover:bg-[var(--color-danger-bg)] mt-2">
+            <LogOut size={18} /> {t('account_signout') || 'Sign out'}
+          </button>
+        </nav>
+      </MobileBottomSheet>
 
       {loadError ? (
         <Card className="p-8 text-start border-[var(--color-danger,#dc2626)]/30">
