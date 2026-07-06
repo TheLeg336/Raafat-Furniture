@@ -22,6 +22,8 @@ export interface OrderEmailData {
   subtotal: number;
   shipping: number;
   tax: number;
+  taxRate?: number;
+  taxIncluded?: boolean;
   total: number;
   fulfillment: 'pickup' | 'shipping' | 'custom';
   paymentMethod: string;
@@ -120,7 +122,7 @@ export function buildOrderEmail(d: OrderEmailData): { subject: string; html: str
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${totalRow('Subtotal', money(d.subtotal, d.currency))}
             ${d.shipping ? totalRow('Shipping', money(d.shipping, d.currency)) : ''}
-            ${d.tax ? totalRow('Tax', money(d.tax, d.currency)) : ''}
+            ${d.tax ? totalRow(taxLabel(d), money(d.tax, d.currency)) : ''}
             <tr><td colspan="2" style="padding-top:8px;border-top:2px solid ${BORDER};"></td></tr>
             ${totalRow('Total', money(d.total, d.currency), true)}
           </table>
@@ -166,7 +168,7 @@ export function buildOrderEmail(d: OrderEmailData): { subject: string; html: str
     d.items.map((i) => `- ${i.name} x${i.quantity}  ${money(i.price * i.quantity, d.currency)}`).join('\n') +
     `\n\nSubtotal: ${money(d.subtotal, d.currency)}\n` +
     (d.shipping ? `Shipping: ${money(d.shipping, d.currency)}\n` : '') +
-    (d.tax ? `Tax: ${money(d.tax, d.currency)}\n` : '') +
+    (d.tax ? `${taxLabel(d)}: ${money(d.tax, d.currency)}\n` : '') +
     `Total: ${money(d.total, d.currency)}\n\n` +
     `Fulfillment: ${fulfillmentLabel[d.fulfillment] || d.fulfillment}\n` +
     (d.orderUrl ? `\nView your order: ${d.orderUrl}\n` : '');
@@ -180,4 +182,71 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function taxLabel(d: OrderEmailData): string {
+  const pct = d.taxRate ? ` ${Math.round(d.taxRate * 100)}%` : '';
+  return d.taxIncluded ? `VAT${pct} (included)` : `Tax${pct}`;
+}
+
+/** Map a Firestore order document to the email payload. */
+export function orderToEmail(order: any): OrderEmailData {
+  return {
+    orderNumber: order.orderNumber,
+    customerName: order.contact?.fullName || '',
+    currency: order.currency || 'USD',
+    items: (order.items || []).map((i: any) => ({
+      name: typeof i.name === 'string' ? i.name : i.name?.en || 'Item',
+      quantity: i.quantity,
+      price: i.price,
+      color: i.color,
+      material: i.material,
+      customDimensions: i.customDimensions,
+    })),
+    subtotal: order.subtotal,
+    shipping: order.shipping,
+    tax: order.tax,
+    taxRate: order.taxRate,
+    taxIncluded: order.taxIncluded,
+    total: order.total,
+    fulfillment: order.fulfillment,
+    paymentMethod: order.paymentMethod,
+    contact: order.contact || {},
+    storeName: 'Raafat Furniture',
+    siteUrl: process.env.SITE_URL || '',
+    orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : '',
+  };
+}
+
+/** Short status update email: ready for pickup / shipped with tracking. */
+export function buildStatusEmail(order: any, type: 'ready' | 'shipped'): { subject: string; html: string; text: string } {
+  const store = 'Raafat Furniture';
+  const name = escapeHtml(order.contact?.fullName || '');
+  const isReady = type === 'ready';
+  const subject = isReady
+    ? `${store} — Order ${order.orderNumber} is ready for pickup`
+    : `${store} — Order ${order.orderNumber} has shipped`;
+  const trackingLine = !isReady && order.tracking?.number
+    ? `<p style="font-family:Arial,sans-serif;font-size:15px;color:${INK};margin:14px 0 0;">Tracking number${order.tracking.carrier ? ` (${escapeHtml(order.tracking.carrier)})` : ''}: <strong>${escapeHtml(order.tracking.number)}</strong></p>`
+    : '';
+  const body = isReady
+    ? 'Your order is ready and waiting for you at our showroom. Bring your order number when you visit.'
+    : 'Your order is on its way.';
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f6f5f2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;border:1px solid ${BORDER};">
+      <tr><td style="background:${NAVY};padding:22px 32px;border-radius:16px 16px 0 0;">
+        <span style="font-family:Georgia,serif;font-size:20px;color:${GOLD};">${store}</span>
+      </td></tr>
+      <tr><td style="padding:28px 32px;">
+        <h1 style="font-family:Georgia,serif;font-size:22px;color:${NAVY};margin:0 0 10px;">${isReady ? 'Ready for pickup' : 'Your order has shipped'}</h1>
+        <p style="font-family:Arial,sans-serif;font-size:15px;color:${INK};margin:0;">Hi ${name}, ${body}</p>
+        <p style="font-family:Arial,sans-serif;font-size:14px;color:${MUTED};margin:14px 0 0;">Order number: <strong style="color:${NAVY};">${escapeHtml(order.orderNumber)}</strong></p>
+        ${trackingLine}
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`;
+  const text = `${subject}\n\nHi ${order.contact?.fullName || ''}, ${isReady ? 'your order is ready for pickup at our showroom.' : 'your order is on its way.'}\nOrder number: ${order.orderNumber}` +
+    (!isReady && order.tracking?.number ? `\nTracking number${order.tracking.carrier ? ` (${order.tracking.carrier})` : ''}: ${order.tracking.number}` : '');
+  return { subject, html, text };
 }

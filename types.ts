@@ -126,9 +126,11 @@ export type FulfillmentType = 'pickup' | 'shipping' | 'custom';
 
 export type OrderStatus =
   | 'pending_payment'
+  | 'payment_verification'   // Instapay/bank reference submitted, awaiting admin confirmation
   | 'paid'
   | 'confirmed'
   | 'in_production'
+  | 'awaiting_approval'      // staff finished the item checklist, admin double-checks
   | 'ready'
   | 'shipped'
   | 'completed'
@@ -137,8 +139,10 @@ export type OrderStatus =
 
 export type PaymentMethod =
   | 'stripe'
+  | 'paymob'
+  | 'instapay'
   | 'cash_on_pickup'
-  | 'cash_on_delivery'
+  | 'cash_on_delivery' // legacy orders only; no longer offered (shipping is prepaid)
   | 'bank_transfer';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'partially_refunded';
@@ -174,14 +178,17 @@ export interface OrderStatusEvent {
 
 export interface Order {
   id: string;
-  orderNumber: string;    // human-readable, e.g. RF-7K3M9Q
+  orderNumber: string;    // e.g. EG482913KY — country + 6 digits + random letter + name initial
   userId?: string | null; // null/undefined for guest checkout
   items: OrderItem[];
   currency: string;
   subtotal: number;
   shipping: number;
-  tax: number;
+  tax: number;            // VAT portion. When taxIncluded, already inside total.
+  taxRate?: number;       // e.g. 0.14
+  taxIncluded?: boolean;  // Egypt retail: prices are VAT-inclusive
   total: number;
+  destinationCountry?: string; // ISO2 used for tax + order number
   fulfillment: FulfillmentType;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -190,6 +197,10 @@ export interface Order {
   contact: OrderContact;
   customerNote?: string;
   adminNotes?: string;
+  /** Indices into items[] the workshop has prepared (admin/worker checklist). */
+  prepared?: number[];
+  payment?: { reference?: string };            // Instapay / bank transfer reference
+  tracking?: { number: string; carrier?: string };
   stripe?: { sessionId?: string; paymentIntentId?: string };
   createdAt: string;
   updatedAt: string;

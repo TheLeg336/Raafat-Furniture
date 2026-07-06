@@ -46,17 +46,5 @@ export function localized(
   return value[lang] || value.en || value.ar || fallback;
 }
 
-/**
- * Human, hard-to-guess order number: RF-XXXXXX (Crockford base32, no ambiguous chars).
- * Uniqueness is enforced by the Firestore doc id; this is the display handle.
- */
-export function generateOrderNumber(): string {
-  const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // no I L O U
-  const bytes =
-    typeof crypto !== 'undefined' && crypto.getRandomValues
-      ? crypto.getRandomValues(new Uint8Array(6))
-      : Array.from({ length: 6 }, () => Math.floor(Math.random() * 256));
-  let out = '';
-  for (let i = 0; i < 6; i++) out += alphabet[bytes[i] % 32];
-  return `RF-${out}`;
-}
+// Order numbers are generated server-side (see server/ordersApi.ts) so uniqueness
+// can be guaranteed via orderNumbers/{n} reservation docs.

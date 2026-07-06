@@ -77,6 +77,9 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
                         {t('footer_copyright')}
                     </p>
                     <nav className="order-1 sm:order-2 flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label={t('legal') || 'Legal'}>
+                        <Link to="/contact" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('contact_title') || 'Contact'}</Link>
+                        <Link to="/faq" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('faq_short') || 'FAQ'}</Link>
+                        <Link to="/track" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('track_order') || 'Track order'}</Link>
                         <Link to="/legal/privacy" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('privacy_policy') || 'Privacy Policy'}</Link>
                         <Link to="/legal/cookies" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_policy') || 'Cookie Policy'}</Link>
                         <Link to="/legal/terms" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('terms') || 'Terms'}</Link>

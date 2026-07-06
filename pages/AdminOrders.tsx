@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Search, Download, Package, DollarSign, Clock, CheckCircle2, Phone, Mail, MapPin, StickyNote } from 'lucide-react';
+import {
+  Search, Download, DollarSign, Clock, CheckCircle2, Phone, Mail, MapPin, StickyNote,
+  History, Inbox, BellRing, Truck, BadgeCheck,
+} from 'lucide-react';
 import type { Order, OrderStatus, TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  subscribeAllOrders, updateOrderStatus, setAdminNotes, ordersToCSV, ORDER_STATUSES, ORDER_FLOW,
+  subscribeAllOrders, updateOrderStatus, setAdminNotes, setPrepared, notifyOrder, ordersToCSV,
+  ORDER_STATUSES, ORDER_FLOW, OPEN_STATUSES,
 } from '../lib/orders';
 import { AdminNav } from '../components/admin/AdminNav';
 import { Button } from '../components/ui/Button';
@@ -19,16 +23,19 @@ import { formatMoney, formatDate, localized } from '../lib/format';
 interface Props { t: TFunction; }
 
 const statusTone: Record<OrderStatus, 'gold' | 'success' | 'navy' | 'danger' | 'info'> = {
-  pending_payment: 'gold', paid: 'success', confirmed: 'info', in_production: 'info',
-  ready: 'info', shipped: 'info', completed: 'success', cancelled: 'danger', refunded: 'danger',
+  pending_payment: 'gold', payment_verification: 'gold', paid: 'success', confirmed: 'info',
+  in_production: 'info', awaiting_approval: 'gold', ready: 'info', shipped: 'info',
+  completed: 'success', cancelled: 'danger', refunded: 'danger',
 };
 const label = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+const HISTORY_STATUSES: OrderStatus[] = ['completed', 'cancelled', 'refunded'];
 
 const AdminOrders: React.FC<Props> = () => {
   const { user, isAdmin, loading } = useAuth();
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [view, setView] = useState<'pending' | 'history'>('pending');
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [fulfilFilter, setFulfilFilter] = useState<string>('all');
@@ -40,7 +47,7 @@ const AdminOrders: React.FC<Props> = () => {
     return () => unsub();
   }, [isAdmin]);
 
-  // keep the open modal's order in sync with live data
+  // keep the open modal's order in sync with live data (checklist syncs across devices)
   useEffect(() => {
     if (selected) {
       const fresh = orders.find((o) => o.id === selected.id);
@@ -51,14 +58,17 @@ const AdminOrders: React.FC<Props> = () => {
 
   const stats = useMemo(() => {
     const revenue = orders.filter((o) => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0);
-    const pending = orders.filter((o) => ['pending_payment', 'paid', 'confirmed', 'in_production', 'ready'].includes(o.status)).length;
+    const pending = orders.filter((o) => OPEN_STATUSES.includes(o.status)).length;
+    const approval = orders.filter((o) => o.status === 'awaiting_approval').length;
     const completed = orders.filter((o) => o.status === 'completed').length;
-    return { revenue, pending, completed, total: orders.length, currency: orders[0]?.currency };
+    return { revenue, pending, approval, completed, currency: orders[0]?.currency };
   }, [orders]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return orders.filter((o) => {
+    const list = orders.filter((o) => {
+      const inView = view === 'pending' ? !HISTORY_STATUSES.includes(o.status) : HISTORY_STATUSES.includes(o.status);
+      if (!inView) return false;
       if (statusFilter !== 'all' && o.status !== statusFilter) return false;
       if (fulfilFilter !== 'all' && o.fulfillment !== fulfilFilter) return false;
       if (!needle) return true;
@@ -69,7 +79,11 @@ const AdminOrders: React.FC<Props> = () => {
         o.contact.phone.toLowerCase().includes(needle)
       );
     });
-  }, [orders, q, statusFilter, fulfilFilter]);
+    // Pending: oldest first so the queue is worked in order. History: newest first.
+    return list.sort((a, b) => view === 'pending'
+      ? a.createdAt.localeCompare(b.createdAt)
+      : b.createdAt.localeCompare(a.createdAt));
+  }, [orders, q, statusFilter, fulfilFilter, view]);
 
   const exportCSV = () => {
     const blob = new Blob([ordersToCSV(filtered)], { type: 'text/csv;charset=utf-8' });
@@ -86,13 +100,19 @@ const AdminOrders: React.FC<Props> = () => {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       <AdminNav />
-      <h1 className="font-heading text-3xl font-bold mb-6">Orders</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <h1 className="font-heading text-3xl font-bold">Orders</h1>
+        <div className="flex gap-2">
+          <Button variant={view === 'pending' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('pending')} iconLeft={<Inbox size={15} />}>Pending</Button>
+          <Button variant={view === 'history' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('history')} iconLeft={<History size={15} />}>Order history</Button>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Stat icon={<Package size={18} />} label="Total orders" value={String(stats.total)} />
+        <Stat icon={<Clock size={18} />} label="Open orders" value={String(stats.pending)} />
+        <Stat icon={<BadgeCheck size={18} />} label="Awaiting approval" value={String(stats.approval)} />
         <Stat icon={<DollarSign size={18} />} label="Revenue (paid)" value={formatMoney(stats.revenue, { currency: stats.currency, compact: true })} />
-        <Stat icon={<Clock size={18} />} label="In progress" value={String(stats.pending)} />
         <Stat icon={<CheckCircle2 size={18} />} label="Completed" value={String(stats.completed)} />
       </div>
 
@@ -107,7 +127,7 @@ const AdminOrders: React.FC<Props> = () => {
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="py-3 px-4 bg-transparent border border-[var(--color-border-strong)] rounded-[var(--radius-md)] outline-none cursor-pointer">
           <option value="all">All statuses</option>
-          {ORDER_STATUSES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
+          {(view === 'pending' ? ORDER_STATUSES.filter((s) => !HISTORY_STATUSES.includes(s)) : HISTORY_STATUSES).map((s) => <option key={s} value={s}>{label(s)}</option>)}
         </select>
         <select value={fulfilFilter} onChange={(e) => setFulfilFilter(e.target.value)} className="py-3 px-4 bg-transparent border border-[var(--color-border-strong)] rounded-[var(--radius-md)] outline-none cursor-pointer">
           <option value="all">All fulfillment</option>
@@ -121,7 +141,9 @@ const AdminOrders: React.FC<Props> = () => {
       {ordersLoading ? (
         <PageSpinner />
       ) : filtered.length === 0 ? (
-        <Card className="p-12 text-center text-[var(--color-text-secondary)]">No orders match.</Card>
+        <Card className="p-12 text-center text-[var(--color-text-secondary)]">
+          {view === 'pending' ? 'No pending orders.' : 'No completed orders yet.'}
+        </Card>
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((o) => (
@@ -129,12 +151,14 @@ const AdminOrders: React.FC<Props> = () => {
               <Card hover className="p-4 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-heading font-bold tracking-wider">{o.orderNumber}</span>
+                    <span className="font-semibold">{o.contact.fullName}</span>
+                    <span className="font-heading font-bold tracking-wider text-[var(--color-text-secondary)]">{o.orderNumber}</span>
                     <Badge tone={statusTone[o.status]}>{label(o.status)}</Badge>
                     {o.paymentStatus !== 'paid' && <Badge tone="gold">{label(o.paymentStatus)}</Badge>}
                   </div>
                   <p className="text-sm text-[var(--color-text-secondary)] mt-0.5 truncate">
-                    {o.contact.fullName} · {formatDate(o.createdAt)} · {o.items.reduce((n, it) => n + it.quantity, 0)} items
+                    {formatDate(o.createdAt)} · {o.items.reduce((n, it) => n + it.quantity, 0)} items
+                    {OPEN_STATUSES.includes(o.status) && ` · ${(o.prepared || []).length}/${o.items.length} prepared`}
                   </p>
                 </div>
                 <span className="font-heading font-bold whitespace-nowrap">{formatMoney(o.total, { currency: o.currency })}</span>
@@ -160,27 +184,33 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [note, setNote] = useState('');
   const [notes, setNotes] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [carrier, setCarrier] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { if (order) { setNotes(order.adminNotes || ''); setNewStatus(''); setNote(''); } }, [order?.id]);
+  useEffect(() => {
+    if (order) { setNotes(order.adminNotes || ''); setNewStatus(''); setNote(''); setTrackingNumber(order.tracking?.number || ''); setCarrier(order.tracking?.carrier || ''); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
 
   if (!order) return null;
 
-  const changeStatus = async () => {
-    if (!newStatus) return;
+  const prepared = order.prepared || [];
+  const allPrepared = order.items.length > 0 && order.items.every((_, i) => prepared.includes(i));
+  const inPreparation = ['paid', 'confirmed', 'in_production'].includes(order.status);
+  const needsPaymentCheck = order.paymentStatus !== 'paid' && ['instapay', 'bank_transfer'].includes(order.paymentMethod);
+
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
-    try {
-      await updateOrderStatus(order.id, newStatus, adminEmail, note.trim() || undefined, order);
-      toast.success(`Status → ${label(newStatus)}`);
-      setNote('');
-    } catch (e: any) { toast.error(e?.message || 'Update failed (admin rights / Firestore rules)'); }
+    try { await fn(); toast.success(ok); }
+    catch (e: any) { toast.error(e?.message || 'Action failed'); }
     setBusy(false);
   };
-  const saveNotes = async () => {
-    setBusy(true);
-    try { await setAdminNotes(order.id, notes); toast.success('Notes saved'); }
-    catch (e: any) { toast.error(e?.message || 'Could not save'); }
-    setBusy(false);
+
+  const toggleItem = async (idx: number) => {
+    const next = prepared.includes(idx) ? prepared.filter((n) => n !== idx) : [...prepared, idx];
+    try { await setPrepared(order.id, next); } // autosaves; live subscription refreshes the modal
+    catch (e: any) { toast.error(e?.message || 'Could not save checklist'); }
   };
 
   return (
@@ -193,6 +223,23 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
           <Badge tone="neutral">{label(order.paymentMethod)}</Badge>
         </div>
 
+        {/* Payment verification (InstaPay / bank transfer) */}
+        {needsPaymentCheck && (
+          <section className="p-4 rounded-[var(--radius-md)] border border-[var(--color-primary)]/40 flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Payment verification</h3>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              {order.payment?.reference
+                ? <>Customer reference: <strong className="text-[var(--color-text-primary)]">{order.payment.reference}</strong> — check your {order.paymentMethod === 'instapay' ? 'InstaPay' : 'bank'} account for {formatMoney(order.total, { currency: order.currency })}.</>
+                : 'No transfer reference submitted yet.'}
+            </p>
+            <div>
+              <Button size="sm" loading={busy} onClick={() => run(() => updateOrderStatus(order.id, 'paid', adminEmail, 'Transfer verified', order), 'Payment confirmed')}>
+                Confirm payment received
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Contact */}
         <section className="text-sm flex flex-col gap-1.5">
           <p className="font-semibold text-base">{order.contact.fullName}</p>
@@ -202,23 +249,73 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
           {order.customerNote && <p className="mt-1 p-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-2)] italic">“{order.customerNote}”</p>}
         </section>
 
-        {/* Items */}
+        {/* Items — preparation checklist. Autosaves and syncs live across devices. */}
         <section className="flex flex-col gap-3">
-          {order.items.map((it, i) => (
-            <div key={i} className="flex gap-3 items-start">
-              <div className="w-12 h-12 rounded-[var(--radius-sm)] overflow-hidden bg-[var(--color-secondary)] shrink-0">{it.imageUrl && <img src={it.imageUrl} alt="" className="w-full h-full object-cover" />}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">{typeof it.name === 'string' ? it.name : localized(it.name)}</p>
-                <p className="text-xs text-[var(--color-text-secondary)]">{[it.color, it.material, it.customDimensions].filter(Boolean).join(' · ')} · ×{it.quantity}</p>
-              </div>
-              <span className="text-sm whitespace-nowrap">{formatMoney(it.price * it.quantity, { currency: order.currency })}</span>
-            </div>
-          ))}
-          <div className="flex justify-between items-baseline pt-3 border-t border-[var(--color-border)]">
-            <span className="font-heading font-bold">Total</span>
-            <span className="font-heading text-xl font-bold">{formatMoney(order.total, { currency: order.currency })}</span>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Items · {prepared.length}/{order.items.length} prepared</h3>
           </div>
+          {order.items.map((it, i) => {
+            const done = prepared.includes(i);
+            return (
+              <label key={i} className={`flex gap-3 items-center p-2 -m-2 rounded-[var(--radius-sm)] ${inPreparation ? 'cursor-pointer hover:bg-[var(--color-surface-2)]' : ''}`}>
+                {inPreparation && (
+                  <input type="checkbox" checked={done} onChange={() => toggleItem(i)} className="w-5 h-5 accent-[var(--color-primary)] shrink-0" />
+                )}
+                <div className="w-12 h-12 rounded-[var(--radius-sm)] overflow-hidden bg-[var(--color-secondary)] shrink-0">{it.imageUrl && <img src={it.imageUrl} alt="" className="w-full h-full object-cover" />}</div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium ${done && inPreparation ? 'line-through opacity-70' : ''}`}>{typeof it.name === 'string' ? it.name : localized(it.name)}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">{[it.color, it.material, it.customDimensions].filter(Boolean).join(' · ')} · ×{it.quantity}</p>
+                </div>
+                <span className="text-sm whitespace-nowrap">{formatMoney(it.price * it.quantity, { currency: order.currency })}</span>
+              </label>
+            );
+          })}
+          <div className="flex flex-col gap-1 pt-3 border-t border-[var(--color-border)] text-sm">
+            <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">Subtotal</span><span>{formatMoney(order.subtotal, { currency: order.currency })}</span></div>
+            {order.tax > 0 && <div className="flex justify-between text-[var(--color-text-secondary)]"><span>{order.taxIncluded ? `VAT ${Math.round((order.taxRate || 0.14) * 100)}% (included)` : 'Tax'}</span><span>{formatMoney(order.tax, { currency: order.currency })}</span></div>}
+            <div className="flex justify-between items-baseline pt-1">
+              <span className="font-heading font-bold">Total</span>
+              <span className="font-heading text-xl font-bold">{formatMoney(order.total, { currency: order.currency })}</span>
+            </div>
+          </div>
+          {inPreparation && (
+            <Button
+              size="sm" disabled={!allPrepared} loading={busy} iconLeft={<CheckCircle2 size={15} />}
+              onClick={() => run(() => updateOrderStatus(order.id, 'awaiting_approval', adminEmail, 'Checklist complete', order), 'Order marked complete — awaiting approval')}
+            >
+              Order complete
+            </Button>
+          )}
         </section>
+
+        {/* Approval: notify customer / add tracking */}
+        {order.status === 'awaiting_approval' && (
+          <section className="flex flex-col gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--color-primary)]/40">
+            <h3 className="text-sm font-semibold">Final approval</h3>
+            <p className="text-sm text-[var(--color-text-secondary)]">Double-check the order above, then release it to the customer.</p>
+            {order.fulfillment === 'shipping' ? (
+              <>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input label="Tracking number" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="e.g. ARAMEX 1234567890" />
+                  <Input label="Carrier (optional)" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="Aramex, DHL…" />
+                </div>
+                <div>
+                  <Button size="sm" loading={busy} disabled={!trackingNumber.trim()} iconLeft={<Truck size={15} />}
+                    onClick={() => run(() => notifyOrder(order.id, 'shipped', trackingNumber.trim(), carrier.trim() || undefined), 'Customer notified with tracking')}>
+                    Mark shipped & send tracking
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <Button size="sm" loading={busy} iconLeft={<BellRing size={15} />}
+                  onClick={() => run(() => notifyOrder(order.id, 'ready'), 'Customer notified — ready for pickup')}>
+                  Notify customer — ready for pickup
+                </Button>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Status timeline */}
         <section>
@@ -237,7 +334,7 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
           </ol>
         </section>
 
-        {/* Change status */}
+        {/* Manual status override */}
         <section className="flex flex-col gap-3 p-4 rounded-[var(--radius-md)] bg-[var(--color-surface-2)]">
           <h3 className="text-sm font-semibold">Update status</h3>
           <div className="grid sm:grid-cols-2 gap-3">
@@ -252,14 +349,17 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
               <button key={s} onClick={() => setNewStatus(s)} className={`text-xs px-3 py-1 rounded-[var(--radius-pill)] border ${newStatus === s ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>{label(s)}</button>
             ))}
           </div>
-          <Button size="sm" onClick={changeStatus} loading={busy} disabled={!newStatus}>Apply status</Button>
+          <Button size="sm" loading={busy} disabled={!newStatus}
+            onClick={() => run(async () => { await updateOrderStatus(order.id, newStatus as OrderStatus, adminEmail, note.trim() || undefined, order); setNote(''); }, `Status → ${label(newStatus)}`)}>
+            Apply status
+          </Button>
         </section>
 
         {/* Admin notes */}
         <section>
           <div className="flex items-center gap-1.5 mb-2 text-sm font-semibold"><StickyNote size={15} /> Internal notes</div>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Private notes for staff…" />
-          <div className="flex justify-end mt-2"><Button size="sm" variant="secondary" onClick={saveNotes} loading={busy}>Save notes</Button></div>
+          <div className="flex justify-end mt-2"><Button size="sm" variant="secondary" loading={busy} onClick={() => run(() => setAdminNotes(order.id, notes), 'Notes saved')}>Save notes</Button></div>
         </section>
       </div>
     </Modal>

@@ -5,7 +5,8 @@
  *
  * BEFORE PUBLISHING, fill the four identity blanks (search for "[" ):
  *   [BUSINESS LEGAL NAME] · [REGISTERED ADDRESS, EGYPT] · [privacy@DOMAIN] · [DOMAIN]
- * and resolve the two "CHOOSE ONE" sections in the Terms (returns + custom orders).
+ * Returns policy: 14-day (owner-selected, pending business confirmation).
+ * Custom orders: non-returnable + deposit (owner-selected).
  *
  * This is a thorough, real draft — but have a qualified lawyer in your key markets
  * review it before you go live. It is not a substitute for legal advice.
@@ -25,7 +26,7 @@ const ADDRESS = '[REGISTERED ADDRESS, EGYPT]';
 const CONTACT = '[privacy@DOMAIN]';
 const SITE = '[DOMAIN]';
 const PHONE = '01010279777';
-const UPDATED = 'June 2026';
+const UPDATED = 'July 2026';
 
 export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
   privacy: {
@@ -52,7 +53,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
         body: [
           'Account & profile data: your name, email address, phone number, and (if you choose to save them) delivery details and preferences.',
           'Order & transaction data: the items you order, order number, fulfilment choice (pickup, delivery, or custom order), delivery address, and order history.',
-          'Payment data: card payments are processed directly by our payment provider, Stripe. We do not collect or store your full card number on our servers; we receive only a confirmation and limited transaction metadata.',
+          'Payment data: card payments are processed directly by our payment providers (Stripe, Inc. for international cards and wallets; Paymob for cards in Egypt). InstaPay and bank transfers are made directly from your banking app — we receive only the transfer reference you give us. We do not collect or store your full card number on our servers; we receive only a confirmation and limited transaction metadata.',
           'Technical & usage data: IP address, device and browser type, and pages viewed. We collect analytics data only where you have given consent (see our Cookie Policy).',
           'Communications: messages you send us (e.g. enquiries, custom-order requests) and our replies.',
           'We do not intentionally collect special-category (sensitive) data, and we ask that you do not send it to us.',
@@ -73,7 +74,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Who we share your data with',
         body: [
           'We share personal data only with service providers ("processors") that help us run the business, under contracts that require them to protect it and use it only on our instructions:',
-          '• Payments — Stripe, Inc. (processes your card payment).',
+          '• Payments — Stripe, Inc. and Paymob (process your card payment; each acts as an independent controller of the card data you enter on their pages).',
           '• Hosting, database, authentication & file storage — Google Firebase / Google Cloud.',
           '• Product image hosting & delivery — Cloudinary.',
           '• Transactional email delivery — Resend.',
@@ -154,7 +155,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
           'Strictly necessary (always on, no consent required): sign-in/authentication, your shopping cart and saved items, your theme and language preference, security, and a record of your cookie choice. The site cannot function properly without these.',
           'Analytics (consent required): Google Analytics 4, to understand how the site is used so we can improve it. These load only after you accept. We enable IP anonymisation and Google Consent Mode, so no analytics cookies are set until you opt in.',
           'Marketing (consent required): we currently use no advertising or marketing cookies. If we add them in future they will appear in this category and will remain off until you opt in.',
-          'Third-party cookies may also be set when you use Stripe Checkout (payment) or sign in with Google; these are governed by Stripe’s and Google’s own privacy and cookie policies.',
+          'Third-party cookies may also be set when you use Stripe Checkout or Paymob (payment) or sign in with Google; these are governed by those providers’ own privacy and cookie policies.',
         ],
       },
       {
@@ -203,7 +204,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Prices & payment',
         body: [
           'Prices are shown in the store currency and may change at any time, but changes do not affect orders we have already accepted. Where an item shows "Price on Request", we will confirm the price before accepting your order.',
-          'You can pay by card (processed by Stripe), or — where offered — cash on pickup, cash on delivery, or bank transfer. Title to the goods passes to you only once we have received payment in full.',
+          'You can pay by card including Apple Pay and Google Pay (processed by Stripe or, in Egypt, Paymob), by InstaPay or bank transfer (verified against the transaction reference you provide), or — for pickup orders in Egypt — cash on pickup. Delivery orders must be paid in full when the order is placed. Prices for orders within Egypt include 14% VAT; exports are zero-rated and any import duties or taxes are your responsibility. Title to the goods passes to you only once we have received payment in full.',
           'Prices are inclusive or exclusive of applicable taxes as indicated at checkout; you are responsible for any import duties or taxes where these apply.',
         ],
       },
@@ -215,20 +216,16 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
         ],
       },
       {
-        heading: 'Returns & cancellations  [CHOOSE ONE OPTION BELOW BEFORE PUBLISHING — DELETE THE OTHERS]',
+        heading: 'Returns & cancellations',
         body: [
-          'Option A — 14-day returns: You may return most unused, undamaged standard (in-stock) items within 14 days of delivery or pickup for a refund, provided they are in their original condition and packaging. You are responsible for return shipping unless the item was faulty or incorrect. Refunds are issued to your original payment method within a reasonable period after we receive and inspect the item.',
-          'Option B — 30-day returns: As Option A, but with a 30-day window from delivery or pickup.',
-          'Option C — Defects/damage only: Standard items are not returnable for change of mind. You may return an item only if it is defective, damaged, or not as described, in which case we will repair, replace, or refund it as required by law.',
-          'Option D — Store credit / exchange: For change-of-mind returns of standard items within [14/30] days, we offer an exchange or store credit (rather than a cash refund), provided the item is unused and in original condition. This does not affect your rights where an item is faulty.',
+          'You may return most unused, undamaged standard (in-stock) items within 14 days of delivery or pickup for a refund, provided they are in their original condition and packaging. You are responsible for return shipping unless the item was faulty or incorrect. Refunds are issued to your original payment method within a reasonable period after we receive and inspect the item.',
           'In every case, nothing here limits your non-waivable statutory consumer rights, which always apply where an item is faulty, damaged, or not as described.',
         ],
       },
       {
-        heading: 'Custom & made-to-order items  [CHOOSE ONE OPTION BELOW BEFORE PUBLISHING — DELETE THE OTHER]',
+        heading: 'Custom & made-to-order items',
         body: [
-          'Option 1 — Non-returnable, deposit required: Custom, made-to-order, and custom-dimension items are produced specifically for you. A non-refundable deposit is required before production begins, and these items cannot be cancelled or returned once production has started, except where the item is defective or not as described. The balance is due as agreed before delivery or pickup.',
-          'Option 2 — Non-returnable, no deposit: Custom, made-to-order, and custom-dimension items are produced specifically for you and are paid for in the normal way (no separate deposit). Because they are made to your specification, they cannot be cancelled or returned once production has started, except where the item is defective or not as described.',
+          'Custom, made-to-order, and custom-dimension items are produced specifically for you. A non-refundable deposit is required before production begins, and these items cannot be cancelled or returned once production has started, except where the item is defective or not as described. The balance is due as agreed before delivery or pickup.',
           'Your statutory rights in respect of faulty or misdescribed goods are not affected.',
         ],
       },

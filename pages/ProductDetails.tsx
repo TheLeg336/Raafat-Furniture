@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
 import { useToast } from '../components/ui/Toast';
 import { ModelViewer3D } from '../components/ModelViewer3D';
+import { Reviews } from '../components/Reviews';
 import { formatMoney } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 
@@ -219,6 +220,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           </div>
         </motion.div>
       </div>
+      <Reviews t={t} productId={String(product.id)} />
     </div>
   );
 };

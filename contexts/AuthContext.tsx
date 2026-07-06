@@ -9,6 +9,8 @@ interface AuthContextType {
   lastName: string | null;
   isAdmin: boolean;
   isDeveloper: boolean;
+  /** Workshop staff: sees the spec-only /staff view, no prices or customer data. */
+  isWorker: boolean;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
@@ -25,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastName, setLastName] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeveloper, setIsDeveloper] = useState(false);
+  const [isWorker, setIsWorker] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,18 +53,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               lName = userData.lastName || null;
             }
 
-            // Check if user is in 'admins' collection
+            // Check role in the 'admins' collection. role 'worker' = workshop
+            // staff (spec-only access); anything else in the collection = admin.
             const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
-            currentAdminStatus = adminDoc.exists();
-            if (currentAdminStatus) {
-              currentDeveloperStatus = adminDoc.data()?.role === 'developer';
-            }
-            
+            const role = adminDoc.exists() ? (adminDoc.data()?.role || 'admin') : null;
+            currentAdminStatus = role !== null && role !== 'worker';
+            currentDeveloperStatus = role === 'developer';
+
             // Only update state if the fetch was successful
             setFirstName(fName);
             setLastName(lName);
             setIsAdmin(currentAdminStatus);
             setIsDeveloper(currentDeveloperStatus);
+            setIsWorker(role === 'worker');
 
             if (!currentAdminStatus) {
               // Ensure every customer has a profile document. One doc per user
@@ -91,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLastName(null);
         setIsAdmin(false);
         setIsDeveloper(false);
+        setIsWorker(false);
         setLoading(false);
       }
     });
@@ -134,9 +139,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       firstName, 
       lastName, 
-      isAdmin, 
-      isDeveloper, 
-      loading, 
+      isAdmin,
+      isDeveloper,
+      isWorker,
+      loading,
       loginWithGoogle, 
       loginWithEmail, 
       signupWithEmail, 

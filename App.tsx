@@ -24,6 +24,11 @@ const OrderConfirmation = React.lazy(() => import('./pages/OrderConfirmation'));
 const Legal = React.lazy(() => import('./pages/Legal'));
 const AdminOrders = React.lazy(() => import('./pages/AdminOrders'));
 const AdminScans = React.lazy(() => import('./pages/AdminScans'));
+const Staff = React.lazy(() => import('./pages/Staff'));
+const AdminTeam = React.lazy(() => import('./pages/AdminTeam'));
+const Contact = React.lazy(() => import('./pages/Contact'));
+const FAQ = React.lazy(() => import('./pages/FAQ'));
+const TrackOrder = React.lazy(() => import('./pages/TrackOrder'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 import { CookieConsent } from './components/CookieConsent';
 import { SmoothScroll } from './components/SmoothScroll';
@@ -200,6 +205,10 @@ const AppContent: React.FC = () => {
     else if (p.startsWith('/account')) title = `My Account — ${base}`;
     else if (p.startsWith('/login')) title = `Sign In — ${base}`;
     else if (p.startsWith('/admin')) title = `Admin — ${base}`;
+    else if (p.startsWith('/staff')) title = `Workshop — ${base}`;
+    else if (p.startsWith('/track')) title = `Track Order — ${base}`;
+    else if (p.startsWith('/contact')) title = `Contact — ${base}`;
+    else if (p.startsWith('/faq')) title = `FAQ — ${base}`;
     else if (p.startsWith('/legal')) title = `Legal — ${base}`;
     document.title = title;
   }, [location.pathname]);
@@ -236,6 +245,8 @@ const AppContent: React.FC = () => {
         <Route path="/admin" element={<Admin t={t} language={language} />} />
         <Route path="/admin/orders" element={<AdminOrders t={t} />} />
         <Route path="/admin/scans" element={<AdminScans t={t} />} />
+        <Route path="/admin/team" element={<AdminTeam t={t} />} />
+        <Route path="/staff" element={<Staff t={t} />} />
         <Route path="/login" element={<Login t={t} />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/account" element={<UserAccount t={t} />} />
@@ -257,6 +268,9 @@ const AppContent: React.FC = () => {
                 <Route path="/product/:id" element={<ProductDetails t={t} />} />
                 <Route path="/checkout" element={<Checkout t={t} />} />
                 <Route path="/order/confirmation" element={<OrderConfirmation t={t} />} />
+                <Route path="/track" element={<TrackOrder t={t} />} />
+                <Route path="/contact" element={<Contact t={t} />} />
+                <Route path="/faq" element={<FAQ t={t} />} />
                 <Route path="/legal/:slug" element={<Legal t={t} />} />
                 <Route path="*" element={<NotFound t={t} />} />
               </Routes>

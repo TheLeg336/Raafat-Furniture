@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
-import { LogOut, ArrowLeft, User, Package, ChevronRight } from 'lucide-react';
+import { LogOut, ArrowLeft, User, Package, ChevronRight, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TFunction, type Order, type OrderStatus } from '../types';
 import { subscribeUserOrders } from '../lib/orders';
+import { useStore } from '../contexts/StoreContext';
+import { useProducts } from '../hooks/useProducts';
+import { localized } from '../lib/format';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -14,15 +17,19 @@ import { formatMoney, formatDate } from '../lib/format';
 interface UserAccountProps { t: TFunction; }
 
 const statusTone: Record<OrderStatus, 'gold' | 'success' | 'navy' | 'danger' | 'info'> = {
-  pending_payment: 'gold', paid: 'success', confirmed: 'info', in_production: 'info',
-  ready: 'info', shipped: 'info', completed: 'success', cancelled: 'danger', refunded: 'danger',
+  pending_payment: 'gold', payment_verification: 'gold', paid: 'success', confirmed: 'info',
+  in_production: 'info', awaiting_approval: 'info', ready: 'info', shipped: 'info',
+  completed: 'success', cancelled: 'danger', refunded: 'danger',
 };
 
 const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
   const { user, firstName, lastName, isAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const { wishlist } = useStore();
+  const { products } = useProducts();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const wishlistProducts = products.filter((p) => wishlist.includes(String(p.id)));
 
   useEffect(() => {
     if (!user) return;
@@ -99,6 +106,31 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
             </motion.div>
           ))}
         </div>
+      )}
+
+      {/* Wishlist */}
+      {wishlistProducts.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 mb-4 mt-10">
+            <Heart size={20} className="text-[var(--color-primary)]" />
+            <h2 className="font-heading text-xl font-bold">{t('wishlist_title') || 'Saved items'}</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {wishlistProducts.map((p) => (
+              <Link key={p.id} to={`/product/${p.id}`}>
+                <Card hover className="overflow-hidden">
+                  <div className="aspect-square bg-[var(--color-secondary)]">
+                    {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold truncate">{p.name ? localized(p.name) : t(p.nameKey || '')}</p>
+                    {p.price != null && <p className="text-xs text-[var(--color-text-secondary)]">{formatMoney(p.price)}</p>}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, ClipboardList, Box, Home } from 'lucide-react';
+import { LayoutGrid, ClipboardList, Box, Home, Users } from 'lucide-react';
 
 const items = [
   { to: '/admin', label: 'Catalog', icon: <LayoutGrid size={16} />, exact: true },
   { to: '/admin/orders', label: 'Orders', icon: <ClipboardList size={16} /> },
   { to: '/admin/scans', label: 'Scans & 3D', icon: <Box size={16} /> },
+  { to: '/admin/team', label: 'Team', icon: <Users size={16} /> },
 ];
 
 /** Slim cross-section nav for the admin area. */

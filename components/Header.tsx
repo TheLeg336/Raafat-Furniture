@@ -22,7 +22,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isWorker } = useAuth();
   const { cart, setIsCartOpen, isCartOpen } = useStore();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -140,7 +140,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const Controls: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (
     <div className={`flex items-center gap-6 ${isMobile ? 'flex-col gap-4' : ''}`}>
       <Link
-        to={user ? (isAdmin ? "/admin" : "/account") : "/login"}
+        to={user ? (isAdmin ? "/admin" : isWorker ? "/staff" : "/account") : "/login"}
         className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
         aria-label={t('aria_account')}
       >

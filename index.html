@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws: data: blob:; img-src 'self' https: data: blob:; frame-src 'self' https:; worker-src 'self' blob:;" />
+    <!-- CSP: enumerated script hosts, no unsafe-eval. 'unsafe-inline' remains for the
+         inline theme/tailwind-config snippets; connect-src stays broad for Firebase/
+         Cloudinary/Stripe/GA endpoints (all HTTPS). -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: data: blob:; img-src 'self' https: data: blob:; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accept.paymob.com https://*.firebaseapp.com https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self';" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <title>Raafat Furniture - Luxury Furniture</title>
     <meta name="description" content="Raafat Furniture — handcrafted luxury furniture made to last. Browse collections in 3D, view pieces in your room with AR, and order for pickup or delivery across Egypt." />
@@ -197,21 +200,7 @@
         border-radius: 20px !important;
       }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.12",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.2",
-    "vite": "https://aistudiocdn.com/vite@^7.1.5",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
-  }
-}
-</script>
-    <!-- Google <model-viewer> — 3D + AR (WebXR / Scene Viewer / Quick Look). After the importmap. -->
+    <!-- Google <model-viewer> — 3D + AR (WebXR / Scene Viewer / Quick Look). -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 </head>
   <body>

@@ -1,9 +1,7 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -11,7 +9,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { generateOrderNumber, STORE_CURRENCY } from './format';
+import { apiFetch } from './api';
 import type {
   Order,
   OrderContact,
@@ -23,14 +21,21 @@ import type {
 
 export const ORDER_STATUSES: OrderStatus[] = [
   'pending_payment',
+  'payment_verification',
   'paid',
   'confirmed',
   'in_production',
+  'awaiting_approval',
   'ready',
   'shipped',
   'completed',
   'cancelled',
   'refunded',
+];
+
+/** Statuses an order can sit in before it is done. */
+export const OPEN_STATUSES: OrderStatus[] = [
+  'pending_payment', 'payment_verification', 'paid', 'confirmed', 'in_production', 'awaiting_approval', 'ready', 'shipped',
 ];
 
 /** Statuses a customer-facing order moves through, in order, for the timeline UI. */
@@ -61,53 +66,56 @@ export function computeTotals(items: OrderItem[], shipping = 0, tax = 0) {
 }
 
 /**
- * Creates an order document. Returns the order with its Firestore id + orderNumber.
- * Payment status starts 'unpaid'; the Stripe webhook (or an admin) marks it paid.
+ * Creates an order via the server API. The server is authoritative for prices,
+ * tax, totals and the order number — nothing money-related is trusted from here.
  */
 export async function createOrder(input: NewOrderInput): Promise<Order> {
-  if (!db) throw new Error('Database not configured');
-  const now = new Date().toISOString();
-  const orderNumber = generateOrderNumber();
-  const totals = computeTotals(input.items, input.shipping || 0, input.tax || 0);
-  const initialStatus: OrderStatus =
-    input.paymentMethod === 'stripe' ? 'pending_payment' : 'confirmed';
-
-  const order: Omit<Order, 'id'> = {
-    orderNumber,
-    userId: input.userId ?? null,
-    items: input.items,
-    currency: input.currency || STORE_CURRENCY,
-    ...totals,
+  const { order } = await apiFetch<{ order: Order }>('/api/orders/create', {
+    items: input.items.map((it) => ({
+      productId: it.productId,
+      quantity: it.quantity,
+      color: it.color,
+      material: it.material,
+      customDimensions: it.customDimensions,
+    })),
+    contact: input.contact,
     fulfillment: input.fulfillment,
     paymentMethod: input.paymentMethod,
-    paymentStatus: 'unpaid',
-    status: initialStatus,
-    statusHistory: [{ status: initialStatus, at: now, by: 'system' }],
-    contact: input.contact,
-    customerNote: input.customerNote || '',
-    adminNotes: '',
-    createdAt: now,
-    updatedAt: now,
-  };
+    customerNote: input.customerNote,
+  });
+  return order;
+}
 
-  const ref = await addDoc(collection(db, 'orders'), order);
-  return { ...order, id: ref.id };
+/** Guest-safe order lookup through the server (order number + email). */
+export async function trackOrder(orderNumber: string, email: string): Promise<Order | null> {
+  try {
+    const { order } = await apiFetch<{ order: Order }>('/api/orders/track', { orderNumber, email });
+    return order;
+  } catch {
+    return null;
+  }
+}
+
+/** Submit an Instapay / bank transfer reference for verification. */
+export async function submitPaymentReference(orderNumber: string, email: string, reference: string): Promise<void> {
+  await apiFetch('/api/orders/payment-reference', { orderNumber, email, reference });
+}
+
+/** Admin: approve + notify (ready for pickup, or shipped with tracking). */
+export async function notifyOrder(orderId: string, type: 'ready' | 'shipped', trackingNumber?: string, carrier?: string): Promise<void> {
+  await apiFetch(`/api/admin/orders/${orderId}/notify`, { type, trackingNumber, carrier });
+}
+
+/** Admin: autosave the per-item preparation checklist. */
+export async function setPrepared(orderId: string, prepared: number[]): Promise<void> {
+  if (!db) throw new Error('Database not configured');
+  await updateDoc(doc(db, 'orders', orderId), { prepared, updatedAt: new Date().toISOString() });
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
   if (!db) return null;
   const snap = await getDoc(doc(db, 'orders', id));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Order) : null;
-}
-
-/** Look up an order by its human order number (for the confirmation page / guest lookup). */
-export async function getOrderByNumber(orderNumber: string): Promise<Order | null> {
-  if (!db) return null;
-  const q = query(collection(db, 'orders'), where('orderNumber', '==', orderNumber));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() } as Order;
 }
 
 /** Live subscription to a user's own orders. */

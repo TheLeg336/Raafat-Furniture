@@ -39,10 +39,14 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Workers (admins/{email}.role == 'worker') are staff but NOT admins: they get
+    // no direct Firestore access to orders/products — the server API serves them a
+    // price-stripped view instead.
     function isAdmin() {
       return isAuthenticated() && (
         (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.get('role', 'admin') != 'worker')
       );
     }
 
@@ -87,9 +91,10 @@ service cloud.firestore {
       }
     }
 
-    // Admin roles
+    // Staff roles (admins + workers). Anyone signed in may read their own doc
+    // (role lookup at login); admins may list the team; only developers write.
     match /admins/{email} {
-      allow read: if isAuthenticated() && (request.auth.token.email.lower() == email.lower() || isDeveloper());
+      allow read: if isAuthenticated() && (request.auth.token.email.lower() == email.lower() || isAdmin());
       allow write: if isDeveloper();
     }
 
@@ -97,6 +102,25 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if true; // Publicly readable
       allow write: if isAdmin();
+
+      // Customer reviews: one per user per product. Created unapproved; only
+      // admins can flip `approved`. Public sees approved reviews only.
+      match /reviews/{userId} {
+        allow read: if resource.data.approved == true || isAdmin();
+        allow create: if isOwner(userId) &&
+          request.resource.data.rating is int &&
+          request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+          request.resource.data.text is string && request.resource.data.text.size() <= 2000 &&
+          request.resource.data.name is string && request.resource.data.name.size() <= 80 &&
+          request.resource.data.approved == false;
+        allow update: if isAdmin() ||
+          (isOwner(userId) &&
+           request.resource.data.rating is int &&
+           request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+           request.resource.data.text is string && request.resource.data.text.size() <= 2000 &&
+           request.resource.data.approved == false); // edits go back to moderation
+        allow delete: if isOwner(userId) || isAdmin();
+      }
     }
 
     // Admin logs
@@ -125,36 +149,22 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // Orders
+    // Orders — created ONLY by the server (Admin SDK bypasses these rules).
+    // Client creation is forbidden so prices/tax/order numbers can't be forged.
+    // Guests look orders up via /api/orders/track (order number + email),
+    // so guest orders are no longer world-readable.
     // ---------------------------------------------------------------
-    function isValidOrder(d) {
-      return d.keys().hasAll(['orderNumber', 'items', 'total', 'contact', 'status', 'fulfillment', 'paymentMethod']) &&
-             d.orderNumber is string && d.orderNumber.size() <= 32 &&
-             d.items is list && d.items.size() > 0 && d.items.size() <= 100 &&
-             d.total is number && d.total >= 0 &&
-             d.contact.email is string && isValidEmail(d.contact.email) &&
-             d.contact.fullName is string && d.contact.fullName.size() <= 120 &&
-             // a logged-in customer may only create their own order; guests use null
-             (!('userId' in d) || d.userId == null || d.userId == request.auth.uid);
-    }
-
     match /orders/{orderId} {
-      // Owner or admin can read. Guest orders (userId == null) are readable by
-      // anyone holding the random order number (it is the access secret).
-      // NOTE: tighten to a Cloud Function lookup before production to prevent
-      // enumeration of guest contact details. See REWORK_PLAN.md.
       allow read: if isAdmin()
-                  || (isAuthenticated() && resource.data.userId == request.auth.uid)
-                  || resource.data.userId == null;
-
-      // Customers/guests create orders; payment & status are server/admin-trusted.
-      allow create: if isValidOrder(request.resource.data)
-                    && request.resource.data.paymentStatus == 'unpaid';
-
-      // Only admins change order/payment status (or the Stripe webhook via Admin SDK,
-      // which bypasses these rules).
+                  || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if false;
       allow update: if isAdmin();
       allow delete: if false;
+    }
+
+    // Order-number uniqueness reservations — server-only.
+    match /orderNumbers/{num} {
+      allow read, write: if false;
     }
 
     // ---------------------------------------------------------------
