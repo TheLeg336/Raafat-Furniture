@@ -1,6 +1,5 @@
 /**
- * Stripe webhook as a dedicated Vercel function: signature verification needs the
- * raw request body, so Vercel's automatic body parsing is disabled here.
+ * Stripe webhook (source). Bundled to api/stripe-webhook.js at build time.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleStripeEvent } from '../server/app';
