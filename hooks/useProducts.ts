@@ -10,7 +10,6 @@ export const useProducts = () => {
 
   useEffect(() => {
     if (!db) {
-      console.log('Firebase not configured. Using fallback products.');
       setProducts(FALLBACK_PRODUCTS);
       setLoading(false);
       return;

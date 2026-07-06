@@ -248,7 +248,7 @@ const AppContent: React.FC = () => {
         <Route path="/admin/team" element={<AdminTeam t={t} />} />
         <Route path="/staff" element={<Staff t={t} />} />
         <Route path="/login" element={<Login t={t} />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/onboarding" element={<Onboarding t={t} />} />
         <Route path="/account" element={<UserAccount t={t} />} />
         <Route path="*" element={
           <>

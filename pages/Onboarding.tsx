@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { User as UserIcon, ArrowRight } from 'lucide-react';
 
-const Onboarding: React.FC = () => {
+const Onboarding: React.FC<{ t?: (k: string) => string }> = ({ t }) => {
+  const tr = t || ((_k: string) => '');
   const { user, firstName, lastName, updateProfile, loading } = useAuth();
   const navigate = useNavigate();
   const [fName, setFName] = useState('');
@@ -106,7 +107,7 @@ const Onboarding: React.FC = () => {
               value={fName}
               onChange={(e) => setFName(e.target.value)}
               className="w-full px-4 py-2.5 md:py-3 bg-[var(--color-surface-2)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
-              placeholder="First Name"
+              placeholder={tr('onboarding_first_name') || 'First Name'}
             />
           </div>
           <div>
@@ -116,7 +117,7 @@ const Onboarding: React.FC = () => {
               value={lName}
               onChange={(e) => setLName(e.target.value)}
               className="w-full px-4 py-2.5 md:py-3 bg-[var(--color-surface-2)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none text-[var(--color-text-primary)] transition-all"
-              placeholder="Last Name"
+              placeholder={tr('onboarding_last_name') || 'Last Name'}
             />
           </div>
           <button

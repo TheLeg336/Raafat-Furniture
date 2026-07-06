@@ -108,7 +108,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!db) return;
       try {
         await getDocFromServer(doc(db, 'test', 'connection'));
-        console.log("Firestore connection test successful.");
       } catch (error) {
         if (error instanceof Error && error.message.includes('the client is offline')) {
           console.error("Please check your Firebase configuration. The client is offline.");
@@ -123,7 +122,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (authLoading) return; // Wait for auth to determine if we have a user
 
     if (!isLocalLoaded) {
-      console.log("Loading initial data from local storage...");
       try {
         const localCart = localStorage.getItem('rf_cart');
         const localSaved = localStorage.getItem('rf_saved');
@@ -155,7 +153,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
     
-    console.log("Setting up Firestore sync for user:", user.uid);
     
     const unsubscribe = onSnapshot(userStoreRef, async (docSnap) => {
       const fsData = docSnap.exists() ? docSnap.data() : null;
@@ -166,7 +163,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const localSaved = localStorage.getItem('rf_saved');
         
         if (localCart || localSaved) {
-          console.log("Merging local data to Firestore...");
           const lCart = localCart ? JSON.parse(localCart) : [];
           const lSaved = localSaved ? JSON.parse(localSaved) : [];
           
@@ -202,7 +198,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               wishlist: mergedWishlist
             }, { merge: true });
             
-            console.log("Merge complete.");
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
             // If it fails, we might want to restore local storage, 
@@ -215,7 +210,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Update local state from Firestore
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log("Firestore data received:", data);
         isRemoteUpdate.current = true;
         setCart(data.cart || []);
         setSavedForLater(data.savedForLater || []);
@@ -238,7 +232,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 3. Persist to Local Storage (only if logged out and local data is loaded)
   useEffect(() => {
     if (!user && isLocalLoaded) {
-      console.log("Persisting cart to local storage...", { cartCount: cart.length });
       try {
         localStorage.setItem('rf_cart', JSON.stringify(cart));
         localStorage.setItem('rf_saved', JSON.stringify(savedForLater));
@@ -291,7 +284,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const sanitizedSaved = newSaved.map(sanitizeItem);
 
     const userStoreRef = doc(db, 'users', user.uid, 'store', 'data');
-    console.log("Updating Firestore with sanitized data...", { cartCount: sanitizedCart.length });
     
     try {
       await setDoc(userStoreRef, {
@@ -299,14 +291,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         savedForLater: sanitizedSaved,
         wishlist: newWishlist
       }, { merge: true });
-      console.log("Firestore update successful.");
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, userStoreRef.path);
     }
   };
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
-    console.log("Adding to cart:", item.name);
     const id = `${item.productId}-${item.color || 'default'}-${item.material || 'default'}-${item.customDimensions || ''}`;
     const existingItem = cart.find(c => c.id === id);
     if (existingItem) {

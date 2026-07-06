@@ -53,8 +53,8 @@ service cloud.firestore {
     function isDeveloper() {
       return isAdmin() && (
         (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) && 
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.role == 'developer')
+        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.get('role', 'admin') == 'developer')
       );
     }
 

@@ -20,6 +20,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   } = useStore();
   const navigate = useNavigate();
   const { products } = useProducts();
+  const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 
   const subtotal = cart.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
 
@@ -73,11 +74,11 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1200]"
           />
           <motion.div
-            initial={{ x: '100%' }}
+            initial={{ x: isRtl ? '-100%' : '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            exit={{ x: isRtl ? '-100%' : '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-background)] shadow-2xl z-[1300] flex flex-col overflow-hidden"
+            className="fixed top-0 end-0 h-full w-full max-w-md bg-[var(--color-background)] shadow-2xl z-[1300] flex flex-col overflow-hidden"
           >
             <div className="flex items-center justify-between p-6 ">
               <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -126,7 +127,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                               <div className="flex justify-between items-start">
                                 <button 
                                   onClick={() => handleProductClick(item.productId)}
-                                  className="font-bold text-lg leading-tight text-left hover:text-[var(--color-primary)] transition-colors"
+                                  className="font-bold text-lg leading-tight text-start hover:text-[var(--color-primary)] transition-colors"
                                 >
                                   {synced.name}
                                 </button>

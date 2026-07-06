@@ -11,7 +11,6 @@ export const useCategories = () => {
 
   useEffect(() => {
     if (!db) {
-      console.log('Firebase not configured. Using fallback categories.');
       setCategories(FALLBACK_CATEGORIES);
       setLoading(false);
       return;

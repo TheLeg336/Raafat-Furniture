@@ -63,7 +63,8 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
     }
   };
 
-  const defaultBgImage = settings.heroImageUrl || 'https://picsum.photos/seed/sleek/1280/720';
+  // Bundled brand fallback (no third-party stock dependency) until an admin sets a hero image.
+  const defaultBgImage = settings.heroImageUrl || '/hero-fallback.svg';
 
   const currentConfig = {
       bgImage: defaultBgImage,
@@ -183,7 +184,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             maxLength={100}
-                            placeholder="Search for furniture, styles, and more..."
+                            placeholder={t('search_placeholder') || 'Search for furniture, styles, and more...'}
                             className="w-full bg-transparent text-white placeholder-white/70 outline-none focus-visible:outline-none"
                         />
                         <motion.button

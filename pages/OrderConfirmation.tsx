@@ -130,7 +130,7 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
         </p>
       </motion.div>
 
-      {awaitingTransfer && <TransferPanel t={t} order={order} onSubmitted={() => load(recallOrderEmail(orderNumber))} />}
+      {awaitingTransfer && <TransferPanel t={t} order={order} onSubmitted={() => load(recallOrderEmail(orderNumber) || order.contact.email)} />}
 
       <Card className="p-6 md:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-[var(--color-border)]">

@@ -121,7 +121,7 @@ const AdminOrders: React.FC<Props> = () => {
         <div className="flex-1 min-w-[200px] relative">
           <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] pointer-events-none" />
           <input
-            value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search number, name, email, phone…"
+            value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search number, name, email, phone…" aria-label="Search orders"
             className="w-full ps-9 pe-4 py-3 bg-transparent border border-[var(--color-border-strong)] rounded-[var(--radius-md)] outline-none focus:shadow-[0_0_0_2px_var(--color-primary)] focus:border-transparent"
           />
         </div>
