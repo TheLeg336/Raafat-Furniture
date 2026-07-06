@@ -131,18 +131,18 @@ const Checkout: React.FC<Props> = ({ t }) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 md:py-16">
-      <Link to="/shop" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] mb-6">
+    <div className="max-w-6xl mx-auto px-5 md:px-6 py-8 md:py-16 max-md:pb-[var(--mobile-tab-offset)]">
+      <Link to="/shop" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] mb-5 md:mb-6">
         <ArrowLeft size={16} /> {t('continue_shopping') || 'Continue shopping'}
       </Link>
-      <h1 className="font-heading text-4xl font-bold mb-8">{t('checkout') || 'Checkout'}</h1>
+      <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6 md:mb-8">{t('checkout') || 'Checkout'}</h1>
 
-      <form onSubmit={submit} className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
-        <div className="flex flex-col gap-8">
+      <form id="checkout-form" onSubmit={submit} className="grid lg:grid-cols-[1fr_400px] gap-6 lg:gap-8 items-start">
+        <div className="flex flex-col gap-6 md:gap-8 order-2 lg:order-1">
           {/* Fulfillment */}
           <section>
             <h2 className="font-heading text-xl font-bold mb-4">{t('how_to_receive') || 'How would you like to receive it?'}</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fulfillmentOptions.map((o) => (
                 <button type="button" key={o.id} onClick={() => setFulfillment(o.id)}
                   className={`text-start p-4 rounded-[var(--radius-md)] border-2 transition-colors ${fulfillment === o.id ? 'border-[var(--color-text-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
@@ -198,7 +198,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
           {/* Payment */}
           <section>
             <h2 className="font-heading text-xl font-bold mb-4">{t('payment') || 'Payment'}</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {visible.map((o) => (
                 <button type="button" key={o.id} onClick={() => setPayment(o.id)}
                   className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border-2 transition-colors text-start ${payment === o.id ? 'border-[var(--color-text-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
@@ -220,8 +220,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
           </section>
         </div>
 
-        {/* Summary */}
-        <Card className="p-6 lg:sticky lg:top-24">
+        {/* Summary — first on mobile for context, sticky on desktop */}
+        <Card className="p-5 md:p-6 lg:sticky lg:top-24 order-1 lg:order-2">
           <h2 className="font-heading text-xl font-bold mb-4">{t('order_summary') || 'Order summary'}</h2>
           <div className="flex flex-col gap-4 max-h-72 overflow-y-auto pe-1">
             {cart.map((c, i) => (
@@ -255,15 +255,29 @@ const Checkout: React.FC<Props> = ({ t }) => {
           {!destinationEG && fulfillment === 'shipping' && (
             <p className="text-[11px] text-[var(--color-text-secondary)] mb-3">{t('duties_note') || 'Import duties and taxes, if any, are collected by your country on delivery.'}</p>
           )}
-          <Button type="submit" fullWidth size="lg" loading={submitting} disabled={!valid}
+          <Button type="submit" fullWidth size="lg" loading={submitting} disabled={!valid} className="max-lg:min-h-[3rem] hidden lg:flex"
             iconLeft={payment === 'stripe' || payment === 'paymob' ? <Lock size={16} /> : undefined}>
             {payment === 'stripe' || payment === 'paymob' ? (t('pay_now') || 'Pay now') : (t('place_order') || 'Place order')}
           </Button>
-          <p className="text-[11px] text-center text-[var(--color-text-secondary)] mt-3 flex items-center justify-center gap-1">
+          <p className="text-[11px] text-center text-[var(--color-text-secondary)] mt-3 flex items-center justify-center gap-1 max-lg:hidden">
             <Lock size={11} /> {t('secure_checkout') || 'Secure checkout'}
           </p>
         </Card>
       </form>
+
+      {/* Mobile sticky checkout bar */}
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-[105] px-4 pb-[var(--mobile-tab-offset)] pointer-events-none">
+        <div className="pointer-events-auto mx-auto max-w-lg rounded-full border border-white/20 bg-[var(--color-background)]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] px-4 py-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">{t('total') || 'Total'}</p>
+            <p className="text-lg font-bold text-[var(--color-primary)]">{formatMoney(totals.total, { currency: chargeCurrency })}</p>
+          </div>
+          <Button type="button" size="lg" loading={submitting} disabled={!valid} className="shrink-0 rounded-full px-6"
+            onClick={() => (document.getElementById('checkout-form') as HTMLFormElement | null)?.requestSubmit()}>
+            {payment === 'stripe' || payment === 'paymob' ? (t('pay_now') || 'Pay now') : (t('place_order') || 'Place')}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

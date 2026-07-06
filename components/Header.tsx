@@ -8,7 +8,7 @@ import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
-import { scrollToY } from '../lib/scrollNav';
+import { scrollToSection, scrollToY } from '../lib/scrollNav';
 import { adminPath, STAFF_PATH, LOGIN_PATH } from '../lib/paths';
 interface HeaderProps {
   language: LanguageOption;
@@ -87,8 +87,10 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     // If we are already on the home page and clicking a hash link, prevent default and scroll
     if (location.pathname === '/' && href.startsWith('/#')) {
       e.preventDefault();
-      const hash = href.substring(1); // Get the '#shop' part
-      navigate(hash);
+      const id = href.slice(2);
+      navigate({ pathname: '/', hash: id }, { replace: false });
+      scrollToSection(id, false);
+      return;
     }
   };
 
@@ -347,11 +349,11 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               aria-hidden="true"
             />
             <motion.div
-              className={`fixed top-0 h-full w-[85vw] max-w-sm z-[1500] bg-[var(--color-background)] shadow-2xl start-0 rounded-e-3xl overflow-y-auto`}
-              initial={{ x: isRtl ? '100%' : '-100%' }}
+              className="fixed z-[1500] w-[min(85vw,20rem)] start-3 top-3 bottom-3 rounded-3xl bg-[var(--color-background)] shadow-2xl overflow-y-auto border border-[var(--color-border)]/30"
+              initial={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
               animate={{ x: 0 }}
-              exit={{ x: isRtl ? '100%' : '-100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              exit={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             >
               <div className="p-8 h-full flex flex-col items-center relative overflow-hidden">
                 {/* Decorative background blob */}

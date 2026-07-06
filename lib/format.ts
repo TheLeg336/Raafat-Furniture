@@ -46,5 +46,29 @@ export function localized(
   return value[lang] || value.en || value.ar || fallback;
 }
 
+type DimObject = { width?: number; height?: number; depth?: number; unit?: string };
+
+/** Product dimensions may be a string or a legacy object from 3D scans — never render raw objects. */
+export function formatDimensions(value: unknown): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    const o = value as DimObject;
+    const unit = o.unit || 'cm';
+    const parts: string[] = [];
+    if (o.width != null) parts.push(`W ${o.width}${unit}`);
+    if (o.depth != null) parts.push(`D ${o.depth}${unit}`);
+    if (o.height != null) parts.push(`H ${o.height}${unit}`);
+    return parts.join(' × ');
+  }
+  return '';
+}
+
+export function dimensionsToInputValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  return formatDimensions(value);
+}
+
 // Order numbers are generated server-side (see server/ordersApi.ts) so uniqueness
 // can be guaranteed via orderNumbers/{n} reservation docs.

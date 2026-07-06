@@ -57,15 +57,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // staff (spec-only access); anything else in the collection = admin.
             const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
             const role = adminDoc.exists() ? (adminDoc.data()?.role || 'admin') : null;
-            currentAdminStatus = role !== null && role !== 'worker';
-            currentDeveloperStatus = role === 'developer';
-
+            const roleNorm = typeof role === 'string' ? role.toLowerCase() : role;
+            currentAdminStatus = roleNorm !== null && roleNorm !== 'worker';
+            currentDeveloperStatus = roleNorm === 'developer';
             // Only update state if the fetch was successful
             setFirstName(fName);
             setLastName(lName);
             setIsAdmin(currentAdminStatus);
             setIsDeveloper(currentDeveloperStatus);
-            setIsWorker(role === 'worker');
+            setIsWorker(roleNorm === 'worker');
 
             if (!currentAdminStatus) {
               // Ensure every customer has a profile document. One doc per user

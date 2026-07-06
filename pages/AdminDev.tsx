@@ -77,7 +77,7 @@ const AdminDev: React.FC<Props> = () => {
         comingSoon,
         message: message.trim(),
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      }, 'PATCH');
+      }, 'POST');
       await refresh();
       toast.success(comingSoon ? 'Coming soon mode enabled' : 'Coming soon mode disabled');
     } catch (e) {

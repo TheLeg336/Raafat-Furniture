@@ -20,9 +20,17 @@ export function smoothScrollTo(target: number | HTMLElement, offset = 0) {
   }
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function isTouchDevice() {
+  return typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 /**
- * Lenis smooth scroll — premium inertia. Disabled when the user prefers reduced
- * motion (falls back to native scrolling). Central place for route/hash scroll.
+ * Lenis smooth scroll on desktop pointer devices only. Touch / mobile uses native
+ * scrolling to avoid scroll fighting and landing-page jumpiness.
  */
 export const SmoothScroll: React.FC = () => {
   const location = useLocation();
@@ -33,14 +41,13 @@ export const SmoothScroll: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) return;
+    if (prefersReducedMotion() || isTouchDevice()) return;
 
     const lenis = new Lenis({
-      duration: 1.1,
+      duration: 1.05,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: 1.4,
+      touchMultiplier: 1,
     });
     lenisInstance = lenis;
     setScrollImpl((top, immediate) => {
@@ -64,27 +71,29 @@ export const SmoothScroll: React.FC = () => {
     };
   }, []);
 
-  // Snap immediately on reload or cross-page hash links (prevents top-then-scroll flash).
+  // Snap on reload or cross-page hash links only (not every home visit).
   useLayoutEffect(() => {
     const { pathname, hash } = location;
     const hashId = hash ? hash.slice(1) : '';
     const pathChanged = prev.current.pathname !== pathname;
 
     if (hashId) {
-      if (isPageReload() || pathChanged) scrollToSection(hashId, true);
+      if (isPageReload() || (pathChanged && prev.current.pathname)) {
+        scrollToSection(hashId, true);
+      }
     } else if (pathChanged && prev.current.pathname) {
       scrollToY(0, true);
     }
   }, [location.pathname, location.hash]);
 
-  // Smooth scroll when only the hash changes on the same page (nav clicks).
+  // Smooth in-page hash navigation after explicit user nav clicks.
   useEffect(() => {
     const { pathname, hash } = location;
     const hashId = hash ? hash.slice(1) : '';
     const samePage = prev.current.pathname === pathname;
     const hashChanged = prev.current.hash !== hash;
 
-    if (hashId && samePage && hashChanged && !isPageReload()) {
+    if (hashId && samePage && hashChanged && !isPageReload() && prev.current.hash) {
       scrollToSection(hashId, false);
     }
 

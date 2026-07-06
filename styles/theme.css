@@ -55,7 +55,8 @@
   /* Layout */
   --container-max: 1280px;
   --header-height: 72px;
-  --mobile-tab-height: 64px;
+  --mobile-tab-height: 56px;
+  --mobile-tab-offset: calc(var(--mobile-tab-height) + 1.35rem + env(safe-area-inset-bottom, 0px));
 
   /* Scrollbars — slim, theme-aware, native-feel */
   --scrollbar-size: 7px;

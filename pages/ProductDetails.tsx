@@ -13,7 +13,7 @@ import { PageSpinner } from '../components/ui/Spinner';
 import { useToast } from '../components/ui/Toast';
 import { ModelViewer3D } from '../components/ModelViewer3D';
 import { Reviews } from '../components/Reviews';
-import { formatMoney } from '../lib/format';
+import { formatMoney, formatDimensions } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
@@ -221,10 +221,10 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
               <Selector label={t('material') || 'Material'} options={product.materials} value={selectedMaterial} onPick={setSelectedMaterial} />
             )}
 
-            {product.dimensions && (
+            {formatDimensions(product.dimensions) && (
               <div className="flex items-start gap-2 text-sm text-[var(--color-text-secondary)]">
                 <Ruler size={16} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
-                <span><span className="font-semibold text-[var(--color-text-primary)]">{t('dimensions') || 'Dimensions'}:</span> {product.dimensions}</span>
+                <span><span className="font-semibold text-[var(--color-text-primary)]">{t('dimensions') || 'Dimensions'}:</span> {formatDimensions(product.dimensions)}</span>
               </div>
             )}
 
@@ -257,7 +257,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
       </div>
 
       {/* Mobile-only sticky purchase bar */}
-      <div className="md:hidden fixed inset-x-0 bottom-0 z-[105] border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px)+var(--mobile-tab-height))]">
+      <div className="md:hidden fixed inset-x-0 bottom-0 z-[105] border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-xl px-4 py-3 pb-[var(--mobile-tab-offset)]">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-[var(--color-text-secondary)] truncate">{name}</p>

@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, RefreshCw, Store, Truck, X } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, Menu, RefreshCw, Store, Truck, X } from 'lucide-react';
 import type { TFunction } from '../types';
-import { adminPath, LOGIN_PATH } from '../lib/paths';
+import { adminPath, LOGIN_PATH, STAFF_PATH } from '../lib/paths';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchWorkerOrders, saveWorkerPrepared, completeWorkerOrder, type WorkerOrder } from '../lib/worker';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
+import { MobilePillNav } from '../components/ui/MobilePillNav';
 import { useToast } from '../components/ui/Toast';
 import { formatDate, localized } from '../lib/format';
 
@@ -31,7 +32,9 @@ const Staff: React.FC<Props> = ({ t }) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 
   const load = useCallback(async () => {
     try {
@@ -81,7 +84,14 @@ const Staff: React.FC<Props> = ({ t }) => {
 
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
-      <header className="border-b border-[var(--color-surface-2)]">
+      <header className="border-b border-[var(--color-surface-2)] md:hidden sticky top-0 z-20 bg-[var(--color-background)]/95 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
+          <h1 className="font-heading text-lg font-bold truncate">{t('staff_title') || 'Workshop'}</h1>
+          <Button variant="secondary" size="sm" onClick={load} iconLeft={<RefreshCw size={15} />} className="shrink-0">{t('refresh') || 'Refresh'}</Button>
+        </div>
+      </header>
+
+      <header className="border-b border-[var(--color-surface-2)] hidden md:block">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">
@@ -101,14 +111,51 @@ const Staff: React.FC<Props> = ({ t }) => {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="max-w-3xl mx-auto px-5 md:px-6 py-8 md:py-10 max-md:pb-[var(--mobile-tab-offset)]">
+      <p className="md:hidden text-sm text-[var(--color-text-secondary)] mb-6">{t('staff_desc') || 'Oldest first. Tick each item as you prepare it — progress saves automatically.'}</p>
+      <div className="hidden md:flex items-center justify-between mb-8">
         <div>
           <h1 className="font-heading text-3xl font-bold flex items-center gap-3"><ClipboardList size={26} /> {t('staff_title') || 'Workshop orders'}</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">{t('staff_desc') || 'Oldest first. Tick each item as you prepare it — progress saves automatically.'}</p>
         </div>
         <Button variant="secondary" size="sm" onClick={load} iconLeft={<RefreshCw size={15} />}>{t('refresh') || 'Refresh'}</Button>
       </div>
+
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
+              animate={{ x: 0 }}
+              exit={{ x: isRtl ? 'calc(100% + 1rem)' : 'calc(-100% - 1rem)' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+              className="md:hidden fixed z-50 w-[min(85vw,18rem)] start-3 top-3 bottom-3 rounded-3xl border border-[var(--color-border)]/30 bg-[var(--color-background)] shadow-2xl p-4 flex flex-col gap-1"
+            >
+              <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">
+                <Home size={18} /> {t('nav_home') || 'Store'}
+              </Link>
+              {isAdmin && (
+                <>
+                  <Link to={adminPath()} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">Catalog</Link>
+                  <Link to={adminPath('orders')} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-surface-2)]">Orders</Link>
+                </>
+              )}
+              <button type="button" onClick={() => { setMenuOpen(false); logout(); }} className="mt-auto flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium text-[var(--color-danger,#dc2626)] hover:bg-[var(--color-danger-bg)]">
+                <LogOut size={18} /> {t('account_signout') || 'Sign out'}
+              </button>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {loadError ? (
         <Card className="p-8 text-start border-[var(--color-danger,#dc2626)]/30">
@@ -194,7 +241,16 @@ const Staff: React.FC<Props> = ({ t }) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+
+      <MobilePillNav
+        ariaLabel={t('mobile_nav') || 'Workshop navigation'}
+        items={[
+          { key: 'orders', href: STAFF_PATH, icon: ClipboardList, label: t('staff_title')?.split(' ')[0] || 'Orders', active: true },
+          { key: 'store', href: '/', icon: Store, label: t('nav_home') || 'Store', active: false },
+          { key: 'menu', icon: Menu, label: 'Menu', active: menuOpen, onClick: () => setMenuOpen((o) => !o) },
+        ]}
+      />
+      </div>
     </div>
   );
 };

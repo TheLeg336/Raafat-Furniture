@@ -256,7 +256,7 @@ const AppContent: React.FC = () => {
               themeMode={themeMode}
               setThemeMode={setThemeMode}
             />
-            <main id="main-content" className="flex-grow max-md:pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))]">
+            <main id="main-content" className="flex-grow max-md:pb-[var(--mobile-tab-offset)]">
               <Routes>
                 <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
                 <Route path="/shop" element={<Shop t={t} />} />

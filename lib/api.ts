@@ -4,7 +4,7 @@ import { auth } from './firebase';
 export async function apiFetch<T = any>(path: string, body?: unknown, method = 'POST'): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   try {
-    const token = await auth?.currentUser?.getIdToken();
+    const token = await auth?.currentUser?.getIdToken(true);
     if (token) headers.Authorization = `Bearer ${token}`;
   } catch { /* signed out */ }
   const res = await fetch(path, {

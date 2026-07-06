@@ -82,7 +82,7 @@ export async function staffFromReq(req: Request): Promise<{ email: string; role:
   const email = decoded.email.toLowerCase();
   const snap = await db.collection('admins').doc(email).get();
   if (!snap.exists) return null;
-  const role = (snap.data()?.role as StaffRole) || 'admin';
+  const role = String(snap.data()?.role || 'admin').toLowerCase() as StaffRole;
   return { email, role };
 }
 

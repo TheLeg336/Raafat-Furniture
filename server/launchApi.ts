@@ -33,8 +33,27 @@ async function readLaunchSettings(): Promise<LaunchSettings> {
 
 async function developerFromReq(req: Request) {
   const staff = await staffFromReq(req);
-  if (!staff || staff.role !== 'developer') return null;
+  if (!staff) return null;
+  const role = staff.role.toLowerCase();
+  if (role !== 'developer') return null;
   return staff;
+}
+
+async function patchLaunchSettings(req: Request, res: Response) {
+  if (!(await developerFromReq(req))) return res.status(401).json({ error: 'Developer access required' });
+
+  const db = await getDb();
+  if (!db) return res.status(503).json({ error: 'Not configured' });
+
+  const { comingSoon, message, scheduledAt } = req.body || {};
+  const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  if (typeof comingSoon === 'boolean') patch.comingSoon = comingSoon;
+  if (message !== undefined) patch.message = String(message).slice(0, 500);
+  if (scheduledAt !== undefined) patch.scheduledAt = scheduledAt ? String(scheduledAt) : null;
+
+  await db.doc(LAUNCH_DOC).set(patch, { merge: true });
+  const s = await readLaunchSettings();
+  res.json(s);
 }
 
 export function launchRouter(rateLimit: (n: number) => any) {
@@ -83,22 +102,8 @@ export function launchRouter(rateLimit: (n: number) => any) {
     res.json({ count: entries.length, entries });
   });
 
-  r.patch('/api/launch/settings', rateLimit(20), async (req: Request, res: Response) => {
-    if (!(await developerFromReq(req))) return res.status(401).json({ error: 'Developer access required' });
-
-    const db = await getDb();
-    if (!db) return res.status(503).json({ error: 'Not configured' });
-
-    const { comingSoon, message, scheduledAt } = req.body || {};
-    const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-    if (typeof comingSoon === 'boolean') patch.comingSoon = comingSoon;
-    if (message !== undefined) patch.message = String(message).slice(0, 500);
-    if (scheduledAt !== undefined) patch.scheduledAt = scheduledAt ? String(scheduledAt) : null;
-
-    await db.doc(LAUNCH_DOC).set(patch, { merge: true });
-    const s = await readLaunchSettings();
-    res.json(s);
-  });
+  r.patch('/api/launch/settings', rateLimit(20), patchLaunchSettings);
+  r.post('/api/launch/settings', rateLimit(20), patchLaunchSettings);
 
   r.post('/api/launch/go-live', rateLimit(3), async (req: Request, res: Response) => {
     if (!(await developerFromReq(req))) return res.status(401).json({ error: 'Developer access required' });

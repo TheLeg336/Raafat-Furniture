@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, Variants, useScroll, useTransform, useReducedMotion } from 'framer-motion';
+import { motion, Variants, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDown } from 'lucide-react';
 import type { TFunction } from '../types';
@@ -19,11 +19,6 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
   const heroRef = useRef(null);
   const navigate = useNavigate();
   const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '22%']);
-  const contentY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '40%']);
-  const overlayOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.2]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, reduce ? 1 : 1.12]);
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,14 +60,14 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
 
   return (
     <div ref={heroRef} className="relative grain text-white h-[100dvh] min-h-[520px] md:h-[92dvh] md:min-h-[600px] lg:h-[100dvh] lg:min-h-[640px] overflow-hidden">
-      <motion.div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, y: backgroundY, scale }} />
-      <motion.div className="absolute inset-0 z-[1]" style={{ opacity: overlayOpacity, background: 'linear-gradient(180deg, rgba(10,16,32,0.55) 0%, rgba(10,16,32,0.30) 35%, rgba(10,16,32,0.75) 100%)' }} />
+      <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }} />
+      <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(180deg, rgba(10,16,32,0.55) 0%, rgba(10,16,32,0.30) 35%, rgba(10,16,32,0.75) 100%)' }} />
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent opacity-90" />
       {!reduce && <div className="aurora z-[1] opacity-50" aria-hidden="true" />}
 
       <div className="glass shadow-lg rounded-full" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }} aria-hidden="true" />
 
-      <motion.div className="relative z-[2] h-full container mx-auto px-5 md:px-8 lg:px-6 flex flex-col items-center justify-center text-center" style={{ y: contentY }}>
+      <motion.div className="relative z-[2] h-full container mx-auto px-5 md:px-8 lg:px-6 flex flex-col items-center justify-center text-center">
         <motion.div variants={container} initial="hidden" animate="visible" className="w-full max-w-4xl">
           <h1 className="font-heading font-bold tracking-[-0.02em] leading-[0.95] mb-5 md:mb-6 text-balance text-[2.5rem] md:text-[3.75rem] lg:text-[5.5rem]">
             {words.map((w, i) => (

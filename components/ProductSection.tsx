@@ -55,7 +55,7 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
           className={`sticky top-0 transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-md)]' : ''}`}
           style={{ zIndex: 20 }}
         >
-          <div className={`container mx-auto px-5 md:px-8 lg:px-6 transition-all duration-300 ${isSticky ? 'py-3 md:py-4 lg:py-5' : 'pt-6 pb-4 md:pt-12 md:pb-6 lg:pt-20 lg:pb-10'}`}>
+          <div className={`container mx-auto px-5 md:px-8 lg:px-6 min-h-[4.5rem] flex items-center transition-all duration-300 ${isSticky ? 'py-3 md:py-4 lg:py-5' : 'pt-6 pb-4 md:pt-12 md:pb-6 lg:pt-20 lg:pb-10'}`}>
             <ProductSectionHeader t={t} compact={isSticky} />
           </div>
         </div>

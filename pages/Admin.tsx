@@ -12,6 +12,7 @@ import { useSettings } from '../hooks/useSettings';
 import { compressImage as compressImageFile, validateImageFile } from '../lib/imageCompression';
 import { translateProductFields } from '../lib/translate';
 import { apiFetch } from '../lib/api';
+import { dimensionsToInputValue } from '../lib/format';
 import { Edit, PlusCircle } from 'lucide-react';
 import { CatalogSubNav } from '../components/admin/CatalogSubNav';
 import { Product3DFields } from '../components/admin/Product3DFields';
@@ -796,7 +797,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setPriceUsd(listing.priceUSD?.toString() || '');
                         setMaterialsStr((listing.materials || []).join(', '));
                         setColorsStr((listing.colors || []).join(', '));
-                        setDimensions(listing.dimensions || '');
+                        setDimensions(dimensionsToInputValue(listing.dimensions));
                         setCustomDimensionsEnabled(!!listing.customDimensionsEnabled);
                         setExistingImages(listing.images || [listing.imageUrl]);
                         setModel3d(listing.model3d || null);
