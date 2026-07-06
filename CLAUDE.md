@@ -41,7 +41,7 @@ Order flow: `pending_payment → (payment_verification) → paid/confirmed → i
 
 `FIREBASE_SERVICE_ACCOUNT` (required for ordering), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`,
 `PAYMOB_API_KEY`/`PAYMOB_INTEGRATION_ID`/`PAYMOB_IFRAME_ID`/`PAYMOB_HMAC_SECRET`,
-`RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL`, `GEMINI_API_KEY`, `SITE_URL`,
+`RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL`, `NVIDIA_API_KEY` (+ optional `NVIDIA_MODEL`) for the admin translate proxy, `SITE_URL`,
 client: `VITE_FIREBASE_*`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_GA_MEASUREMENT_ID`, `VITE_STORE_CURRENCY`, `VITE_CLOUDINARY_*`.
 See SETUP.md for the full list.
 

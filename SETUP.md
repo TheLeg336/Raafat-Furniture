@@ -21,7 +21,7 @@ The site runs **without any keys** (products/categories fall back to built-in sa
 | **Analytics (GA4, consent-gated)** | `VITE_GA_MEASUREMENT_ID` |
 | **Currency** | `VITE_STORE_CURRENCY` (e.g. `EGP`, `USD`; also set `STORE_CURRENCY` to the same value for the server) |
 | **Auto 3D reconstruction from scans** | `VITE_PHOTOGRAMMETRY_API_URL` |
-| **Admin translation helper (Gemini)** | `GEMINI_API_KEY` |
+| **Admin translation helper (NVIDIA free API)** | `NVIDIA_API_KEY` (+ optional `NVIDIA_MODEL`, default `meta/llama-3.1-8b-instruct`) |
 
 On **Vercel**, set the same variables in Project → Settings → Environment Variables. The API runs as serverless functions (`api/index.ts`; Stripe webhook at `api/stripe-webhook.ts`) — `vercel.json` routes `/api/*` to them and everything else to the SPA.
 

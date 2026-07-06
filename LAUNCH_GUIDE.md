@@ -1,214 +1,284 @@
 # Raafat Furniture — Launch Guide
 
-Everything you need to take the site live, explained in plain language. Three parts:
+Everything you need to take the site live, in plain language.
 
-1. **[What you need to do manually](#1-what-you-need-to-do-manually)** — the checklist to go live
-2. **[Questions to ask the business](#2-questions-to-ask-the-business)** — decisions only the owner can make
-3. **[Cost breakdown](#3-cost-breakdown)** — one-time, monthly, yearly, and per-sale
-4. **[How everything works](#4-how-everything-works)** — so you can run it and explain it (incl. 3D & AR)
+**Contents**
+1. [Do I need to spend money right away?](#1-do-i-need-to-spend-money-right-away)
+2. [Manual setup checklist](#2-manual-setup-checklist)
+3. [Google Analytics — setup & why it helps](#3-google-analytics--setup--why-it-helps)
+4. [SEO & getting recommended by AI (Google, ChatGPT, Gemini…)](#4-seo--getting-recommended-by-ai)
+5. [Full cost breakdown with real examples](#5-full-cost-breakdown-with-real-examples)
+6. [What I still need from you](#6-what-i-still-need-from-you)
+7. [How everything works (incl. 3D & AR)](#7-how-everything-works)
+8. [Legal status](#8-legal-status)
 
 ---
 
-## 1. What you need to do manually
+## 1. Do I need to spend money right away?
 
-These are the things code can't do for you. Do them in order.
+**No — you can launch almost free and only pay for bigger things if the site takes off.**
 
-### A. Put the code online (push + open a pull request)
-The work is committed on the branch `worktree-launch-readiness`. To publish it:
+Everything is **already built**. Turning features on later is not development work — it's usually just pasting a key or clicking "upgrade" on a plan. Here's the split:
+
+**Pay now (the bare minimum to go live):**
+- A **domain name** — ~$12/year.
+- **Vercel hosting** — you can start on the **free** plan to test. For a real business Vercel asks you to be on **Pro ($20/month)**. You can launch on free and upgrade the day you're serious.
+- Everything else — database, login, images, email, analytics — runs on **free tiers** that comfortably cover a new store.
+- Payments: start with **InstaPay + cash + bank transfer**, which cost you **0% in fees**.
+
+**Pay later, only when it grows (and each is a simple, no-code step):**
+- Card payments (Paymob or Stripe) — just add an API key when you want them. You only pay fees per sale.
+- Bigger image/email/hosting plans — only if traffic and volume grow past the free tiers. One click to upgrade.
+- A US company (~$500 one-time) — only if you choose Stripe for international cards.
+
+So: **start with the whole site pre-built, spend ~$12–20 to launch, and later the only things you add are simple.**
+
+---
+
+## 2. Manual setup checklist
+
+Do these in order.
+
+### A. Put the code online (push + pull request)
+The work is on the branch `worktree-launch-readiness`. Your GitHub `main` is an **older, different version** — I've saved it as a backup branch (see the end of this section), so nothing is lost.
 
 ```bash
 gh auth login                 # log in to GitHub once
-git push -u origin HEAD        # push the branch
-gh pr create --draft           # open a draft pull request to review + merge
+git push -u origin HEAD        # push the launch branch
+gh pr create --draft           # open a draft pull request to review & merge
 ```
 
-> The GitHub remote is already set to `https://github.com/TheLeg336/Raafat-Furniture`. Nothing is auto-pushed — you stay in control of what merges.
-
-### B. Set the environment variables (Vercel → Settings → Environment Variables)
-The site reads its secrets from here. **Server keys have no `VITE_` prefix — never put a secret in a `VITE_` variable, those get sent to the browser.**
+### B. Set environment variables (Vercel → Settings → Environment Variables)
+Server keys have **no `VITE_` prefix** — never put a secret in a `VITE_` variable (those go to the browser).
 
 | Variable | What it does | Needed to launch? |
 |---|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | Lets the server create orders securely (prices/tax/order numbers). **Without it, checkout is disabled.** Paste the service-account JSON as one line. | **Yes — critical** |
-| `VITE_FIREBASE_*` | Connects the site to your database/login/storage | **Yes** |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_EMAIL`, `SITE_URL` | Sends order emails + contact-form messages | **Yes** (or emails just log, no crash) |
-| `VITE_GA_MEASUREMENT_ID` | Turns on Google Analytics (privacy-consented) | Recommended |
-| `GEMINI_API_KEY` | Powers the admin "auto-translate" button for listings | Optional |
-| `GEMINI_MODEL` | Which Gemini model to use (default `gemini-2.5-flash`, free tier) | Optional |
-| `PAYMOB_API_KEY`, `PAYMOB_INTEGRATION_ID`, `PAYMOB_IFRAME_ID`, `PAYMOB_HMAC_SECRET` | Turns on card payments in Egypt | When you add cards |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_STRIPE_PUBLISHABLE_KEY` | Turns on international cards + Apple/Google Pay | When you add cards |
+| `FIREBASE_SERVICE_ACCOUNT` | Lets the server create orders securely. **Without it, checkout is off.** Paste the service-account JSON as one line. | **Yes — critical** |
+| `VITE_FIREBASE_*` | Connects the site to database/login/storage | **Yes** |
 | `VITE_CLOUDINARY_*`, `CLOUDINARY_API_SECRET` | Product image hosting | **Yes** |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_EMAIL`, `SITE_URL` | Order + contact emails | **Yes** (else emails just log) |
+| `VITE_SITE_URL` | Your domain, e.g. `https://www.raafatfurniture.com` (used for SEO links) | Recommended |
+| `VITE_GA_MEASUREMENT_ID` | Turns on Google Analytics | Recommended |
+| `NVIDIA_API_KEY` | Powers the admin "auto-translate" button | Optional |
+| `NVIDIA_MODEL` | Which free model (default `meta/llama-3.1-8b-instruct`) | Optional |
+| `PAYMOB_API_KEY`, `PAYMOB_INTEGRATION_ID`, `PAYMOB_IFRAME_ID`, `PAYMOB_HMAC_SECRET` | Egypt card payments | When you add cards |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_STRIPE_PUBLISHABLE_KEY` | International cards + Apple/Google Pay | When you add cards |
 
-> Get `FIREBASE_SERVICE_ACCOUNT` from **Firebase Console → Project Settings → Service Accounts → Generate new private key**, then paste the whole JSON file contents into the variable value.
+> **Get `FIREBASE_SERVICE_ACCOUNT`:** Firebase Console → Project Settings → Service Accounts → *Generate new private key* → paste the whole JSON file into the variable.
 
-### C. Publish the database security rules
+### C. Get the free NVIDIA key for auto-translate (optional)
+1. Go to **build.nvidia.com**, sign in, and create an API key (starts with `nvapi-`). It's free.
+2. Put it in `NVIDIA_API_KEY`. That's it — the admin "Auto-Translate" button now writes Egyptian-Arabic (or English) for product listings.
+3. If the default model ever hits a limit, set `NVIDIA_MODEL` to another free one like `meta/llama-3.3-70b-instruct` (better Arabic) — no code change.
+
+### D. Publish the database security rules
 ```bash
 firebase deploy --only firestore:rules,storage
 ```
-This enforces all the money-path protections (server-only orders, workers can't see prices, guest orders aren't public).
+This enforces the protections (server-only orders, workers can't see prices, guest orders private).
 
-### D. Fill in the legal documents
-Open `lib/legalContent.ts` and replace these 5 placeholders with the real business details:
-- `[BUSINESS LEGAL NAME]` — the registered company name
-- `[REGISTERED ADDRESS, EGYPT]` — the official address
-- `[privacy@DOMAIN]` — a real support/privacy email
-- `[DOMAIN]` — your website domain
+### E. Fill in your real domain for SEO
+Search-and-replace `www.raafatfurniture.com` with your real domain in these files: `index.html`, `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, and set `VITE_SITE_URL`. Also open `lib/siteConfig.ts` and fill the `FILL_ME` values (email, social links).
 
-> Until these are filled, your Privacy/Terms pages show placeholder text to real visitors. **This is a legal blocker.** Send me the 4 values and I'll drop them in.
+### F. Fill in the legal documents
+In `lib/legalContent.ts`, replace `[BUSINESS LEGAL NAME]`, `[REGISTERED ADDRESS, EGYPT]`, `[privacy@DOMAIN]`, `[DOMAIN]` with the real values. **Until then the legal pages show placeholder text.** Send me the values and I'll drop them in.
 
-### E. Set up the store inside the admin panel
-1. Sign in with the owner account, go to **Admin → Team**, and:
-   - Add your **admins** (full access) and **workers** (workshop checklist only, no prices).
-   - Set your **InstaPay address** and **bank transfer details** (shown to customers who pay by transfer).
-2. Go to **Admin → Catalog** and add products. For each product set **two prices: EGP and USD** (see [currency](#currency-egp--usd) below).
-3. Optionally add a **3D model** to products (see [3D & AR](#3d--ar-how-it-works)).
+### G. Set up the store in the admin panel
+- **Admin → Team:** add your admins and workers; set your **InstaPay address** and **bank details**.
+- **Admin → Catalog:** add products with **both an EGP and a USD price** each.
+- **Admin → Scans & 3D:** optionally add 3D models (see [3D & AR](#3d--ar)).
 
-### F. Confirm your VAT status before charging tax
-The site charges **14% VAT on Egyptian orders**. Only keep this on if the business is **VAT-registered** (mandatory once turnover passes EGP 500,000/year). If you're not registered yet, tell me and I'll switch Egyptian prices to plain (no VAT line) — charging VAT you don't remit is a liability. See the [questions](#2-questions-to-ask-the-business) below.
+### H. Add a share image (optional but nice)
+Add a `1200×630` image at `public/og-image.png` — this is the picture that shows when the site is shared on WhatsApp/Facebook/Twitter.
 
-### G. Connect payment webhooks (only when you turn cards on)
-- **Stripe:** dashboard → add webhook to `https://<your-domain>/api/stripe/webhook`, event `checkout.session.completed`, put the signing secret in `STRIPE_WEBHOOK_SECRET`.
-- **Paymob:** dashboard → set the transaction callback to `https://<your-domain>/api/paymob/webhook`, put your HMAC secret in `PAYMOB_HMAC_SECRET`.
+### I. Payment webhooks (only when you turn cards on)
+- **Stripe:** dashboard → webhook to `https://<your-domain>/api/stripe/webhook`, event `checkout.session.completed`, secret → `STRIPE_WEBHOOK_SECRET`.
+- **Paymob:** dashboard → transaction callback to `https://<your-domain>/api/paymob/webhook`, HMAC secret → `PAYMOB_HMAC_SECRET`.
+
+### J. Your GitHub backup
+Your current live GitHub version has been preserved on a branch named **`backup/pre-launch-main`** (and the original commit is `58b8282`). If anything ever goes wrong, that's the old site, untouched.
 
 ---
 
-## 2. Questions to ask the business
+## 3. Google Analytics — setup & why it helps
 
-Get answers to these before or shortly after launch. The ones marked ⚠️ are blockers.
+Analytics is **built in and privacy-safe** (it only runs after a visitor accepts cookies). You just need to create a free account and paste one ID.
 
-| # | Question | Why it matters |
-|---|---|---|
-| 1 ⚠️ | **Registered legal name, official address, support email, and final domain?** | Goes into the legal pages (Section D). Legally required. |
-| 2 ⚠️ | **Is the business VAT-registered?** (Turnover over EGP 500,000/year?) | Decides whether the site should charge/show the 14% VAT. Charging without registering is a liability. |
-| 3 | **Do you have a Commercial Registration + Tax Card?** | Needed to onboard Paymob for card payments and to operate legally. |
-| 4 | **Which card processor to activate first — Paymob (Egypt) or Stripe (international)?** | Both are coded. Paymob needs Egyptian registration; Stripe needs a US/EU entity. Launch is on InstaPay + cash regardless. |
-| 5 | **Confirm the return policy: 14 days for ready-made items, custom items non-returnable with a deposit?** | Currently written into the Terms. Confirm it matches how the business actually operates. |
-| 6 | **What deposit % for custom orders?** (e.g. 50%) | So we can state it clearly to customers. |
-| 7 | **Branch addresses, phone, and opening hours correct?** | Shown in the footer and contact page. Verify the current ones. |
-| 8 | **Who are the staff, and which are admins vs workshop workers?** | To set up their access in Admin → Team. |
-| 9 | **Shipping: do you quote per-order, or want fixed rates by zone?** | Right now shipping is "confirmed after order." We can automate rates later if wanted. |
-| 10 | **Product prices in both EGP and USD** for each item. | The site shows Egyptians EGP and international visitors USD. |
+**How to set it up (5 minutes):**
+1. Go to **analytics.google.com** → *Start measuring* → create an **Account** (e.g. "Raafat Furniture").
+2. Create a **Property** → choose your time zone (Egypt) and currency.
+3. Create a **Web data stream** → enter your website URL. Google gives you a **Measurement ID** that looks like `G-XXXXXXXXXX`.
+4. Put that ID into the Vercel variable `VITE_GA_MEASUREMENT_ID` and redeploy.
+5. Done. Visit your site, accept cookies, and within a minute you'll see yourself in Google Analytics → *Realtime*.
 
----
-
-## 3. Cost breakdown
-
-Assumes a small store at launch. You can genuinely go live for **~$20/month + ~$12/year** using InstaPay/cash (0% fees) and free tiers everywhere else.
-
-### One-time costs
-| Item | Cost | Needed? |
-|---|---|---|
-| Domain name (first year) | ~$12 | Yes |
-| Egyptian Commercial Registration + Tax Card | varies | Needed for Paymob + to charge VAT (may already exist) |
-| US LLC (via Stripe Atlas) | $500 | **Only if** you activate Stripe |
-| Lawyer review of legal docs | a few hundred $ | Recommended, not required |
-| Apple Developer account | **$0 — not needed** | AR runs in the browser, no app store |
-
-### Monthly costs
-| Service | Free tier (launch) | Paid when you grow |
-|---|---|---|
-| **Vercel** (hosting) | Free for testing | **~$20/mo** Pro (required for commercial use); 1 TB traffic |
-| **Firebase** (database, login, storage) | Free: 50k reads/day, 5 GB storage | Pay-as-you-go, usually a few $/mo |
-| **Cloudinary** (product images) | Free: ~25 GB | ~$89/mo if you outgrow it — watch this with big photos |
-| **Resend** (email) | Free: 3,000/mo | $20/mo for 50k |
-| **Google Analytics** | Free forever | — |
-| **Gemini** (admin translate button) | Free tier, admin-only | pennies |
-
-### Yearly costs
-| Item | Cost |
-|---|---|
-| Domain renewal | ~$12/year |
-
-### Per-sale costs (you only pay when you make money)
-| Payment method | Fee | Status |
-|---|---|---|
-| **InstaPay** | ~free | ✅ Live at launch |
-| **Cash on pickup** | free | ✅ Live at launch (Egypt only) |
-| **Bank transfer** | free / small bank fee | ✅ Live at launch |
-| **Paymob** (Egypt cards + wallets) | ~2.75% + ~EGP 1–3 per sale | Coded, activate when ready |
-| **Stripe** (international cards + Apple/Google Pay) | 2.9% + $0.30 (+1.5% foreign cards) | Coded, activate when ready |
-| PayPal | — | Not included (Stripe covers wallets) |
-
-**Bottom line:** Launch cost is essentially **Vercel Pro ($20/mo) + domain ($12/yr)**, with 0% payment fees while you use InstaPay/cash. Card fees only start when you turn cards on.
+**Why it's worth it (what you'll learn):**
+- **How many people visit**, from which countries (Egypt vs USA vs rest) and on phone vs desktop.
+- **What they look at** — which products and categories get the most attention.
+- **Where they drop off** — e.g. if people add to cart but don't check out, you'll see it and can fix it.
+- **What marketing works** — which links/ads actually bring buyers.
+- The site already sends key events automatically: **product views, add-to-cart, "view in AR", and purchases** — so you can see the whole funnel from browsing to buying.
 
 ---
 
-## 4. How everything works
+## 4. SEO & getting recommended by AI
 
-A plain-language tour so you can operate the store and explain it to the team.
+You asked for two things: rank well on Google **and** get recommended by AI assistants (ChatGPT, Claude, Gemini, Google's AI Overview, Perplexity). Both are now built in. Here's what's done and what you should do.
+
+**What's already built:**
+- **Rich page information** — every page has a proper title, description, and preview image, in a way Google and social apps understand.
+- **Structured data (schema.org)** — the site tells search engines and AI *exactly* what it is: a **furniture store in Egypt**, its **3 branches, phone, and hours**, that it sells specific furniture types, accepts specific payments, and serves Egypt/USA/worldwide. Each product page also declares its **name, price, currency, and availability**. This is the single biggest lever for being understood and recommended.
+- **An AI-readable brochure** — a file at `/llms.txt` that spells out, in plain text, who you are, what you sell, where, how ordering works, and your locations. This is the emerging standard that AI assistants read.
+- **AI crawlers are explicitly welcomed** — `robots.txt` invites GPTBot (ChatGPT), ClaudeBot (Claude), Google-Extended (Gemini/AI Overview), PerplexityBot, and others to read the site. Many sites accidentally block these; yours invites them.
+- **A sitemap** so search engines find every page.
+- **Bilingual signals** for Arabic (Egypt) and English (US/worldwide), with keywords for both.
+
+**What you should do to make it work:**
+1. **Set your real domain** everywhere (Section 2E) — SEO needs the true web address.
+2. **Submit to Google:** create a free **Google Search Console** account (search.google.com/search-console), verify your domain, and submit `https://your-domain/sitemap.xml`. This tells Google to index you.
+3. **Keep the business facts consistent everywhere** — same name, address, and phone on the site, Google Business Profile, Facebook, Instagram. AI and Google trust businesses whose details match across the web.
+4. **Create a free Google Business Profile** for each showroom (business.google.com) — this is huge for "furniture store near me" and map results in Egypt.
+5. **Link your social accounts** in `lib/siteConfig.ts` (the `social` list) — it strengthens trust signals.
+
+**Honest note:** No one can *guarantee* an AI will always recommend a specific store — their answers aren't for sale and change over time. What we've done is give the site **every signal that makes recommendation likely**: clear identity, structured facts, crawler access, and a machine-readable summary. That's exactly what makes an AI able to confidently name and describe your business when someone asks "where can I buy custom furniture in Egypt?"
+
+---
+
+## 5. Full cost breakdown with real examples
+
+### Fixed costs
+| Item | Cost | When |
+|---|---|---|
+| Domain name | ~$12 | per year |
+| Vercel hosting (Pro, for commercial use) | $20 | per month (can start free) |
+| Firebase (database/login/storage) | $0 on free tier | grows to a few $/mo only at scale |
+| Cloudinary (images) | $0 up to ~25 GB | ~$89/mo only if you far exceed it |
+| Resend (email) | $0 up to 3,000/mo | $20/mo for 50,000 |
+| Google Analytics | $0 | forever |
+| NVIDIA translate | $0 (free tier) | forever for normal use |
+| US LLC (only if you pick Stripe) | $500 | one-time |
+
+**Typical monthly fixed cost at launch: about $20 (Vercel) + ~$1/month for the domain.** Everything else is free until you grow.
+
+### Payment fees — worked examples
+You only pay these **when a customer actually pays by card**. InstaPay, cash, and bank transfer are **free (0%)**, so if most Egyptian customers use those, your fees stay near zero.
+
+Two card options:
+- **Paymob** — for Egyptian cards & wallets. ~**2.75% + ~EGP 3** per sale. No monthly fee. Needs Egyptian commercial registration. No foreign company needed.
+- **Stripe** — for international cards + Apple/Google Pay. **2.9% + $0.30**, plus **~1.5% extra on foreign cards** (so realistically ~3–4.4% for overseas buyers). No monthly fee. Needs a US/EU company ($500 one-time).
+
+> **Are they either/or?** Not quite. Stripe **cannot** process Egyptian local cards (it doesn't operate for local payments in Egypt) — so for Egyptian card customers you'd use Paymob, and for international card customers you'd use Stripe. But since **InstaPay/cash cover Egypt for free**, you can happily launch with no card processor at all and add one only when customers ask.
+
+**Examples** (assuming an average order of ~$400 / ~EGP 20,000, and that *every* order is paid by card — in reality many won't be):
+
+| Monthly card sales | ≈ orders | Paymob cost (Egypt cards) | Stripe cost (international cards) |
+|---|---|---|---|
+| $5,000 | ~12 | ~$138 (2.75% + fees) | ~$149 domestic / up to ~$225 foreign |
+| $20,000 | ~50 | ~$553 | ~$595 domestic / up to ~$895 foreign |
+| $50,000 | ~125 | ~$1,378 | ~$1,488 domestic / up to ~$2,240 foreign |
+
+**Reading this:** Paymob is a bit cheaper and needs no foreign company, so it's the natural first card option for an Egypt-based store. Stripe is the one that unlocks **international card buyers and Apple/Google Pay**. And remember — **every InstaPay/cash order in that revenue costs you $0**, so your real blended fee is usually much lower than the table.
+
+### The realistic picture
+- **Launch:** ~$20/month + $12/year, **0% payment fees** (InstaPay/cash/bank).
+- **Growing:** add card fees only on card orders; upgrade a plan or two if you get busy.
+- **No surprise bills:** nothing here auto-charges big amounts — the paid tiers are opt-in upgrades.
+
+---
+
+## 6. What I still need from you
+
+These are the open items. Send them whenever ready and I'll wire them in.
+
+**Blockers before a real public launch:**
+1. **Legal identity** (for the legal pages): registered legal name, official Egypt address, support/privacy email, final domain.
+2. **VAT status:** is the business VAT-registered (turnover over EGP 500,000/year)? The site charges 14% VAT on Egyptian orders — I should turn that **off** if you're not registered yet, because charging VAT you don't remit is a liability.
+
+**Needed soon:**
+3. **Product prices** in **both EGP and USD** for each item.
+4. **Card processor choice** to activate first (Paymob for Egypt / Stripe for international) — or stay on InstaPay+cash for now.
+5. **Return policy confirmation:** currently written as *14-day returns for ready-made items; custom items non-returnable with a deposit.* Confirm this matches how you operate, and tell me the **deposit %** for custom orders.
+6. **Business details to verify:** the three branch addresses, phone `01010279777`, and hours (12:00–22:00, Mon–Sat) — confirm they're current.
+7. **Social media links** (Instagram / Facebook / TikTok) for SEO and trust.
+8. **Staff list:** who are admins vs workshop workers (to set their access).
+
+**Things you said you'd confirm with the business later:**
+- Final return-policy wording (you chose 14 days as the minimum for now — confirm with the business).
+- Whether to also target Arabic-heavy SEO more aggressively (currently balanced EN + AR).
+
+---
+
+## 7. How everything works
+
+A plain tour so you can run the store and explain it to the team.
 
 ### Roles (who sees what)
-There are three levels of access, set in **Admin → Team**:
-- **Customer** — normal shopper. Browses, orders, tracks, reviews, saves favourites.
-- **Worker** (workshop staff) — sees **only** the `/staff` page: a checklist of what to build for each order (item, colour, material, dimensions). **No prices, no customer details.** This is enforced on the server, not just hidden — a worker literally cannot pull pricing or customer data.
-- **Admin** — full control: catalog, orders, approvals, payments, reviews. A **developer** admin can also add/remove team members.
+Set in **Admin → Team**:
+- **Customer** — shops, orders, tracks, reviews, saves favourites.
+- **Worker** (workshop) — sees **only** the `/staff` checklist: what to build for each order (item, colour, material, size). **No prices, no customer info.** Enforced on the server, not just hidden.
+- **Admin** — full control. A **developer** admin can also manage team members.
 
-### The order journey (start to finish)
-1. **Customer checks out.** They pick pickup / delivery / custom, enter their details, and choose how to pay. The **server** calculates the price, tax, and total from your catalog — the browser is never trusted, so nobody can tamper with prices.
-2. **They get a unique order number** like `EG482913KY` = country (EG) + 6 digits + a random letter + the first letter of their name. Every number is guaranteed unique and never reused.
-3. **They see a confirmation page** — a green checkmark, the order number, and a full receipt (with VAT broken out for Egypt, or a duties note for exports). A confirmation email goes out too.
+### The order journey
+1. **Checkout** — customer picks pickup / delivery / custom, enters details, chooses payment. The **server** calculates price, tax, and total from your catalog — the browser is never trusted, so prices can't be faked.
+2. **Unique order number** like `EG482913KY` (country + 6 digits + random letter + name initial). Never reused.
+3. **Confirmation page** — green checkmark, order number, full receipt (VAT shown for Egypt, duties note for exports), plus a confirmation email.
 4. **Payment:**
-   - *InstaPay / bank transfer:* the customer sends the money and pastes their transfer reference. An admin verifies it in the orders panel and marks it paid.
+   - *InstaPay / bank transfer:* customer sends money and pastes the transfer reference; an admin verifies and marks it paid.
    - *Cash on pickup:* confirmed immediately (Egypt only).
-   - *Card (when enabled):* handled by Stripe/Paymob; the order is marked paid automatically when payment lands.
-5. **The workshop prepares it.** Workers open `/staff`, see the oldest orders first, and tick off each item as they build it. Progress saves automatically and syncs across everyone's devices — anyone can pick up where a colleague left off. "Order complete" only unlocks once every item is ticked.
-6. **Admin approves and releases.** When the workshop finishes, the order moves to **Awaiting Approval**. The admin double-checks it, then either:
-   - *Pickup:* clicks "Notify customer — ready for pickup" (sends an email).
-   - *Delivery:* enters a tracking number, which emails the customer and shows on their tracking page.
-7. **Customer tracks it** anytime at `/track` using their order number + email — a live timeline from confirmed → preparing → ready/shipped → completed.
+   - *Card (when enabled):* auto-marked paid when payment lands.
+5. **Workshop prepares it** — workers open `/staff`, oldest orders first, tick each item as they build it. Progress saves automatically and syncs across devices. "Order complete" unlocks only when everything is ticked.
+6. **Admin approves & releases** — order moves to **Awaiting Approval**; admin double-checks, then either "Notify — ready for pickup" (email) or enters a **tracking number** for delivery (emails the customer).
+7. **Customer tracks** at `/track` with order number + email — a live timeline.
 
-### Payments — what's on and what's dormant
+### Payments — on vs dormant
 - **Live now:** InstaPay, bank transfer, cash on pickup (Egypt).
-- **Coded and ready to switch on:** Paymob (Egypt cards + Apple/Google Pay) and Stripe (international cards + Apple/Google Pay). Add the keys and they light up automatically.
-- **Rules built in:** delivery orders must be paid up front; cash-on-pickup only appears for visitors in Egypt (checked by their internet location).
+- **Coded, add a key to switch on:** Paymob (Egypt cards + wallets), Stripe (international cards + Apple/Google Pay).
+- **Rules:** delivery is always prepaid; cash-on-pickup only appears for visitors in Egypt.
 
 ### Currency (EGP / USD)
-- Each product has **two prices** you set in the admin (EGP and USD).
-- **While browsing:** the site shows EGP to visitors in Egypt and USD to everyone else, based on their internet location. There's also a manual **EGP / USD switch** in the header.
-- **At checkout:** the currency that's actually charged is locked to the delivery destination — Egypt/pickup pays in EGP, exports pay in USD — no matter what the browse toggle said. This stops anyone using a VPN to dodge the right pricing.
-- **VAT:** 14% is included in Egyptian prices (shown broken out on the receipt); exports are tax-free with a note that local import duties are the buyer's responsibility.
+- Each product has **two prices** (EGP and USD) you set in the admin.
+- **Browsing:** shows EGP to visitors in Egypt, USD to everyone else, based on their location. There's also a manual **EGP/USD switch** in the header.
+- **Checkout:** the currency actually charged is locked to the **delivery destination** — Egypt/pickup pays EGP, exports pay USD — regardless of the browse toggle (stops VPN tricks).
+- **VAT:** 14% included in Egyptian prices (shown on the receipt); exports are tax-free.
 
 ### Auto-translate for listings (Egyptian dialect)
-When an admin creates a product and fills in only English (or only Arabic), the **"Auto-Translate"** button fills in the other language using Google's Gemini AI. It's tuned to write **natural, premium Egyptian-dialect Arabic** (the way an upscale Cairo showroom writes) — not stiff textbook Arabic. It never overwrites text you already typed; it only fills the blanks. Runs on the free Gemini tier.
+When an admin fills only English (or only Arabic) for a product, the **Auto-Translate** button fills the other language using NVIDIA's free AI, tuned to write **natural, premium Egyptian-dialect Arabic**. It never overwrites text you already typed.
 
-### 3D & AR — how it works
-This is the standout feature. On products that have a 3D model, customers can spin the piece around and **place it in their own room at true-to-life scale** — like the "View in your room" feature on Amazon/IKEA.
+### 3D & AR
+On products with a 3D model, customers can spin the piece and **place it in their room at real size** — like "View in your room" on Amazon/IKEA.
 
-**What the customer does:**
-1. On a product page, they see a **3D viewer** instead of (or alongside) photos. They drag to rotate, pinch/scroll to zoom, and inspect it from any angle.
-2. They pick a **colour/material** (e.g. walnut vs oak, charcoal vs cream linen) and the 3D model updates live.
-3. On a phone, they tap **"View in your space"**. Their camera opens and the furniture appears on their floor at real size, in the colour they chose. They can walk around it and see if it fits — before buying.
-   - Works on iPhone (AR Quick Look) and Android (Scene Viewer / WebXR). No app to install — it's all in the browser.
+**Customer experience:**
+1. On the product page they see a **3D viewer** — drag to rotate, pinch/scroll to zoom.
+2. They pick a **colour/material** and the model updates live.
+3. On a phone they tap **"View in your space"** — the camera opens and the furniture appears on their floor at true size, in the chosen finish. Works on iPhone and Android, **no app needed**.
 
-**How you add a 3D model to a product (two ways):**
+**How you add a 3D model (two ways), in Admin → Scans & 3D:**
 
-*Option 1 — Upload a ready-made model (easiest if you have one):*
-1. Go to **Admin → Scans & 3D**.
-2. Upload a **`.glb` file** (the standard 3D format) — or paste a link to one. Optionally add a **`.usdz`** for the best iPhone AR quality.
-3. Enter the real-world **dimensions** so AR places it at the correct size.
-4. Define the **colour/material options** customers can switch between.
-5. Attach it to the product. Done — the 3D viewer appears on that product automatically.
+*Option 1 — Upload a ready model (easiest):* upload a **`.glb`** file (or paste a link), optionally add a **`.usdz`** for best iPhone AR, enter the real **dimensions**, define the **colour/material options**, and attach it to the product.
 
-*Option 2 — Scan a real piece with a phone (free, no special equipment):*
-1. In **Admin → Scans & 3D**, use the **guided scanner**. It opens the camera and walks the person around the furniture, auto-capturing ~32 photos from different angles.
+*Option 2 — Scan a real piece with a phone (free, no equipment):*
+1. Use the **guided scanner** — it opens the camera and walks you around the piece, auto-capturing ~32 photos.
 2. Enter the real dimensions (for correct AR scale).
-3. The photos are turned into a 3D model. There are two paths for that last step:
-   - **Free / manual (recommended to start):** download the photos and run them through free desktop software — **[Meshroom](https://alicevision.org/#meshroom)** (Windows/Linux) or **RealityScan** (formerly RealityCapture, free) — which turns photos into a `.glb`. Then upload that `.glb` back in Admin → Scans & 3D. The only cost is a decent PC to run it; the software is free.
-   - **Automatic (optional, paid):** if you later plug a photogrammetry service into `VITE_PHOTOGRAMMETRY_API_URL`, scans convert to models automatically with no manual step.
+3. Turn the photos into a model:
+   - **Free / manual (recommended to start):** run the photos through free desktop software — **[Meshroom](https://alicevision.org/#meshroom)** or **RealityScan** — which outputs a `.glb`. Upload that back in Admin → Scans & 3D. Only cost is a decent PC.
+   - **Automatic (optional, paid):** plug a photogrammetry service into `VITE_PHOTOGRAMMETRY_API_URL` and scans convert automatically.
 
-> **The practical starting workflow:** a worker photographs a piece with the guided scanner → someone runs the photos through free Meshroom on a PC → uploads the resulting `.glb`. Every furniture piece becomes viewable in 3D and AR for **$0** in software.
+> **Best starting workflow:** a worker photographs a piece with the guided scanner → someone runs it through free Meshroom → uploads the `.glb`. Every piece becomes 3D + AR for **$0** in software.
 
-**Tips for good scans:** even lighting, a piece that isn't shiny/reflective/transparent, and a plain background give the best results. Bold-coloured, matte furniture scans best.
+**Scan tips:** even lighting, a matte (non-shiny, non-transparent) piece, and a plain background give the best results.
 
-### Other things built in
-- **Contact page** (`/contact`) — a form that emails the store, plus a WhatsApp button and phone.
-- **FAQ page** (`/faq`) — delivery, returns, custom orders, care, AR — all editable text.
-- **Reviews** — customers leave star ratings + text; admins approve them before they show publicly.
-- **Wishlist** — customers save favourites to their account.
-- **Bilingual + right-to-left** — full English and Egyptian-Arabic, with the whole layout mirroring correctly in Arabic.
-- **Analytics** — Google Analytics 4, only after the visitor accepts cookies (GDPR/Egypt-PDPL compliant).
-- **Legal pages** — Privacy, Cookies, Terms, drafted for Egypt + EU + US compliance (fill the placeholders first).
+### Other built-in features
+- **Contact** (form → email + WhatsApp + phone), **FAQ** (editable), **Reviews** (customer star ratings, admin-approved), **Wishlist** (saved favourites), full **English + Egyptian-Arabic with right-to-left layout**, consent-based **Google Analytics**, and **Privacy/Cookies/Terms** legal pages.
 
 ---
 
-*Questions or want something changed? The whole site is built to be edited — most text is editable, and features can be turned on/off with a key. Just ask.*
+## 8. Legal status
+
+The Privacy Policy, Cookie Policy, and Terms are **fully drafted** for worldwide compliance (EU GDPR, UK, California CCPA/CPRA, and Egypt's Data Protection Law), and cover the real payment processors, returns, and custom-order terms. They are live on `/legal/privacy`, `/legal/cookies`, `/legal/terms`, and the cookie-consent banner is working.
+
+**Before public launch they need two things from you** (see [Section 6](#6-what-i-still-need-from-you)): the **legal identity values** (name/address/email/domain) and confirmation of your **VAT status**. Once you send those, the legal side is complete.
+
+> This is a thorough, real draft — but for peace of mind, have a lawyer in your main market glance over it before you go live. It's not a substitute for legal advice.
+
+---
+
+*Most text on the site is editable, and features toggle on/off with a key. Anything you want changed — just ask.*
