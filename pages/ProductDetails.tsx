@@ -17,6 +17,8 @@ import { formatMoney } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
+import { useSeo } from '../lib/seo';
+import { SITE_URL } from '../lib/siteConfig';
 
 interface ProductDetailsProps { t: TFunction; }
 
@@ -60,6 +62,36 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
   const scrollToImage = (index: number) =>
     scrollRef.current?.scrollTo({ left: index * scrollRef.current.offsetWidth, behavior: 'smooth' });
+
+  // SEO / structured data (called unconditionally; guards on product being loaded).
+  const seoLang = (typeof document !== 'undefined' && document.documentElement.lang === 'ar') ? 'ar' : 'en';
+  const seoName = product ? (product.name?.[seoLang] || (product.nameKey ? t(product.nameKey) : '')) : '';
+  const seoDesc = product ? (product.description?.[seoLang] || '') : '';
+  const seoPrice = product ? priceFor(product, currency) : undefined;
+  useSeo({
+    title: seoName ? `${seoName} — Raafat Furniture` : 'Raafat Furniture',
+    description: seoDesc || undefined,
+    path: product ? `/product/${product.id}` : undefined,
+    image: product?.imageUrl,
+    type: 'product',
+    jsonLd: product ? {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: seoName,
+      image: product.images?.length ? product.images : product.imageUrl,
+      description: seoDesc,
+      brand: { '@type': 'Brand', name: 'Raafat Furniture' },
+      ...(seoPrice != null ? {
+        offers: {
+          '@type': 'Offer',
+          price: seoPrice,
+          priceCurrency: currency,
+          availability: 'https://schema.org/InStock',
+          url: `${SITE_URL}/product/${product.id}`,
+        },
+      } : {}),
+    } : null,
+  });
 
   if (loading) return <PageSpinner />;
 

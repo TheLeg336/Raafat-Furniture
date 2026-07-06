@@ -10,6 +10,7 @@ import { useStore } from '../contexts/StoreContext';
 import { formatMoney } from '../lib/format';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
+import { useSeo } from '../lib/seo';
 
 interface ShopProps {
   t: TFunction;
@@ -24,6 +25,11 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const { categories } = useCategories();
   const { wishlist, toggleWishlist, addToCart } = useStore();
   const { currency } = useCurrency();
+  useSeo({
+    title: 'Shop Luxury Furniture — Sofas, Bedroom, Dining & Custom | Raafat Furniture',
+    description: 'Browse Raafat Furniture: handcrafted sofas, armchairs, bedroom, dining, office and custom pieces. View in 3D, preview in your room with AR, and order for pickup or worldwide delivery.',
+    path: '/shop',
+  });
 
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);

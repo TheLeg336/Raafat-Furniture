@@ -3,6 +3,7 @@ import { useParams, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { TFunction } from '../types';
 import { LEGAL_DOCS, type LegalDoc } from '../lib/legalContent';
+import { useSeo } from '../lib/seo';
 
 interface Props { t: TFunction; }
 
@@ -11,6 +12,11 @@ const Legal: React.FC<Props> = ({ t }) => {
   const doc = (slug && LEGAL_DOCS[slug as LegalDoc['slug']]) || null;
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [slug]);
+  useSeo({
+    title: doc ? `${doc.title} — Raafat Furniture` : 'Raafat Furniture',
+    description: doc ? doc.intro.slice(0, 300) : undefined,
+    path: doc ? `/legal/${doc.slug}` : undefined,
+  });
 
   if (!doc) return <Navigate to="/legal/privacy" replace />;
 

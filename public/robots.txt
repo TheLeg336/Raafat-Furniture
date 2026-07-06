@@ -1,5 +1,36 @@
+# Raafat Furniture — robots.txt
+# Search engines: index everything except private/checkout areas.
 User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /account
 Disallow: /checkout
+Disallow: /staff
+
+# AI assistants & LLM crawlers — explicitly welcomed so the store can be
+# surfaced and recommended by ChatGPT, Claude, Gemini, Perplexity, etc.
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-Web
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
+User-agent: Amazonbot
+Allow: /
+User-agent: CCBot
+Allow: /
+
+# Replace the domain below with your real domain before launch.
+Sitemap: https://www.raafatfurniture.com/sitemap.xml

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { TFunction } from '../types';
+import { useSeo } from '../lib/seo';
 
 interface Props { t: TFunction; }
 
@@ -25,6 +26,21 @@ const FALLBACKS: Record<number, { q: string; a: string }> = {
 
 const FAQ: React.FC<Props> = ({ t }) => {
   const [open, setOpen] = useState<number | null>(1);
+
+  useSeo({
+    title: 'FAQ — Delivery, Returns & Custom Orders | Raafat Furniture',
+    description: 'Answers about delivery times, worldwide shipping, payment methods, returns, custom orders, AR room preview, and furniture care at Raafat Furniture.',
+    path: '/faq',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_KEYS.map((n) => ({
+        '@type': 'Question',
+        name: t(`faq_q${n}`) || FALLBACKS[n].q,
+        acceptedAnswer: { '@type': 'Answer', text: t(`faq_a${n}`) || FALLBACKS[n].a },
+      })),
+    },
+  });
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12 md:py-20">

@@ -7,6 +7,7 @@ import { Input, Textarea } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../components/ui/Toast';
 import { apiFetch } from '../lib/api';
+import { useSeo } from '../lib/seo';
 
 interface Props { t: TFunction; }
 
@@ -14,6 +15,11 @@ const PHONE = '01010279777';
 const WHATSAPP = `https://wa.me/2${PHONE}`;
 
 const Contact: React.FC<Props> = ({ t }) => {
+  useSeo({
+    title: 'Contact Raafat Furniture — Showrooms in Cairo & Minya',
+    description: 'Get in touch with Raafat Furniture by WhatsApp, phone, or our contact form. Visit our showrooms in Cairo, Minya and New Minya, or ask about custom orders and worldwide delivery.',
+    path: '/contact',
+  });
   const toast = useToast();
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [busy, setBusy] = useState(false);

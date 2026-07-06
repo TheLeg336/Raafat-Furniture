@@ -13,10 +13,11 @@ import { paymobRouter } from './paymob';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-// gemini-3-flash-preview was decommissioned. gemini-2.5-flash is the current
-// free-tier default; override with GEMINI_MODEL (e.g. gemini-2.0-flash) if needed.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Translation uses NVIDIA's free, OpenAI-compatible API (build.nvidia.com).
+// Default model is small + free and easily handles product-copy translation;
+// override with NVIDIA_MODEL (e.g. meta/llama-3.3-70b-instruct) for richer Arabic.
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
+const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
 const isProd = process.env.NODE_ENV === 'production';
 
 cloudinary.config({
@@ -232,9 +233,9 @@ export function createApiApp() {
     }
   });
 
-  // ---- Translation proxy (Gemini, server-side key) ----
+  // ---- Translation proxy (NVIDIA free API, server-side key) ----
   app.post('/api/translate', rateLimit(20), async (req: Request, res: Response) => {
-    if (!GEMINI_API_KEY) return res.status(503).json({ error: 'Translation is not configured.' });
+    if (!NVIDIA_API_KEY) return res.status(503).json({ error: 'Translation is not configured.' });
     const adminDb = await getDb();
     if (adminDb) {
       const decoded = await verifyIdToken(req.headers.authorization);
@@ -242,39 +243,44 @@ export function createApiApp() {
     }
     const { nameEn = '', nameAr = '', descEn = '', descAr = '' } = req.body || {};
     try {
-      const { GoogleGenAI, Type } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-      const prompt =
+      const system =
         `You are the bilingual copywriter for Raafat Furniture, an upscale Egyptian furniture house that ships worldwide.\n` +
-        `Task: complete the missing fields so each product has BOTH an English and an Arabic version of its name and description.\n\n` +
+        `Complete the missing fields so each product has BOTH an English and an Arabic name and description.\n` +
         `Rules:\n` +
         `- Arabic must be natural, warm EGYPTIAN dialect (اللهجة المصرية) as written by a refined Cairo showroom — elegant and premium, never stiff textbook Arabic and never street slang.\n` +
         `- English must read like polished boutique product copy (clean, confident, not flowery).\n` +
-        `- Translate MEANING and feel, not word-for-word. Keep it faithful to any field already provided.\n` +
-        `- NEVER change a field that already has text — only fill the empty ones. Keep names concise; keep descriptions roughly the same length as their counterpart.\n` +
-        `- Keep measurements, materials, and numbers accurate. Do not invent features that aren't described.\n` +
-        `- Return ONLY the JSON object, nothing else.\n\n` +
-        `Current fields (translate to fill any empty string):\n` +
-        JSON.stringify({ nameEn, nameAr, descEn, descAr }, null, 2);
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              nameEn: { type: Type.STRING }, nameAr: { type: Type.STRING },
-              descEn: { type: Type.STRING }, descAr: { type: Type.STRING },
-            },
-            required: ['nameEn', 'nameAr', 'descEn', 'descAr'],
-          },
-        },
+        `- Translate the MEANING and feel, not word-for-word. Stay faithful to any field already provided.\n` +
+        `- NEVER change a field that already has text — only fill empty ones. Keep names concise; keep each description close in length to its counterpart.\n` +
+        `- Keep measurements, materials and numbers accurate; do not invent features.\n` +
+        `- Reply with ONLY a JSON object with exactly these keys: nameEn, nameAr, descEn, descAr. No prose, no code fences.`;
+      const user = `Fill any empty string in this JSON:\n` + JSON.stringify({ nameEn, nameAr, descEn, descAr }, null, 2);
+
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${NVIDIA_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: NVIDIA_MODEL,
+          temperature: 0.2,
+          max_tokens: 1024,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        }),
       });
-      let text = (response.text || '{}').replace(/```json|```/g, '').trim();
+      if (!r.ok) {
+        console.error('[translate] nvidia error:', r.status, (await r.text()).slice(0, 300));
+        return res.status(502).json({ error: 'Translation service error.' });
+      }
+      const data = await r.json();
+      let text = String(data?.choices?.[0]?.message?.content || '{}').replace(/```json|```/g, '').trim();
       const a = text.indexOf('{'); const b = text.lastIndexOf('}');
       if (a !== -1 && b >= a) text = text.slice(a, b + 1);
-      res.json(JSON.parse(text || '{}'));
+      const parsed = JSON.parse(text || '{}');
+      // Never let the model blank out a field the admin already filled.
+      res.json({
+        nameEn: parsed.nameEn || nameEn,
+        nameAr: parsed.nameAr || nameAr,
+        descEn: parsed.descEn || descEn,
+        descAr: parsed.descAr || descAr,
+      });
     } catch (e: any) {
       console.error('[translate] error:', e.message);
       res.status(500).json({ error: 'Translation failed.' });

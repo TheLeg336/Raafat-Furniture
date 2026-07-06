@@ -194,24 +194,23 @@ const AppContent: React.FC = () => {
   useEffect(() => { initAnalytics(); }, []);
   useEffect(() => { trackPageView(location.pathname + location.search); }, [location.pathname, location.search]);
 
-  // Document title per route (lightweight SEO).
+  // Titles for private/utility routes only. Public pages set their own richer SEO
+  // via useSeo() (which also handles description/canonical/OG/JSON-LD) — leaving
+  // those out here avoids this parent effect overwriting the page-level title.
   useEffect(() => {
     const base = 'Raafat Furniture';
     const p = location.pathname;
-    let title = `${base} — Luxury Furniture`;
-    if (p.startsWith('/shop')) title = `Shop — ${base}`;
-    else if (p.startsWith('/product')) title = `${base}`;
-    else if (p.startsWith('/checkout')) title = `Checkout — ${base}`;
-    else if (p.startsWith('/order')) title = `Your Order — ${base}`;
-    else if (p.startsWith('/account')) title = `My Account — ${base}`;
-    else if (p.startsWith('/login')) title = `Sign In — ${base}`;
-    else if (p.startsWith('/admin')) title = `Admin — ${base}`;
-    else if (p.startsWith('/staff')) title = `Workshop — ${base}`;
-    else if (p.startsWith('/track')) title = `Track Order — ${base}`;
-    else if (p.startsWith('/contact')) title = `Contact — ${base}`;
-    else if (p.startsWith('/faq')) title = `FAQ — ${base}`;
-    else if (p.startsWith('/legal')) title = `Legal — ${base}`;
-    document.title = title;
+    const privateTitles: [string, string][] = [
+      ['/checkout', `Checkout — ${base}`],
+      ['/order', `Your Order — ${base}`],
+      ['/account', `My Account — ${base}`],
+      ['/login', `Sign In — ${base}`],
+      ['/admin', `Admin — ${base}`],
+      ['/staff', `Workshop — ${base}`],
+      ['/track', `Track Order — ${base}`],
+    ];
+    const match = privateTitles.find(([prefix]) => p.startsWith(prefix));
+    if (match) document.title = match[1];
   }, [location.pathname]);
   
   const t: TFunction = useCallback((key: string): string => {
