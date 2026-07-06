@@ -5,7 +5,7 @@ import { chromium } from '@playwright/test';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const BASE = process.env.QA_BASE_URL || 'http://localhost:3000';
+const BASE = process.env.QA_BASE_URL || 'https://raafat-furniture.vercel.app';
 const OUT = join(process.cwd(), 'qa-output');
 mkdirSync(OUT, { recursive: true });
 const findings = [];
