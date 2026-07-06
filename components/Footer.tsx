@@ -1,94 +1,67 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock } from 'lucide-react';
+import { MapPin, Phone } from 'lucide-react';
 import type { TFunction } from '../types';
 import { openCookieSettings } from './CookieConsent';
-import { Card } from './ui/Card';
 
 interface FooterProps {
-    t: TFunction;
+  t: TFunction;
 }
 
 const Footer: React.FC<FooterProps> = ({ t }) => {
-    const branches = [
-        { name: t('footer_cairo_branch_title'), address: t('footer_cairo_branch_address') },
-        { name: t('footer_minya_branch_title'), address: t('footer_minya_branch_address') },
-        { name: t('footer_new_minya_branch_title'), address: t('footer_new_minya_branch_address') },
-    ];
-    const containerVariants: Variants = {
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
-    };
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 1, 0.5, 1] } },
+  };
 
-    const itemVariants: Variants = {
-        hidden: { opacity: 0, y: 30 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] } }
-    };
+  return (
+    <footer id="footer" className="bg-[var(--color-text-primary)] text-[var(--color-background)] py-12 sm:py-16 md:py-20 transition-colors duration-500">
+      <motion.div
+        className="container mx-auto px-6"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
+      >
+        <motion.div variants={itemVariants} className="flex flex-col items-center text-center gap-6 mb-10">
+          <p className="font-heading text-2xl sm:text-3xl font-bold">{t('footer_tagline') || 'Raafat Furniture'}</p>
+          <p className="text-sm sm:text-base opacity-80 max-w-md">{t('footer_hours')}</p>
+          <a
+            href={`tel:${t('footer_phone_number')}`}
+            className="inline-flex items-center gap-2 text-lg font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity"
+            dir="ltr"
+          >
+            <Phone size={18} aria-hidden />
+            {t('footer_phone_number')}
+          </a>
+          <Link
+            to="/#visit-us"
+            className="inline-flex items-center gap-2 text-sm font-semibold opacity-90 hover:text-[var(--color-primary)] transition-colors"
+          >
+            <MapPin size={16} aria-hidden />
+            {t('footer_showrooms_link') || 'Our showrooms — Cairo, Minya & New Minya'}
+          </Link>
+        </motion.div>
 
-    const titleVariants: Variants = {
-        hidden: { opacity: 0, y: -20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.25, 1, 0.5, 1] } }
-    };
-
-
-    return (
-        <footer id="contact" className="bg-[var(--color-text-primary)] text-[var(--color-background)] py-16 sm:py-20 md:py-24 transition-colors duration-500">
-            <motion.div 
-                className="container mx-auto px-6"
-                initial="hidden" 
-                whileInView="visible" 
-                viewport={{once: true, amount: 0.3}} 
-                variants={containerVariants}
-            >
-                <motion.h2 variants={titleVariants} className="font-heading text-3xl sm:text-4xl font-bold text-center mb-12">
-                    {t('our_branches') || 'Our Branches'}
-                </motion.h2>
-
-                {/* Locations — same cards as the Visit Us section */}
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                    {branches.map((b, i) => (
-                        <motion.div key={i} variants={itemVariants}>
-                            <Card hover className="p-7 h-full flex flex-col text-start">
-                                <div className="w-11 h-11 rounded-full bg-[hsla(var(--color-primary-hsl-values),0.14)] text-[var(--color-primary)] flex items-center justify-center mb-5">
-                                    <MapPin size={20} />
-                                </div>
-                                <h3 className="font-heading text-xl font-bold mb-2 text-[var(--color-text-primary)]">{b.name}</h3>
-                                <p className="text-[var(--color-text-secondary)] leading-relaxed flex-1">{b.address}</p>
-                                <p className="mt-5 flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-                                    <Clock size={15} className="text-[var(--color-primary)]" /> {t('footer_hours')}
-                                </p>
-                            </Card>
-                        </motion.div>
-                    ))}
-                </div>
-
-                <motion.div variants={itemVariants} className="flex justify-center mb-12">
-                    <a href={`tel:${t('footer_phone_number')}`} className="text-lg font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity" dir="ltr">
-                        {t('footer_phone_number')}
-                    </a>
-                </motion.div>
-
-                <motion.div
-                    variants={itemVariants}
-                    className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-5 text-sm"
-                >
-                    <p className="opacity-70 order-2 sm:order-1">
-                        {t('footer_copyright')}
-                    </p>
-                    <nav className="order-1 sm:order-2 flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label={t('legal') || 'Legal'}>
-                        <Link to="/contact" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('contact_title') || 'Contact'}</Link>
-                        <Link to="/faq" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('faq_short') || 'FAQ'}</Link>
-                        <Link to="/track" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('track_order') || 'Track order'}</Link>
-                        <Link to="/legal/privacy" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('privacy_policy') || 'Privacy Policy'}</Link>
-                        <Link to="/legal/cookies" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_policy') || 'Cookie Policy'}</Link>
-                        <Link to="/legal/terms" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('terms') || 'Terms'}</Link>
-                        <button onClick={openCookieSettings} className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_settings') || 'Cookie settings'}</button>
-                    </nav>
-                </motion.div>
-            </motion.div>
-        </footer>
-    )
+        <motion.div
+          variants={itemVariants}
+          className="pt-8 border-t border-[var(--color-background)]/15 flex flex-col sm:flex-row justify-between items-center gap-5 text-sm"
+        >
+          <p className="opacity-70 order-2 sm:order-1">{t('footer_copyright')}</p>
+          <nav className="order-1 sm:order-2 flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label={t('legal') || 'Legal'}>
+            <Link to="/contact" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('contact_title') || 'Contact'}</Link>
+            <Link to="/faq" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('faq_short') || 'FAQ'}</Link>
+            <Link to="/track" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('track_order') || 'Track order'}</Link>
+            <Link to="/legal/privacy" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('privacy_policy') || 'Privacy Policy'}</Link>
+            <Link to="/legal/cookies" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_policy') || 'Cookie Policy'}</Link>
+            <Link to="/legal/terms" className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('terms') || 'Terms'}</Link>
+            <button type="button" onClick={openCookieSettings} className="opacity-80 hover:opacity-100 hover:text-[var(--color-primary)] transition-colors">{t('cookie_settings') || 'Cookie settings'}</button>
+          </nav>
+        </motion.div>
+      </motion.div>
+    </footer>
+  );
 };
 
 export default Footer;

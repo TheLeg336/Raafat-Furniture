@@ -4,40 +4,35 @@ import { currencyForCountry, type StoreCurrency } from '../lib/currency';
 
 interface CurrencyContextType {
   currency: StoreCurrency;
-  setCurrency: (c: StoreCurrency) => void;
-  /** True once the IP-based default has been resolved (or a manual choice exists). */
+  /** True once the IP-based default has been resolved. */
   ready: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | null>(null);
-const STORAGE_KEY = 'rf_currency';
+const LEGACY_STORAGE_KEY = 'rf_currency';
 
 /**
- * Browse currency: a manual choice (persisted) wins; otherwise it's derived from
- * the visitor's IP country. The *charge* currency at checkout is decided server-side
- * from the verified destination — this context only controls what prices are shown.
+ * Browse currency is derived from the visitor's IP country (EG → EGP, else USD).
+ * The charge currency at checkout is decided server-side from the verified destination —
+ * this context only controls what prices are shown.
  */
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const stored = (typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY)) as StoreCurrency | null;
-  const [currency, setCurrencyState] = useState<StoreCurrency>(stored === 'EGP' || stored === 'USD' ? stored : 'EGP');
-  const [ready, setReady] = useState(!!stored);
+  const [currency, setCurrencyState] = useState<StoreCurrency>('EGP');
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (stored) return; // respect an explicit choice
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch { /* private mode */ }
     let active = true;
     getPaymentsConfig().then((cfg) => {
-      if (active) { setCurrencyState(currencyForCountry(cfg.ipCountry)); setReady(true); }
+      if (active) {
+        setCurrencyState(currencyForCountry(cfg.ipCountry));
+        setReady(true);
+      }
     });
     return () => { active = false; };
-  }, [stored]);
+  }, []);
 
-  const setCurrency = (c: StoreCurrency) => {
-    setCurrencyState(c);
-    setReady(true);
-    try { localStorage.setItem(STORAGE_KEY, c); } catch { /* private mode */ }
-  };
-
-  return <CurrencyContext.Provider value={{ currency, setCurrency, ready }}>{children}</CurrencyContext.Provider>;
+  return <CurrencyContext.Provider value={{ currency, ready }}>{children}</CurrencyContext.Provider>;
 };
 
 export const useCurrency = () => {

@@ -8,8 +8,7 @@ import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
-import { useCurrency } from '../contexts/CurrencyContext';
-
+import { scrollToY } from '../lib/scrollNav';
 interface HeaderProps {
   language: LanguageOption;
   setLanguage: (lang: LanguageOption) => void;
@@ -24,7 +23,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, isWorker } = useAuth();
-  const { currency, setCurrency } = useCurrency();
   const { cart, setIsCartOpen, isCartOpen } = useStore();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -67,29 +65,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     };
   }, [isMenuOpen]);
 
-  // Handle scrolling when hash changes or when navigating from another page
-  useEffect(() => {
-    if (location.hash) {
-      const targetId = location.hash.substring(1);
-      setTimeout(() => {
-        const targetElement = document.getElementById(targetId);
-        if (targetElement) {
-          const header = document.querySelector('header');
-          const isSticky = header && window.getComputedStyle(header).position === 'sticky';
-          const headerHeight = isSticky && header ? header.offsetHeight : 0;
-          const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-          
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
-        }
-      }, 100); // Small delay to ensure DOM is ready if we just navigated
-    } else if (location.pathname === '/' && !location.hash) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [location]);
-
   const navLinks = [
     { key: 'nav_home', href: '/' },
     { key: 'nav_shop', href: '/#shop' },
@@ -103,7 +78,8 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     
     if (location.pathname === '/' && href === '/') {
       e.preventDefault();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (location.hash) navigate('/');
+      scrollToY(0, false);
       return;
     }
 
@@ -190,23 +166,6 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
         >
           {t('lang_toggle_ar')}
         </motion.button>
-      </div>
-      <div className="flex items-center">
-        <button
-          onClick={() => setCurrency('EGP')}
-          className={`text-sm font-semibold font-heading ${currency === 'EGP' ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
-          aria-label="Show prices in Egyptian Pounds"
-        >
-          EGP
-        </button>
-        <span className={`${isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted} mx-1.5`}>/</span>
-        <button
-          onClick={() => setCurrency('USD')}
-          className={`text-sm font-semibold font-heading ${currency === 'USD' ? 'text-[var(--color-primary)]' : ((isMobile ? 'text-[var(--color-text-secondary)]' : fgMuted) + ' hover:text-[var(--color-primary)]')}`}
-          aria-label="Show prices in US Dollars"
-        >
-          USD
-        </button>
       </div>
       <ThemeToggle themeMode={themeMode} setThemeMode={setThemeMode} t={t} />
     </div>

@@ -4,6 +4,7 @@ import { Mail, Phone, MapPin, MessageCircle, Send } from 'lucide-react';
 import type { TFunction } from '../types';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea } from '../components/ui/Input';
+import { BranchCards } from '../components/BranchCards';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../components/ui/Toast';
 import { apiFetch } from '../lib/api';
@@ -92,6 +93,13 @@ const Contact: React.FC<Props> = ({ t }) => {
           )}
         </Card>
       </div>
+
+      <section id="locations" className="mt-16 md:mt-20 pt-12 border-t border-[var(--color-secondary)]/20" aria-labelledby="contact-locations-heading">
+        <h2 id="contact-locations-heading" className="font-heading text-2xl md:text-3xl font-bold text-center mb-8">
+          {t('our_branches') || 'Our showrooms'}
+        </h2>
+        <BranchCards t={t} />
+      </section>
     </div>
   );
 };

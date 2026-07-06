@@ -1,174 +1,218 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: {userId}
-    // Fields:
-    //   - firstName: string (optional, 1-50 chars)
-    //   - lastName: string (optional, 1-50 chars)
-    //   - email: string (required, valid format)
-    //   - updatedAt: string (ISO 8601)
-    //
-    // Collection: users/{userId}/store
-    // Document ID: data
-    // Fields:
-    //   - cart: list of maps (CartItem)
-    //   - savedForLater: list of maps (CartItem)
-    //   - wishlist: list of strings (product IDs)
-    //
-    // Collection: admins
-    // Document ID: {email}
-    // Fields:
-    //   - role: string ('admin' | 'developer')
-    //
-    // ===============================================================
 
     // ===============================================================
-    // Helper Functions
+    // Raafat Furniture — Firestore Security Rules
+    // Deploy: firebase deploy --only firestore:rules
+    //
+    // Money-path invariant: orders are created ONLY by the server
+    // (Firebase Admin SDK bypasses these rules). Clients must never
+    // create orders or reserve order numbers.
+    //
+    // Roles (collection admins/{email lowercase}):
+    //   developer — team management + admin_logs read + scan delete
+    //   admin     — catalog, orders, settings, reviews moderation
+    //   worker    — NO Firestore admin access; uses /api/worker/* only
+    //
+    // Collections used by this app:
+    //   users/{uid}                    — customer profiles
+    //   users/{uid}/store/data         — cart, wishlist (per user)
+    //   users/all_users_list           — LEGACY aggregate doc (ignore)
+    //   admins/{email}                 — staff roles
+    //   products/{id}                  — catalog
+    //   products/{id}/reviews/{uid}    — moderated reviews
+    //   categories/{id}                — shop categories
+    //   orders/{id}                    — server-created orders
+    //   orderNumbers/{num}             — server-only uniqueness locks
+    //   admin_logs/{id}                — immutable audit trail
+    //   settings/{id}                  — general, payments, etc.
+    //   content/live                   — CMS strings (i18n overrides)
+    //   scans/{id}                     — 3D photogrammetry jobs (admin)
     // ===============================================================
-    
+
+    // ---------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------
+
     function isAuthenticated() {
       return request.auth != null;
+    }
+
+    function authEmail() {
+      return request.auth.token.email.lower();
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Workers (admins/{email}.role == 'worker') are staff but NOT admins: they get
-    // no direct Firestore access to orders/products — the server API serves them a
-    // price-stripped view instead.
+    // Bootstrap developer (remove once admins/{email} doc exists).
+    function isBootstrapDeveloper() {
+      return isAuthenticated()
+        && request.auth.token.email == 'youssefhanna336@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function adminDoc() {
+      return get(/databases/$(database)/documents/admins/$(authEmail()));
+    }
+
+    function hasAdminDoc() {
+      return exists(/databases/$(database)/documents/admins/$(authEmail()));
+    }
+
+    function adminRole() {
+      return hasAdminDoc() ? adminDoc().data.get('role', 'admin') : '';
+    }
+
+    // Admins & developers — NOT workers (workers use server API only).
     function isAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.get('role', 'admin') != 'worker')
+        isBootstrapDeveloper() ||
+        (hasAdminDoc() && adminRole() != 'worker')
       );
     }
 
     function isDeveloper() {
-      return isAdmin() && (
-        (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.get('role', 'admin') == 'developer')
+      return isAuthenticated() && (
+        isBootstrapDeveloper() ||
+        (hasAdminDoc() && adminRole() == 'developer')
       );
     }
 
+    function isLegacyUserList(userId) {
+      return userId == 'all_users_list';
+    }
+
     function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+      return email is string
+        && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['email']) &&
-             data.email is string && isValidEmail(data.email) &&
-             (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 50)) &&
-             (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 50));
+      return data.keys().hasAll(['email'])
+        && data.email is string
+        && isValidEmail(data.email)
+        && (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 50))
+        && (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 50))
+        && (!('lastSeenAt' in data) || data.lastSeenAt is string)
+        && (!('updatedAt' in data) || data.updatedAt is string);
     }
 
     function isValidStoreData(data) {
-      return (!('cart' in data) || (data.cart is list && data.cart.size() <= 100)) &&
-             (!('savedForLater' in data) || (data.savedForLater is list && data.savedForLater.size() <= 100)) &&
-             (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 200));
+      return (!('cart' in data) || (data.cart is list && data.cart.size() <= 100))
+        && (!('savedForLater' in data) || (data.savedForLater is list && data.savedForLater.size() <= 100))
+        && (!('wishlist' in data) || (data.wishlist is list && data.wishlist.size() <= 200));
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
-    // User profiles
+    // ---------------------------------------------------------------
+    // users/{userId}
+    // ---------------------------------------------------------------
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
-      
-      // Store data subcollection
+
+      // Block writes to the legacy aggregate doc; use per-uid profiles instead.
+      allow create, update: if !isLegacyUserList(userId)
+        && isOwner(userId)
+        && isValidUser(request.resource.data);
+
+      allow delete: if isDeveloper() && !isLegacyUserList(userId);
+
       match /store/data {
         allow read: if isOwner(userId) || isAdmin();
         allow create, update: if isOwner(userId) && isValidStoreData(request.resource.data);
+        allow delete: if isOwner(userId) || isDeveloper();
       }
     }
 
-    // Staff roles (admins + workers). Anyone signed in may read their own doc
-    // (role lookup at login); admins may list the team; only developers write.
+    // ---------------------------------------------------------------
+    // admins/{email} — role lookup at login + team management
+    // ---------------------------------------------------------------
     match /admins/{email} {
-      allow read: if isAuthenticated() && (request.auth.token.email.lower() == email.lower() || isAdmin());
-      allow write: if isDeveloper();
+      // Anyone signed in may read their own role doc; admins list the team.
+      allow read: if isAuthenticated()
+        && (authEmail() == email.lower() || isAdmin());
+      allow create, update, delete: if isDeveloper();
     }
 
-    // Products
+    // ---------------------------------------------------------------
+    // products/{productId}
+    // ---------------------------------------------------------------
     match /products/{productId} {
-      allow read: if true; // Publicly readable
-      allow write: if isAdmin();
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
 
-      // Customer reviews: one per user per product. Created unapproved; only
-      // admins can flip `approved`. Public sees approved reviews only.
-      match /reviews/{userId} {
+      match /reviews/{reviewUserId} {
         allow read: if resource.data.approved == true || isAdmin();
-        allow create: if isOwner(userId) &&
-          request.resource.data.rating is int &&
-          request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
-          request.resource.data.text is string && request.resource.data.text.size() <= 2000 &&
-          request.resource.data.name is string && request.resource.data.name.size() <= 80 &&
-          request.resource.data.approved == false;
-        allow update: if isAdmin() ||
-          (isOwner(userId) &&
-           request.resource.data.rating is int &&
-           request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
-           request.resource.data.text is string && request.resource.data.text.size() <= 2000 &&
-           request.resource.data.approved == false); // edits go back to moderation
-        allow delete: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(reviewUserId)
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.approved == false
+          && request.resource.data.createdAt is string;
+        allow update: if isAdmin()
+          || (isOwner(reviewUserId)
+            && request.resource.data.rating is int
+            && request.resource.data.rating >= 1
+            && request.resource.data.rating <= 5
+            && request.resource.data.text is string
+            && request.resource.data.text.size() <= 2000
+            && request.resource.data.approved == false);
+        allow delete: if isOwner(reviewUserId) || isAdmin();
       }
     }
 
-    // Admin logs
-    match /admin_logs/{logId} {
-      allow read: if isDeveloper();
-      allow create: if isAdmin();
-      allow update, delete: if false; // Logs should be immutable
-    }
-
-    // Categories
+    // ---------------------------------------------------------------
+    // categories, settings, content — public read, admin write
+    // ---------------------------------------------------------------
     match /categories/{categoryId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Settings
     match /settings/{settingId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Content
     match /content/{docId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // ---------------------------------------------------------------
-    // Orders — created ONLY by the server (Admin SDK bypasses these rules).
-    // Client creation is forbidden so prices/tax/order numbers can't be forged.
-    // Guests look orders up via /api/orders/track (order number + email),
-    // so guest orders are no longer world-readable.
+    // orders — SERVER CREATES ONLY (Admin SDK). Never trust client prices.
+    // Guests track via POST /api/orders/track (not Firestore).
     // ---------------------------------------------------------------
     match /orders/{orderId} {
       allow read: if isAdmin()
-                  || (isAuthenticated() && resource.data.userId == request.auth.uid);
+        || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if false;
       allow update: if isAdmin();
       allow delete: if false;
     }
 
-    // Order-number uniqueness reservations — server-only.
+    // Order-number reservations — server-only (create() uniqueness).
     match /orderNumbers/{num} {
       allow read, write: if false;
     }
 
     // ---------------------------------------------------------------
-    // 3D scan jobs (admin tooling)
+    // admin_logs — append-only audit trail
+    // ---------------------------------------------------------------
+    match /admin_logs/{logId} {
+      allow read: if isDeveloper();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // scans — 3D capture jobs (admin tooling)
     // ---------------------------------------------------------------
     match /scans/{scanId} {
       allow read: if isAdmin();
@@ -176,8 +220,10 @@ service cloud.firestore {
       allow delete: if isDeveloper();
     }
 
+    // ---------------------------------------------------------------
     // Default deny
-    match /{path=**} {
+    // ---------------------------------------------------------------
+    match /{document=**} {
       allow read, write: if false;
     }
   }

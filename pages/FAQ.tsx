@@ -14,7 +14,7 @@ interface Props { t: TFunction; }
 const FAQ_KEYS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 const FALLBACKS: Record<number, { q: string; a: string }> = {
-  1: { q: 'How long does delivery take?', a: 'In-stock pieces ship within 3–7 business days inside Egypt. Made-to-order and custom pieces typically take 3–6 weeks depending on the design. International delivery times are quoted per order.' },
+  1: { q: 'How long does delivery take?', a: 'Delivery time is quoted for each order individually — in-stock, custom, Egypt, and international. Our team confirms the timeline before dispatch.' },
   2: { q: 'Do you deliver outside Egypt?', a: 'Yes — we ship worldwide. Delivery orders are paid in full when placed; the shipping cost is confirmed by our team before dispatch. Import duties, if any, are collected by your country on delivery.' },
   3: { q: 'What payment methods do you accept?', a: 'Card (including Apple Pay and Google Pay), InstaPay, bank transfer, and cash on pickup at our Egyptian showrooms. Delivery orders must be paid before shipping.' },
   4: { q: 'Can I return an item?', a: 'Ready-made items can be returned within 14 days of delivery in unused condition. Custom and made-to-order pieces are non-returnable once production starts. See the full policy in our Terms.' },
