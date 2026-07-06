@@ -70,6 +70,7 @@ const getInitialLanguage = (): LanguageOption => {
 
 import { CartDrawer } from './components/CartDrawer';
 import { AuthModal } from './components/AuthModal';
+import StoreChrome from './components/StoreChrome';
 
 const AppContent: React.FC = () => {
   const colorScheme = ColorSchemeOption.BlackGold;
@@ -255,7 +256,7 @@ const AppContent: React.FC = () => {
               themeMode={themeMode}
               setThemeMode={setThemeMode}
             />
-            <main id="main-content" className="flex-grow">
+            <main id="main-content" className="flex-grow max-md:pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))]">
               <Routes>
                 <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
                 <Route path="/shop" element={<Shop t={t} />} />
@@ -274,6 +275,7 @@ const AppContent: React.FC = () => {
             />
             <CartDrawer t={t} />
             <AuthModal t={t} />
+            <StoreChrome t={t} />
           </>
         } />
       </Routes>

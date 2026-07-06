@@ -16,7 +16,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
   };
 
   return (
-    <footer id="footer" className="bg-[var(--color-text-primary)] text-[var(--color-background)] py-12 sm:py-16 md:py-20 transition-colors duration-500">
+    <footer id="footer" className="bg-[var(--color-text-primary)] text-[var(--color-background)] py-10 max-md:pb-12 md:py-14 lg:py-20 transition-colors duration-500">
       <motion.div
         className="container mx-auto px-6"
         initial="hidden"

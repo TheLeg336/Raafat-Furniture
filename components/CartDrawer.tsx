@@ -7,6 +7,7 @@ import { useProducts } from '../hooks/useProducts';
 import { formatMoney } from '../lib/format';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
+import { useViewport } from '../hooks/useViewport';
 
 export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   const { 
@@ -23,7 +24,9 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
   const navigate = useNavigate();
   const { products } = useProducts();
   const { currency } = useCurrency();
+  const tier = useViewport();
   const isRtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
+  const isMobile = tier === 'mobile';
 
   const getSyncedProduct = (item: any) => {
     const product = products.find(p => p.id.toString() === item.productId.toString());
@@ -78,12 +81,23 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1200]"
           />
           <motion.div
-            initial={{ x: isRtl ? '-100%' : '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: isRtl ? '-100%' : '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 end-0 h-full w-full max-w-md bg-[var(--color-background)] shadow-2xl z-[1300] flex flex-col overflow-hidden"
+            initial={isMobile ? { y: '100%' } : { x: isRtl ? '-100%' : '100%' }}
+            animate={isMobile ? { y: 0 } : { x: 0 }}
+            exit={isMobile ? { y: '100%' } : { x: isRtl ? '-100%' : '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className={`fixed z-[1300] flex flex-col overflow-hidden bg-[var(--color-background)] shadow-2xl ${
+              isMobile
+                ? 'inset-x-0 bottom-0 top-auto h-[min(92dvh,720px)] rounded-t-[1.75rem] pb-[env(safe-area-inset-bottom)]'
+                : tier === 'tablet'
+                  ? 'top-0 end-0 h-full w-full max-w-sm'
+                  : 'top-0 end-0 h-full w-full max-w-md'
+            }`}
           >
+            {isMobile && (
+              <div className="flex justify-center pt-3 pb-1" aria-hidden>
+                <span className="w-10 h-1 rounded-full bg-[var(--color-text-secondary)]/25" />
+              </div>
+            )}
             <div className="flex items-center justify-between p-6 ">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <ShoppingBag className="text-[var(--color-primary)]" />

@@ -144,7 +144,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
 
   return (
-    <div className="container mx-auto px-6 pt-10 pb-24 md:pt-16 min-h-[80vh]">
+    <div className="container mx-auto px-5 md:px-8 lg:px-6 pt-8 md:pt-12 lg:pt-16 pb-28 md:pb-24 lg:pb-24 min-h-[80vh]">
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-2 mb-8 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
@@ -152,7 +152,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
         <ArrowLeft size={18} /> {t('nav_shop')}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-14 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 lg:gap-14 items-start">
         {/* MEDIA */}
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }} className="md:sticky md:top-24">
           {/* media toggle */}
@@ -207,7 +207,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
         {/* INFO */}
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15, ease: [0.25, 1, 0.5, 1] }} className="flex flex-col">
           {category && <Badge tone="navy" className="self-start mb-4">{category}</Badge>}
-          <h1 className="font-heading text-4xl md:text-5xl font-bold text-[var(--color-text-primary)] mb-3 text-balance">{name}</h1>
+          <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-text-primary)] mb-3 text-balance">{name}</h1>
           <p className="text-2xl text-[var(--color-primary)] mb-6 font-semibold">
             {priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : t('price_on_request')}
           </p>
@@ -239,7 +239,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="hidden md:flex flex-col sm:flex-row gap-3">
             <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
               <AnimatePresence mode="wait" initial={false}>
                 {isAdding ? (
@@ -254,6 +254,29 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             </Button>
           </div>
         </motion.div>
+      </div>
+
+      {/* Mobile-only sticky purchase bar */}
+      <div className="md:hidden fixed inset-x-0 bottom-0 z-[105] border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px)+var(--mobile-tab-height))]">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-[var(--color-text-secondary)] truncate">{name}</p>
+            <p className="text-lg font-bold text-[var(--color-primary)]">
+              {priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : t('price_on_request')}
+            </p>
+          </div>
+          <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="shrink-0 min-w-[9.5rem]" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
+            {isAdding ? (t('added') || 'Added') : (t('add_to_cart') || 'Add to Cart')}
+          </Button>
+          <button
+            type="button"
+            onClick={() => toggleWishlist(product.id)}
+            className="shrink-0 p-3 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
+            aria-label={t('toggle_wishlist') || 'Toggle wishlist'}
+          >
+            <Heart size={20} className={isWishlisted ? 'fill-[var(--color-primary)] text-[var(--color-primary)]' : ''} />
+          </button>
+        </div>
       </div>
       <Reviews t={t} productId={String(product.id)} />
     </div>

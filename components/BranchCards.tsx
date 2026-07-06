@@ -21,7 +21,7 @@ export const BranchCards: React.FC<Props> = ({ t, animated = false, className = 
   const wrapperProps = animated ? { variants: motionItem } : {};
 
   return (
-    <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 ${className}`}>
       {branches.map((b, i) => (
         <Wrapper key={i} {...wrapperProps}>
           <Card hover className="p-7 h-full flex flex-col text-start">

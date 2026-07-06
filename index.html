@@ -196,30 +196,12 @@
 
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
+        width: 0;
+        height: 0;
       }
       .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
-      }
-
-      /* Custom Scrollbar for Desktop Filters */
-      .custom-scrollbar {
-        scrollbar-width: thin !important;
-        scrollbar-color: var(--color-primary) transparent !important;
-      }
-      
-      .custom-scrollbar::-webkit-scrollbar {
-        display: block !important;
-        width: 4px !important;
-      }
-      
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent !important;
-      }
-      
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: var(--color-primary) !important;
-        border-radius: 20px !important;
       }
     </style>
     <!-- Structured data (JSON-LD) — helps Google, Bing and AI assistants understand

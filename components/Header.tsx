@@ -180,8 +180,8 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
         className={`${headerClass} shine-effect ${isShineAnimating ? 'shine-onload' : ''} ${isMenuOpen ? 'bg-transparent shadow-none backdrop-blur-none' : ''}`}
       >
         <div className="container mx-auto px-6 py-4">
-          {/* Desktop Layout */}
-          <div className="hidden md:grid grid-cols-3 items-center">
+          {/* Desktop — unchanged at lg (1024px+) */}
+          <div className="hidden lg:grid grid-cols-3 items-center">
             <nav className="justify-self-start">
               <NavLinks />
             </nav>
@@ -197,7 +197,80 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
             </div>
           </div>
 
-          {/* Mobile Layout */}
+          {/* Tablet — dedicated horizontal nav (768px–1023px) */}
+          <div className="hidden md:flex lg:hidden items-center gap-3 min-h-[52px]">
+            <Link to="/" onClick={handleLogoClick} className={`shrink-0 ${fg}`}>
+              <Logo t={t} />
+            </Link>
+            <nav className="flex-1 min-w-0 overflow-x-auto scrollbar-hide" aria-label={t('mobile_nav') || 'Navigation'}>
+              <ul className="flex items-center gap-1 px-1">
+                {navLinks.map(link => (
+                  <li key={link.key} className="shrink-0">
+                    <Link
+                      to={link.href}
+                      onClick={(e) => handleNavClick(e, link.href)}
+                      className={`nav-link inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold font-heading whitespace-nowrap transition-colors ${
+                        location.pathname === link.href || (link.href.startsWith('/#') && location.pathname === '/' && location.hash === link.href.slice(1))
+                          ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]'
+                          : `${fgMuted} hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/8`
+                      }`}
+                    >
+                      {t(link.key)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="shrink-0 flex items-center gap-2">
+              <button
+                onClick={() => setIsCartOpen(!isCartOpen)}
+                className={`relative ${fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
+                aria-label={t('cart')}
+              >
+                <ShoppingBag size={20} />
+                <AnimatePresence>
+                  {cartCount > 0 && (
+                    <motion.span
+                      key={cartCount}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute top-0 end-0 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                    >
+                      {cartCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+              <Link
+                to={user ? (isAdmin ? adminPath() : isWorker ? STAFF_PATH : "/account") : LOGIN_PATH}
+                className={`${fgMuted} hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5`}
+                aria-label={t('aria_account')}
+              >
+                <UserIcon size={20} />
+              </Link>
+              <div className="hidden sm:flex items-center gap-1 ps-1 border-s border-[var(--color-text-secondary)]/15">
+                <motion.button 
+                  onClick={() => setLanguage(LanguageOption.English)}
+                  className={`text-sm font-semibold font-heading px-1.5 py-1 rounded-md ${language === LanguageOption.English ? 'text-[var(--color-primary)]' : `${fgMuted} hover:text-[var(--color-primary)]`}`}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {t('lang_toggle_en')}
+                </motion.button>
+                <span className={`${fgMuted} text-xs`}>/</span>
+                <motion.button 
+                  onClick={() => setLanguage(LanguageOption.Arabic)}
+                  className={`text-sm font-semibold font-heading px-1.5 py-1 rounded-md ${language === LanguageOption.Arabic ? 'text-[var(--color-primary)]' : `${fgMuted} hover:text-[var(--color-primary)]`}`}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {t('lang_toggle_ar')}
+                </motion.button>
+              </div>
+              <ThemeToggle themeMode={themeMode} setThemeMode={setThemeMode} t={t} />
+            </div>
+          </div>
+
+          {/* Mobile — hamburger + drawer (<768px) */}
           <div className="md:hidden flex justify-between items-center relative z-50">
             <div className="relative z-50">
               <button 

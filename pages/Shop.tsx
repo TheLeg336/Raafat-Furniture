@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, SlidersHorizontal, X, Heart } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
-import { useCategories } from '../hooks/useCategories';
+import { useVisibleCategories } from '../hooks/useVisibleCategories';
+import { findCategory, getCategoryLabel, getCategorySearchText, findParentCategory, isCategoryVisible, productMatchesCategory } from '../lib/categoryUtils';
 import { TEXTS } from '../constants';
 import type { TFunction } from '../types';
 import { useStore } from '../contexts/StoreContext';
@@ -11,6 +12,7 @@ import { formatMoney } from '../lib/format';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
 import { useSeo } from '../lib/seo';
+import { productGridCols, categoryGridCols } from '../lib/breakpoints';
 
 interface ShopProps {
   t: TFunction;
@@ -21,8 +23,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const navigate = useNavigate();
   const categoryId = searchParams.get('category');
   const searchQuery = searchParams.get('q') || '';
-  const { products, loading } = useProducts();
-  const { categories } = useCategories();
+  const { products, loading: productsLoading } = useProducts();
+  const { categories: visibleCategories, allCategories, productCategoryIds, loading: categoriesLoading } = useVisibleCategories();
+  const loading = productsLoading || categoriesLoading;
   const { wishlist, toggleWishlist, addToCart } = useStore();
   const { currency } = useCurrency();
   useSeo({
@@ -42,40 +45,27 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     [products],
   );
 
-  const getCategoryObj = (catId: string | null) => {
-    if (!catId) return null;
-    for (const cat of categories) {
-      if (cat.id === catId) return cat;
-      if (cat.subCategories) {
-        const sub = cat.subCategories.find(s => s.id === catId);
-        if (sub) return sub;
-      }
-    }
-    return null;
-  };
+  const getCategoryObj = (catId: string | null) => findCategory(allCategories, catId);
 
-  const getCategoryLabel = (cat: any) => {
-    if (!cat) return '';
-    const lang = document.documentElement.lang as 'en' | 'ar';
-    if (cat.name && cat.name[lang]) return cat.name[lang];
-    return t(cat.labelKey);
-  };
+  const isSearchMode = !!searchQuery.trim();
+  const isBrowseMode = !isSearchMode && !categoryId;
 
-  const category = getCategoryObj(categoryId);
-  const hasSubCategories = category?.subCategories && category.subCategories.length > 0;
-  
-  let parentCategory = null;
-  if (category && !hasSubCategories) {
-    parentCategory = categories.find(c => c.subCategories?.some(s => s.id === category.id));
-  }
-  
-  const isSearchMode = !!searchQuery;
+  const category = categoryId ? getCategoryObj(categoryId) : null;
+  const catalogParent = categoryId ? visibleCategories.find((c) => c.id === categoryId) : null;
+  const visibleSubs = catalogParent?.subCategories ?? [];
+  const hasSubCategories = visibleSubs.length > 0 && !isSearchMode;
+  const parentCategory = category && !hasSubCategories
+    ? visibleCategories.find((c) => c.subCategories?.some((s) => s.id === category.id)) ?? null
+    : null;
+  const showCategoryHero = !!categoryId && !!category && !isSearchMode;
+
+  const openCategory = (id: string) => setSearchParams({ category: id });
+  const openSearch = (q: string) => setSearchParams(q.trim() ? { q: q.trim() } : {});
   
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      setSearchParams({ q: searchInput.trim() });
-    }
+    if (searchInput.trim()) openSearch(searchInput);
+    else setSearchParams({});
   };
 
   const searchResultsBeforeFilters = useMemo(() => {
@@ -83,7 +73,6 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
 
     if (isSearchMode) {
       const query = searchQuery.toLowerCase().trim();
-      const queryWords = query.split(/\s+/).filter(w => w.length > 1);
 
       result = products.map(p => {
         let score = 0;
@@ -94,28 +83,20 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
         
         // Find category labels to match against
         const catObj = getCategoryObj(p.categoryKey || null);
-        const catLabelEn = catObj ? (TEXTS.en[catObj.labelKey] || '').toLowerCase() : '';
-        const catLabelAr = catObj ? (TEXTS.ar[catObj.labelKey] || '').toLowerCase() : '';
+        const catSearchText = catObj ? getCategorySearchText(catObj, TEXTS) : '';
+        const parentCat = p.categoryKey ? findParentCategory(allCategories, String(p.categoryKey)) : null;
+        const parentSearchText = parentCat ? getCategorySearchText(parentCat, TEXTS) : '';
         
-        let parentCatLabelEn = '';
-        let parentCatLabelAr = '';
-        for (const cat of categories) {
-          if (cat.subCategories?.some(s => s.id === p.categoryKey)) {
-            parentCatLabelEn = (TEXTS.en[cat.labelKey] || '').toLowerCase();
-            parentCatLabelAr = (TEXTS.ar[cat.labelKey] || '').toLowerCase();
-            break;
-          }
-        }
-        
-        // Exact matches
+        // Exact / phrase matches
         if (nameEn.includes(query) || nameAr.includes(query)) score += 10;
-        if (catLabelEn.includes(query) || parentCatLabelEn.includes(query) || catLabelAr.includes(query) || parentCatLabelAr.includes(query)) score += 8;
+        if (catSearchText.includes(query) || parentSearchText.includes(query)) score += 8;
         if (descEn.includes(query) || descAr.includes(query)) score += 5;
 
-        // Fuzzy/Word matches
-        queryWords.forEach(word => {
+        const queryWords = query.split(/\s+/).filter((w) => w.length > 0);
+        queryWords.forEach((word) => {
+          if (word.length < 2) return;
           if (nameEn.includes(word) || nameAr.includes(word)) score += 3;
-          if (catLabelEn.includes(word) || parentCatLabelEn.includes(word) || catLabelAr.includes(word) || parentCatLabelAr.includes(word)) score += 2;
+          if (catSearchText.includes(word) || parentSearchText.includes(word)) score += 2;
           if (descEn.includes(word) || descAr.includes(word)) score += 1;
         });
 
@@ -131,12 +112,12 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
         });
       }
     } else if (categoryId) {
-      result = products.filter(p => p.categoryKey === categoryId);
+      result = products.filter((p) => productMatchesCategory(p, categoryId, allCategories, productCategoryIds));
     } else {
       result = [...products];
     }
     return result;
-  }, [products, isSearchMode, searchQuery, categoryId, sortBy]);
+  }, [products, isSearchMode, searchQuery, categoryId, sortBy, allCategories, productCategoryIds]);
 
   const filteredProducts = useMemo(() => {
     let result = [...searchResultsBeforeFilters];
@@ -172,10 +153,18 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
     setShowFilters(false);
   }, [categoryId, searchQuery]);
 
+  // Drop invalid or empty category URLs once catalog + products have loaded.
+  React.useEffect(() => {
+    if (!categoryId || loading || isSearchMode) return;
+    if (!getCategoryObj(categoryId) || !isCategoryVisible(categoryId, visibleCategories)) {
+      navigate('/shop', { replace: true });
+    }
+  }, [categoryId, loading, isSearchMode, visibleCategories, allCategories, navigate]);
+
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
       {/* Category or Search Header */}
-      {(isSearchMode || !category) ? (
+      {!showCategoryHero ? (
         <div className="container mx-auto px-6 mb-4 md:mb-8 pt-4 md:pt-8">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-base md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
@@ -204,7 +193,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
               {searchInput && (
                 <button 
                   type="button" 
-                  onClick={() => setSearchInput('')}
+                  onClick={() => { setSearchInput(''); setSearchParams({}); }}
                   className="absolute end-4 p-1 rounded-full hover:bg-[var(--color-primary)]/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-all"
                 >
                   <X size={18} />
@@ -212,8 +201,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
               )}
             </form>
 
-            {/* Mobile Filter Toggle */}
-            <div className="lg:hidden flex justify-end mb-4">
+            {/* Mobile-only filter toggle */}
+            <div className="md:hidden flex justify-end mb-4">
                <button 
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${showFilters ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] hover:bg-[var(--color-secondary)]/20'}`}
@@ -223,8 +212,8 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
               </button>
             </div>
             
-            {/* Mobile Expandable Filters */}
-            <div className="lg:hidden">
+            {/* Mobile-only expandable filters */}
+            <div className="md:hidden">
               <AnimatePresence>
                 {showFilters && (
                   <motion.div 
@@ -324,12 +313,12 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             </div>
           </div>
         </div>
-      ) : category ? (
+      ) : (
         <>
           <div className="relative h-[30vh] md:h-[40vh] overflow-hidden mb-12">
             <img 
               src={category.imageUrl} 
-              alt={t(category.labelKey)} 
+              alt={getCategoryLabel(category, t)} 
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
@@ -338,9 +327,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             <button 
               onClick={() => {
                 if (parentCategory) {
-                  navigate(`/shop?category=${parentCategory.id}`);
+                  openCategory(parentCategory.id);
                 } else {
-                  navigate('/#shop');
+                  navigate('/shop');
                 }
               }}
               className="absolute top-6 start-6 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors z-50"
@@ -355,7 +344,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-4xl md:text-6xl font-bold text-white mb-4 font-heading"
               >
-                {t(category.labelKey)}
+                {getCategoryLabel(category, t)}
               </motion.h1>
               <motion.div 
                 initial={{ opacity: 0 }}
@@ -366,7 +355,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
               
               {/* Mobile Filter Toggle for Category */}
               {!hasSubCategories && (
-                <div className="lg:hidden">
+                <div className="md:hidden">
                   <button 
                     onClick={() => setShowFilters(!showFilters)}
                     className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors backdrop-blur-md ${showFilters ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'bg-black/30 text-white hover:bg-black/50 '}`}
@@ -381,7 +370,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
           
           {/* Mobile Expandable Filters for Category */}
           {category && !hasSubCategories && (
-            <div className="container mx-auto px-6 lg:hidden">
+            <div className="container mx-auto px-6 md:hidden">
               <AnimatePresence>
                 {showFilters && (
                   <motion.div 
@@ -499,167 +488,29 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             </div>
           )}
         </>
-      ) : (
-        <div className="container mx-auto px-6 mb-4 md:mb-8 pt-4 md:pt-8">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-base md:text-2xl font-bold text-[var(--color-text-primary)] mb-4 md:mb-6 font-heading">
-              {t('nav_shop')}
-            </h1>
-            
-            {/* Mobile Filter Toggle */}
-            <div className="lg:hidden flex justify-end mb-4">
-               <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${showFilters ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'bg-[var(--color-secondary)]/10 text-[var(--color-text-primary)] hover:bg-[var(--color-secondary)]/20'}`}
-              >
-                <SlidersHorizontal size={18} />
-                <span className="text-sm font-medium">Filters</span>
-              </button>
-            </div>
-            
-            {/* Mobile Expandable Filters */}
-            <div className="lg:hidden">
-              <AnimatePresence>
-                {showFilters && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mb-8"
-                  >
-                    <div className="py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
-                      {/* Sort By */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Sort By</label>
-                        <div className="flex flex-wrap gap-2">
-                          {['relevance', 'price_asc', 'price_desc'].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() => setSortBy(option)}
-                              className={`px-4 py-2 rounded-xl text-xs transition-all ${sortBy === option ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md' : 'bg-[var(--color-secondary)]/5 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
-                            >
-                              {option === 'relevance' ? 'Relevance' : option === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Color Filter */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Color</label>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => setSelectedColor('all')}
-                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
-                          >
-                            All
-                          </button>
-                          {availableColors.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => setSelectedColor(color)}
-                              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-ink-on-gold)] shadow-md' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'}`}
-                            >
-                              {color}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Price Range */}
-                      <div className="space-y-3 sm:col-span-2">
-                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-60">Price Range</label>
-                          <span className="text-sm font-bold text-[var(--color-primary)]">{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(priceRange[0])} - {new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(priceRange[1])}</span>
-                        </div>
-                        <div className="relative h-6 flex items-center">
-                          <div className="absolute w-full h-1.5 bg-[var(--color-secondary)]/20 rounded-lg"></div>
-                          <div 
-                            className="absolute h-1.5 bg-[var(--color-primary)] rounded-lg"
-                            style={{ 
-                              left: `${(priceRange[0] / 10000) * 100}%`, 
-                              right: `${100 - (priceRange[1] / 10000) * 100}%` 
-                            }}
-                          ></div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10000" 
-                            step="100"
-                            value={priceRange[0]}
-                            onChange={(e) => {
-                              const val = Math.min(parseInt(e.target.value), priceRange[1] - 100);
-                              setPriceRange([val, priceRange[1]]);
-                            }}
-                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
-                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
-                          />
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10000" 
-                            step="100"
-                            value={priceRange[1]}
-                            onChange={(e) => {
-                              const val = Math.max(parseInt(e.target.value), priceRange[0] + 100);
-                              setPriceRange([priceRange[0], val]);
-                            }}
-                            className="absolute w-full appearance-none bg-transparent pointer-events-none z-10 
-                              [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[var(--color-primary)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
-                              [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[var(--color-primary)] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:border-none"
-                          />
-                        </div>
-                        <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] font-medium">
-                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(0)}</span>
-                          <span>{new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(10000)}+</span>
-                        </div>
-                      </div>
-
-                      {/* Reset Filters */}
-                      {(sortBy !== 'relevance' || selectedColor !== 'all' || priceRange[1] < 10000) && (
-                        <button 
-                          onClick={() => {
-                            setSortBy('relevance');
-                            setSelectedColor('all');
-                            setPriceRange([0, 10000]);
-                          }}
-                          className="w-full py-3 text-xs font-bold text-[var(--color-primary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-2)] transition-colors"
-                        >
-                          Reset All Filters
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Content Layout */}
-      <div className="container mx-auto px-6 pb-24">
-        <div className="flex flex-col lg:flex-row gap-12">
-          {/* Desktop Sidebar */}
+      <div className="container mx-auto px-5 md:px-8 lg:px-6 pb-20 md:pb-24 lg:pb-24">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 lg:gap-12">
+          {/* Desktop sidebar — unchanged at lg+ */}
           <aside className="hidden lg:block lg:w-64 shrink-0">
-            <div className="lg:sticky lg:top-32 max-h-[calc(100vh-160px)] overflow-y-auto pr-4 custom-scrollbar">
+            <div className="lg:sticky lg:top-32 max-h-[calc(100vh-160px)] overflow-y-auto pe-1">
               
               {/* Navigation Links (Categories / Subcategories) */}
               {!isSearchMode && !hasSubCategories && (
                 <div className="mb-10">
                   <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4 font-heading">
-                    {parentCategory ? getCategoryLabel(parentCategory) : 'Categories'}
+                    {parentCategory ? getCategoryLabel(parentCategory, t) : 'Categories'}
                   </h2>
                   <div className="flex flex-col gap-2">
-                    {/* Show sibling subcategories or top-level categories */}
-                    {(parentCategory ? parentCategory.subCategories : categories)?.map(sub => (
+                    {(parentCategory ? parentCategory.subCategories : visibleCategories)?.map(sub => (
                       <button
                         key={sub.id}
-                        onClick={() => navigate(`/shop?category=${sub.id}`)}
+                        onClick={() => openCategory(sub.id)}
                         className={`text-left px-4 py-2 rounded-xl text-sm transition-all ${category?.id === sub.id ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-md font-bold' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
                       >
-                        {getCategoryLabel(sub)}
+                        {getCategoryLabel(sub, t)}
                       </button>
                     ))}
                   </div>
@@ -786,6 +637,66 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
             </div>
           </aside>
 
+          {/* Tablet sidebar — dedicated 768px–1023px layout */}
+          <aside className="hidden md:block lg:hidden w-52 shrink-0">
+            <div className="sticky top-28 max-h-[calc(100dvh-8rem)] overflow-y-auto pe-1 space-y-8">
+              {!isSearchMode && !hasSubCategories && (
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-3">
+                    {parentCategory ? getCategoryLabel(parentCategory, t) : (t('nav_shop') || 'Categories')}
+                  </h2>
+                  <div className="flex flex-col gap-1.5">
+                    {(parentCategory ? parentCategory.subCategories : visibleCategories)?.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={() => openCategory(sub.id)}
+                        className={`text-start px-3 py-2 rounded-xl text-sm transition-all ${category?.id === sub.id ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] font-bold' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
+                      >
+                        {getCategoryLabel(sub, t)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(!hasSubCategories || isSearchMode) && (
+                <div className="space-y-6">
+                  <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--color-text-primary)]">
+                    <SlidersHorizontal size={16} className="text-[var(--color-primary)]" />
+                    Filters
+                  </h2>
+                  <div className="space-y-2">
+                    {['relevance', 'price_asc', 'price_desc'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setSortBy(option)}
+                        className={`w-full text-start px-3 py-2 rounded-xl text-sm transition-all ${sortBy === option ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/10'}`}
+                      >
+                        {option === 'relevance' ? 'Relevance' : option === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setSelectedColor('all')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs border ${selectedColor === 'all' ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] border-transparent' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                    >
+                      All
+                    </button>
+                    {availableColors.slice(0, 8).map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs border capitalize ${selectedColor === color ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] border-transparent' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+
           {/* Main Content Area */}
           <main className="flex-1">
             {loading ? (
@@ -794,21 +705,21 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 <p className="text-[var(--color-text-secondary)] font-medium animate-pulse">Curating excellence...</p>
               </div>
             ) : hasSubCategories && !isSearchMode ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-8">
-                {category.subCategories?.map((subCat, index) => (
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+                {visibleSubs.map((subCat, index) => (
                   <motion.div
                     key={subCat.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ y: -10 }}
-                    onClick={() => navigate(`/shop?category=${subCat.id}`)}
+                    onClick={() => openCategory(subCat.id)}
                     className="group cursor-pointer"
                   >
                     <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500">
                       <img
                         src={subCat.imageUrl}
-                        alt={getCategoryLabel(subCat)}
+                        alt={getCategoryLabel(subCat, t)}
                         loading="lazy"
                         decoding="async"
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -820,13 +731,43 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading text-center">
-                      {getCategoryLabel(subCat)}
+                      {getCategoryLabel(subCat, t)}
+                    </h3>
+                  </motion.div>
+                ))}
+              </div>
+            ) : isBrowseMode && visibleCategories.length > 0 ? (
+              <div className={`grid ${categoryGridCols} gap-4 md:gap-6 lg:gap-8`}>
+                {visibleCategories.map((cat, index) => (
+                  <motion.div
+                    key={cat.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                    whileHover={{ y: -10 }}
+                    onClick={() => openCategory(cat.id)}
+                    className="group cursor-pointer"
+                  >
+                    <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-4 shadow-sm group-hover:shadow-2xl transition-all duration-500 bg-[var(--color-secondary)]/10">
+                      {cat.imageUrl && (
+                        <img
+                          src={cat.imageUrl}
+                          alt={getCategoryLabel(cat, t)}
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    </div>
+                    <h3 className="text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading text-center">
+                      {getCategoryLabel(cat, t)}
                     </h3>
                   </motion.div>
                 ))}
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-4 sm:gap-x-8 sm:gap-y-12">
+              <div className={`grid ${productGridCols} gap-x-3 gap-y-5 md:gap-x-6 md:gap-y-10 lg:gap-x-8 lg:gap-y-12`}>
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}
@@ -882,10 +823,10 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             
                             // 2. Try categoryKey from product
                             const catObj = getCategoryObj(product.categoryKey || null);
-                            if (catObj) return getCategoryLabel(catObj);
+                            if (catObj) return getCategoryLabel(catObj, t);
                             
                             // 3. Try current page category
-                            if (category) return t(category.labelKey);
+                            if (category) return getCategoryLabel(category, t);
                             
                             // 4. Final fallback - use "Shop" or "Collection" but translated
                             return t('nav_shop');
@@ -913,7 +854,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             material: product.materials?.[0],
                           });
                         }}
-                        className="w-full mt-4 py-2 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0"
+                        className="w-full mt-3 md:mt-4 py-2.5 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
                       >
                         {t('add_to_cart') || 'Add to Cart'}
                       </button>

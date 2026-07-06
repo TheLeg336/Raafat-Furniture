@@ -1100,7 +1100,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
@@ -1426,7 +1426,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     <div className="space-y-4 pt-6 ">
                       <h3 className="font-bold text-[var(--color-text-primary)]">Distribute Existing Listings</h3>
                       <p className="text-sm text-[var(--color-text-secondary)]">Choose which sub-category each listing should move to.</p>
-                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                      <div className="space-y-3 max-h-60 overflow-y-auto pe-1">
                         {listingsToRedistribute.map(listing => (
                           <div key={listing.id} className="flex items-center justify-between p-3 bg-[var(--color-secondary)]/5 rounded-xl ">
                             <span className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[200px]">
