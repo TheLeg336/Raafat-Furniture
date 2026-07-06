@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { ShieldCheck, Hammer, Trash2, UserPlus, Code2, Smartphone } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { AdminNav } from '../components/admin/AdminNav';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -27,7 +26,7 @@ const roleIcon: Record<string, React.ReactNode> = {
  * Workers see only the /staff workshop view (no prices, no customer data).
  */
 const AdminTeam: React.FC<Props> = () => {
-  const { user, isAdmin, isDeveloper, loading } = useAuth();
+  const { user, isAdmin, isDeveloper } = useAuth();
   const toast = useToast();
   const [staff, setStaff] = useState<StaffDoc[] | null>(null);
   const [email, setEmail] = useState('');
@@ -40,10 +39,6 @@ const AdminTeam: React.FC<Props> = () => {
       (snap) => setStaff(snap.docs.map((d) => ({ email: d.id, role: (d.data().role || 'admin') as StaffDoc['role'] }))),
       () => setStaff([]));
   }, [isAdmin]);
-
-  if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,12 +60,11 @@ const AdminTeam: React.FC<Props> = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
-      <AdminNav />
-      <h1 className="font-heading text-3xl font-bold mb-2">Team</h1>
-      <p className="text-sm text-[var(--color-text-secondary)] mb-8">
-        Admins manage the catalog and orders. Workers only see the workshop checklist at <code>/staff</code> — no prices or customer details.
-      </p>
+    <>
+      <AdminPageHeader
+        title="Team"
+        description="Admins manage catalog and orders. Workers use /staff — no prices or customer details."
+      />
 
       <Card className="p-5 mb-6">
         <form onSubmit={add} className="flex flex-wrap gap-3 items-end">
@@ -93,7 +87,7 @@ const AdminTeam: React.FC<Props> = () => {
             <Card key={s.email} className="p-4 flex items-center gap-3">
               <Badge tone={s.role === 'worker' ? 'info' : 'gold'}>{roleIcon[s.role]}{s.role}</Badge>
               <span className="flex-1 font-medium truncate">{s.email}</span>
-              {s.email !== (user.email || '').toLowerCase() && (
+              {s.email !== user?.email?.toLowerCase() && (
                 <button onClick={() => remove(s.email)} aria-label={`Remove ${s.email}`} className="p-2 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-danger,#dc2626)] hover:bg-[var(--color-surface-2)]"><Trash2 size={16} /></button>
               )}
             </Card>
@@ -103,7 +97,7 @@ const AdminTeam: React.FC<Props> = () => {
       )}
 
       <PaymentSettings toast={toast} />
-    </div>
+    </>
   );
 };
 

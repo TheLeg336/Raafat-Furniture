@@ -4,19 +4,17 @@ import { db, storage } from '../lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { differenceInDays, parseISO } from 'date-fns';
-import { Navigate, useSearchParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight, LayoutGrid, ClipboardList, Box, Users } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Trash2, Plus, Image as ImageIcon, X, RefreshCw, Beaker } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
 import { useSettings } from '../hooks/useSettings';
 import { compressImage as compressImageFile, validateImageFile } from '../lib/imageCompression';
 import { translateProductFields } from '../lib/translate';
 import { apiFetch } from '../lib/api';
 import { Edit, PlusCircle } from 'lucide-react';
-import LogoIcon from '../components/LogoIcon';
-import { AdminNav } from '../components/admin/AdminNav';
-import { ADMIN_LINKS, isAdminLinkActive } from '../components/admin/adminLinks';
+import { CatalogSubNav } from '../components/admin/CatalogSubNav';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { LanguageOption, type TFunction, LocalizedString } from '../types';
 
 const TEST_IMAGES = [
@@ -36,16 +34,11 @@ interface AdminProps {
 }
 
 const Admin: React.FC<AdminProps> = ({ t, language }) => {
-  const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
+  const { user, isAdmin, isDeveloper } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
   
   const activeTab = (searchParams.get('tab') as 'categories' | 'archive' | 'logs') || 'categories';
   const selectedCategory = searchParams.get('category');
-
-  const setActiveTab = (tab: string) => {
-    setSearchParams({ tab });
-  };
 
   const setSelectedCategory = (category: string | null) => {
     if (category) {
@@ -92,9 +85,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [customDimensionsEnabled, setCustomDimensionsEnabled] = useState(false);
   const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const { updateSettings } = useSettings();
   const [isHeroModalOpen, setIsHeroModalOpen] = useState(false);
+  const { updateSettings } = useSettings();
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
   const [isUpdatingHero, setIsUpdatingHero] = useState(false);
 
@@ -145,38 +137,6 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       unsubscribeUsers();
     };
   }, [isAdmin, isDeveloper]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-background)] p-6">
-        <div className="bg-white/5 backdrop-blur-2xl p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <X size={32} />
-          </div>
-          <h1 className="text-2xl font-bold mb-4 text-[var(--color-text-primary)]">{t('admin_access_denied')}</h1>
-          <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_not_authorized').replace('{email}', user.email || '')}</p>
-          <button 
-            onClick={logout}
-            className="w-full py-3 px-4 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-medium hover:opacity-90 transition-opacity"
-          >
-            {t('account_signout')}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const handleHeroImageUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -672,198 +632,26 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   };
 
   return (
-    <div className="h-screen bg-[var(--color-background)] flex flex-col md:flex-row overflow-hidden">
-      {/* Desktop Sidebar */}
-      <aside 
-        className={`hidden md:flex flex-col bg-[var(--color-background)] z-30 transition-all duration-300 ease-in-out relative ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
-      >
-        <button 
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-10 w-6 h-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full flex items-center justify-center shadow-lg z-40 hover:scale-110 transition-transform"
-        >
-          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-
-        <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-4'}`}>
-          {!isSidebarCollapsed && (
-            <>
-              <LogoIcon size={48} className="shrink-0 shadow-lg rounded-xl" />
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="overflow-hidden">
-                <p className="text-sm font-bold text-[var(--color-text-primary)] truncate leading-tight">
-                  {firstName && lastName ? `${firstName} ${lastName}` : t('account_admin')}
-                </p>
-                <p className="text-[10px] text-[var(--color-text-secondary)] truncate opacity-70">{user.email}</p>
-              </motion.div>
-            </>
-          )}
-          {isSidebarCollapsed && (
-            <LogoIcon size={40} className="shadow-md rounded-lg" />
-          )}
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-          {ADMIN_LINKS.map((link) => {
-            const active = isAdminLinkActive(location.pathname, link);
-            const Icon = link.label === 'Catalog' ? LayoutGrid : link.label === 'Orders' ? ClipboardList : link.label === 'Scans & 3D' ? Box : Users;
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                title={isSidebarCollapsed ? link.label : ''}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${active ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-              >
-                <Icon size={20} className="shrink-0" />
-                {!isSidebarCollapsed && <span className="truncate">{link.label}</span>}
-              </Link>
-            );
-          })}
-          <Link
-            to="/staff"
-            title={isSidebarCollapsed ? 'Workshop' : ''}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <ClipboardList size={20} className="shrink-0" />
-            {!isSidebarCollapsed && <span className="truncate">Workshop</span>}
-          </Link>
-
-          {!isSidebarCollapsed && <div className="pt-3 pb-1 text-[10px] uppercase tracking-widest text-[var(--color-text-secondary)] opacity-60">Catalog tools</div>}
-
-          <button 
-            onClick={() => setActiveTab('categories')}
-            title={isSidebarCollapsed ? t('admin_tab_categories') : ''}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'categories' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <Folder size={20} className="shrink-0" />
-            {!isSidebarCollapsed && <span className="truncate">{t('admin_tab_categories')}</span>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('archive')}
-            title={isSidebarCollapsed ? t('admin_tab_archive') : ''}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'archive' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <div className="relative shrink-0">
-              <Archive size={20} />
-              {archivedListings.length > 0 && isSidebarCollapsed && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-[var(--color-primary)] rounded-full border border-[var(--color-background)]"></span>
-              )}
-            </div>
-            {!isSidebarCollapsed && (
-              <>
-                <span className="truncate">{t('admin_tab_archive')}</span>
-                {archivedListings.length > 0 && (
-                  <span className="ms-auto bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-xs py-0.5 px-2 rounded-full">
-                    {archivedListings.length}
-                  </span>
-                )}
-              </>
-            )}
-          </button>
-          {isDeveloper && (
-            <button 
-              onClick={() => setActiveTab('logs')}
-              title={isSidebarCollapsed ? t('admin_tab_logs') : ''}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'logs' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-            >
-              <Activity size={20} className="shrink-0" />
-              {!isSidebarCollapsed && <span className="truncate">{t('admin_tab_logs')}</span>}
-            </button>
-          )}
-        </nav>
-
-        <div className="p-4 space-y-2">
-          <Link 
-            to="/"
-            title={isSidebarCollapsed ? t('admin_back_to_site') : ''}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-xl font-medium transition-colors ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <Home size={20} className="shrink-0" />
-            {!isSidebarCollapsed && <span className="truncate">{t('admin_back_to_site')}</span>}
-          </Link>
-          <button 
-            onClick={logout}
-            title={isSidebarCollapsed ? t('account_signout') : ''}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl font-medium transition-colors ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-          >
-            <LogOut size={20} className="shrink-0" />
-            {!isSidebarCollapsed && <span className="truncate">{t('account_signout')}</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[var(--color-background)] sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <LogoIcon size={32} className="rounded-lg shadow-sm" />
-          <div className="overflow-hidden max-w-[150px]">
-            <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
-              {firstName && lastName ? `${firstName} ${lastName}` : t('account_admin')}
-            </p>
-            <p className="text-[9px] text-[var(--color-text-secondary)] truncate opacity-70">{user.email}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/" className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 rounded-full">
-            <Home size={20} />
-          </Link>
-          <button onClick={logout} className="p-2 text-red-500 hover:bg-red-500/10 rounded-full">
-            <LogOut size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] z-40 flex justify-around p-2 pb-safe border-t border-[var(--color-surface-2)]">
-        <Link to="/admin" className={`flex flex-col items-center p-2 rounded-lg ${location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
-          <LayoutGrid size={20} />
-          <span className="text-[10px] mt-1 font-medium">Catalog</span>
-        </Link>
-        <Link to="/admin/orders" className={`flex flex-col items-center p-2 rounded-lg ${location.pathname.startsWith('/admin/orders') ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
-          <ClipboardList size={20} />
-          <span className="text-[10px] mt-1 font-medium">Orders</span>
-        </Link>
-        <Link to="/admin?tab=archive" className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'archive' && location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
-          <div className="relative">
-            <Archive size={20} />
-            {archivedListings.length > 0 && (
-              <span className="absolute -top-1 -end-2 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">
-                {archivedListings.length}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] mt-1 font-medium">{t('admin_tab_archive')}</span>
-        </Link>
-        {isDeveloper && (
-          <Link to="/admin?tab=logs" className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'logs' && location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
-            <Activity size={20} />
-            <span className="text-[10px] mt-1 font-medium">{t('admin_tab_logs')}</span>
-          </Link>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 relative overflow-y-auto h-full pb-24 md:pb-8">
-        <div className="md:hidden">
-          <AdminNav />
-        </div>
+    <>
+      <CatalogSubNav t={t} isDeveloper={isDeveloper} archiveCount={archivedListings.length} />
         {activeTab === 'categories' && !selectedCategory && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="mb-6 md:mb-8">
-              <div className="flex items-center gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)]">{t('admin_tab_categories')}</h1>
-                {isDeveloper && (
-                  <button
-                    onClick={() => setIsHeroModalOpen(true)}
-                    className="p-2 bg-[var(--color-secondary)]/5 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-blue-600"
-                    title="Edit Hero Image"
-                  >
-                    <Edit size={18} />
-                  </button>
-                )}
-              </div>
-              <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
-            </div>
+            <AdminPageHeader
+              title={t('admin_tab_categories') || 'Categories'}
+              description={t('admin_select_category')}
+              actions={isDeveloper ? (
+                <button
+                  type="button"
+                  onClick={() => setIsHeroModalOpen(true)}
+                  className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-2)] text-[var(--color-primary)]"
+                  title="Edit hero image"
+                >
+                  <Edit size={18} />
+                </button>
+              ) : undefined}
+            />
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {categories.map((cat, index) => (
                 <motion.div 
                   key={cat.id}
@@ -925,7 +713,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {currentCategory?.subCategories?.map((cat, index) => (
                 <motion.div 
                   key={cat.id}
@@ -1102,7 +890,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     <p className="text-[var(--color-text-secondary)] mt-2">{t('admin_select_category')}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                     {archivedListings.length === 0 ? (
                       <div className="col-span-full py-12 text-center text-[var(--color-text-secondary)] bg-[var(--color-secondary)]/5 rounded-2xl border border-dashed border-[var(--color-secondary)]/10">
                         {t('admin_no_listings')}
@@ -1170,7 +958,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
 
                   {/* Subcategories View in Archive */}
                   {currentArchivedCat.subCategories && currentArchivedCat.subCategories.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 md:gap-12 mb-12">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-12">
                       {currentArchivedCat.subCategories.map((cat, index) => {
                         const count = getCategoryItemCount(cat, true);
                         if (count === 0) return null;
@@ -1321,7 +1109,6 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             </div>
           </motion.div>
         )}
-      </main>
 
       {/* Create Listing Modal */}
       <AnimatePresence>
@@ -1817,7 +1604,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 

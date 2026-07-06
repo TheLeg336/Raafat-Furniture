@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Box, Camera, Upload, Plus, Trash2, Check, Clock, Loader2, AlertTriangle } from 'lucide-react';
@@ -8,13 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { db, storage } from '../lib/firebase';
 import { subscribeScans, reconstructionConfigured } from '../lib/scan';
-import { AdminNav } from '../components/admin/AdminNav';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { GuidedScanner } from '../components/scan/GuidedScanner';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { PageSpinner } from '../components/ui/Spinner';
 import { useToast } from '../components/ui/Toast';
 import { formatDate, localized } from '../lib/format';
 
@@ -35,7 +33,7 @@ async function uploadModel(file: File): Promise<string> {
 const blankVariant = (): ModelVariant => ({ id: Math.random().toString(36).slice(2, 8), label: '', colorHex: '#8a6a4a' });
 
 const AdminScans: React.FC<Props> = () => {
-  const { user, isAdmin, loading } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { products } = useProducts();
   const toast = useToast();
   const [scans, setScans] = useState<ScanJob[]>([]);
@@ -66,10 +64,6 @@ const AdminScans: React.FC<Props> = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
-
-  if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,12 +110,12 @@ const AdminScans: React.FC<Props> = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <AdminNav />
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-        <h1 className="font-heading text-3xl font-bold">Scans &amp; 3D Models</h1>
-        <Button onClick={() => setScanning(true)} iconLeft={<Camera size={18} />}>Scan an object</Button>
-      </div>
+    <>
+      <AdminPageHeader
+        title="Scans & 3D"
+        description="Capture objects, upload GLB models, and attach them to products."
+        actions={<Button size="sm" onClick={() => setScanning(true)} iconLeft={<Camera size={18} />}>Scan object</Button>}
+      />
 
       {!reconstructionConfigured() && (
         <Card inset className="p-4 mb-8 flex items-start gap-3 text-sm">
@@ -208,7 +202,7 @@ const AdminScans: React.FC<Props> = () => {
           onCancel={() => setScanning(false)}
         />
       )}
-    </div>
+    </>
   );
 };
 

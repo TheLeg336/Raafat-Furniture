@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ColorSchemeOption, LanguageOption, TypographyOption, type TFunction } from './types';
 import { COLOR_SCHEMES, TEXTS } from './constants';
+import AdminLayout from './components/admin/AdminLayout';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -242,10 +243,12 @@ const AppContent: React.FC = () => {
       <SmoothScroll />
       <React.Suspense fallback={<PageSpinner />}>
       <Routes>
-        <Route path="/admin" element={<Admin t={t} language={language} />} />
-        <Route path="/admin/orders" element={<AdminOrders t={t} />} />
-        <Route path="/admin/scans" element={<AdminScans t={t} />} />
-        <Route path="/admin/team" element={<AdminTeam t={t} />} />
+        <Route element={<AdminLayout t={t} />}>
+          <Route path="/admin" element={<Admin t={t} language={language} />} />
+          <Route path="/admin/orders" element={<AdminOrders t={t} />} />
+          <Route path="/admin/scans" element={<AdminScans t={t} />} />
+          <Route path="/admin/team" element={<AdminTeam t={t} />} />
+        </Route>
         <Route path="/staff" element={<Staff t={t} />} />
         <Route path="/login" element={<Login t={t} />} />
         <Route path="/onboarding" element={<Onboarding t={t} />} />

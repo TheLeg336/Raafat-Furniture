@@ -4,7 +4,7 @@ export interface AdminLink {
   exact?: boolean;
 }
 
-/** Cross-section admin routes — shared by AdminNav and the catalog sidebar. */
+/** Cross-section admin routes — shared by AdminLayout sidebar and mobile nav. */
 export const ADMIN_LINKS: AdminLink[] = [
   { to: '/admin', label: 'Catalog', exact: true },
   { to: '/admin/orders', label: 'Orders' },

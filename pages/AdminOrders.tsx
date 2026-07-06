@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import {
   Search, Download, DollarSign, Clock, CheckCircle2, Phone, Mail, MapPin, StickyNote,
   History, Inbox, BellRing, Truck, BadgeCheck,
@@ -10,7 +9,7 @@ import {
   subscribeAllOrders, updateOrderStatus, setAdminNotes, setPrepared, notifyOrder, ordersToCSV,
   ORDER_STATUSES, ORDER_FLOW, OPEN_STATUSES,
 } from '../lib/orders';
-import { AdminNav } from '../components/admin/AdminNav';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -31,7 +30,7 @@ const label = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUp
 const HISTORY_STATUSES: OrderStatus[] = ['completed', 'cancelled', 'refunded'];
 
 const AdminOrders: React.FC<Props> = () => {
-  const { user, isAdmin, loading } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -43,14 +42,13 @@ const AdminOrders: React.FC<Props> = () => {
   const [selected, setSelected] = useState<Order | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) return;
     setOrdersError(null);
     const unsub = subscribeAllOrders(
       (o) => { setOrders(o); setOrdersLoading(false); },
       (msg) => { setOrdersError(msg); setOrdersLoading(false); },
     );
     return () => unsub();
-  }, [isAdmin]);
+  }, []);
 
   // keep the open modal's order in sync with live data (checklist syncs across devices)
   useEffect(() => {
@@ -98,23 +96,20 @@ const AdminOrders: React.FC<Props> = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
-
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <AdminNav />
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <h1 className="font-heading text-3xl font-bold">Orders</h1>
-        <div className="flex gap-2">
-          <Button variant={view === 'pending' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('pending')} iconLeft={<Inbox size={15} />}>Pending</Button>
-          <Button variant={view === 'history' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('history')} iconLeft={<History size={15} />}>Order history</Button>
-        </div>
-      </div>
+    <>
+      <AdminPageHeader
+        title="Orders"
+        actions={(
+          <>
+            <Button variant={view === 'pending' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('pending')} iconLeft={<Inbox size={15} />}>Pending</Button>
+            <Button variant={view === 'history' ? 'primary' : 'secondary'} size="sm" onClick={() => setView('history')} iconLeft={<History size={15} />}>History</Button>
+          </>
+        )}
+      />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Stat icon={<Clock size={18} />} label="Open orders" value={String(stats.pending)} />
         <Stat icon={<BadgeCheck size={18} />} label="Awaiting approval" value={String(stats.approval)} />
         <Stat icon={<DollarSign size={18} />} label="Revenue (paid)" value={formatMoney(stats.revenue, { currency: stats.currency, compact: true })} />
@@ -189,8 +184,8 @@ const AdminOrders: React.FC<Props> = () => {
         </div>
       )}
 
-      <OrderDetail order={selected} onClose={() => setSelected(null)} adminEmail={user.email || 'admin'} toast={toast} />
-    </div>
+      <OrderDetail order={selected} onClose={() => setSelected(null)} adminEmail={user?.email || 'admin'} toast={toast} />
+    </>
   );
 };
 
