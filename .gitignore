@@ -10,8 +10,6 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-api/index.js
-api/stripe-webhook.js
 *.local
 
 # Editor directories and files
