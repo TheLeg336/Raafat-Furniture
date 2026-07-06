@@ -2,10 +2,14 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Admin = owner, or an admins/{email} doc whose role is NOT 'worker'.
+    // Workers are deliberately excluded (mirrors firestore.rules) so they cannot
+    // overwrite 3D models or read raw scan frames.
     function isAdmin() {
       return request.auth != null && (
         (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email.lower()))
+        (firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email.lower())) &&
+         firestore.get(/databases/(default)/documents/admins/$(request.auth.token.email.lower())).data.get('role', 'admin') != 'worker')
       );
     }
 

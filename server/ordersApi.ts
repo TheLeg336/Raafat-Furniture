@@ -75,7 +75,7 @@ async function reserveOrderNumber(db: FirebaseFirestore.Firestore, cc: string, f
 type StaffRole = 'developer' | 'admin' | 'worker';
 
 /** Verify Firebase token and role from the admins collection. */
-async function staffFromReq(req: Request): Promise<{ email: string; role: StaffRole } | null> {
+export async function staffFromReq(req: Request): Promise<{ email: string; role: StaffRole } | null> {
   const db = await getDb();
   const decoded = await verifyIdToken(req.headers.authorization);
   if (!db || !decoded?.email) return null;
@@ -86,7 +86,7 @@ async function staffFromReq(req: Request): Promise<{ email: string; role: StaffR
   return { email, role };
 }
 
-const isAdminRole = (r: StaffRole) => r === 'admin' || r === 'developer';
+export const isAdminRole = (r: StaffRole) => r === 'admin' || r === 'developer';
 
 function trackView(o: any, id: string) {
   return {

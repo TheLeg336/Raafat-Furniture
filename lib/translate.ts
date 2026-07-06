@@ -1,3 +1,5 @@
+import { apiFetch } from './api';
+
 export interface ProductFields {
   nameEn: string;
   nameAr: string;
@@ -7,17 +9,9 @@ export interface ProductFields {
 
 /**
  * Fill missing EN/AR product fields via the server translation proxy.
- * The Gemini key stays server-side (never shipped to the browser).
+ * The NVIDIA key stays server-side; the endpoint is admin-only, so apiFetch
+ * attaches the caller's Firebase ID token.
  */
 export async function translateProductFields(fields: ProductFields): Promise<ProductFields> {
-  const res = await fetch('/api/translate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(fields),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Translation is not configured or failed.');
-  }
-  return res.json();
+  return apiFetch<ProductFields>('/api/translate', fields);
 }

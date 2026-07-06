@@ -6,9 +6,9 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendOrderConfirmation } from './email';
-import { verifyIdToken, getDb } from './firebaseAdmin';
+import { getDb } from './firebaseAdmin';
 import { orderToEmail } from './orderEmail';
-import { ordersRouter } from './ordersApi';
+import { ordersRouter, staffFromReq, isAdminRole } from './ordersApi';
 import { paymobRouter } from './paymob';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
@@ -22,8 +22,10 @@ const isProd = process.env.NODE_ENV === 'production';
 
 cloudinary.config({
   cloud_name: process.env.VITE_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET,
+  // Key + secret are server-only — never read a VITE_-prefixed name (Vite inlines
+  // those into the client bundle, which would leak the Cloudinary secret).
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 let stripeClient: any = null;
@@ -127,9 +129,9 @@ export function createApiApp() {
 
   // ---- Cloudinary delete (admin only) ----
   app.post('/api/cloudinary/delete', rateLimit(30), async (req: Request, res: Response) => {
-    const decoded = await verifyIdToken(req.headers.authorization);
-    const adminDb = await getDb();
-    if (adminDb && !decoded) return res.status(401).json({ error: 'Unauthorized' });
+    // Admin-only, fail closed: a valid customer token must NOT be able to delete assets.
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: 'Unauthorized' });
 
     const { imageUrl } = req.body || {};
     if (!imageUrl || typeof imageUrl !== 'string') return res.status(400).json({ error: 'Image URL is required' });
@@ -161,6 +163,18 @@ export function createApiApp() {
       const order = snap.data() as any;
       if (order.paymentStatus === 'paid') return res.status(400).json({ error: 'Order already paid' });
 
+      // Build redirect URLs from our own SITE_URL when set, so a tampered request
+      // body can't point Stripe's post-payment redirect at an attacker domain.
+      // In dev (no SITE_URL) fall back to the client URL but only if it's http(s).
+      const base = (process.env.SITE_URL || '').replace(/\/$/, '');
+      // In production SITE_URL is required so a tampered body can't redirect payment
+      // elsewhere. In dev only, fall back to the client URL if it's http(s).
+      if (!base && isProd) return res.status(500).json({ error: 'Server misconfigured: SITE_URL is required.' });
+      const httpOnly = (u: string) => { try { const p = new URL(u).protocol; return p === 'http:' || p === 'https:' ? u : ''; } catch { return ''; } };
+      const successFinal = base ? `${base}/order/confirmation?order=${order.orderNumber}&paid=1` : httpOnly(String(successUrl || ''));
+      const cancelFinal = base ? `${base}/order/confirmation?order=${order.orderNumber}&cancelled=1` : httpOnly(String(cancelUrl || ''));
+      if (!successFinal || !cancelFinal) return res.status(400).json({ error: 'Invalid return URL' });
+
       const cur = String(order.currency || 'usd').toLowerCase();
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -176,8 +190,8 @@ export function createApiApp() {
         })),
         customer_email: order.contact?.email,
         metadata: { orderId: snap.id },
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+        success_url: successFinal,
+        cancel_url: cancelFinal,
       });
       await snap.ref.update({ 'stripe.sessionId': session.id, updatedAt: new Date().toISOString() });
       res.json({ url: session.url, id: session.id });
@@ -236,11 +250,9 @@ export function createApiApp() {
   // ---- Translation proxy (NVIDIA free API, server-side key) ----
   app.post('/api/translate', rateLimit(20), async (req: Request, res: Response) => {
     if (!NVIDIA_API_KEY) return res.status(503).json({ error: 'Translation is not configured.' });
-    const adminDb = await getDb();
-    if (adminDb) {
-      const decoded = await verifyIdToken(req.headers.authorization);
-      if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
-    }
+    // Admin-only, fail closed — this spends the server-side NVIDIA key.
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: 'Unauthorized' });
     const { nameEn = '', nameAr = '', descEn = '', descAr = '' } = req.body || {};
     try {
       const system =

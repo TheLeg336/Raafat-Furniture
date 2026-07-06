@@ -5,7 +5,7 @@
  * iframe URL. The transaction webhook is HMAC-SHA512 verified before marking paid.
  */
 import { Router, type Request, type Response } from 'express';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getDb } from './firebaseAdmin';
 import { sendOrderConfirmation } from './email';
 import { orderToEmail } from './orderEmail';
@@ -85,7 +85,11 @@ export function paymobRouter(rateLimit: (n: number) => any) {
       obj.source_data?.pan, obj.source_data?.sub_type, obj.source_data?.type, obj.success,
     ].map((v) => String(v)).join('');
     const digest = createHmac('sha512', secret).update(fields).digest('hex');
-    if (digest !== String(req.query.hmac || req.body?.hmac || '')) {
+    const provided = String(req.query.hmac || req.body?.hmac || '');
+    // Constant-time compare (both are hex of equal length when valid).
+    const ok = provided.length === digest.length &&
+      timingSafeEqual(Buffer.from(digest), Buffer.from(provided));
+    if (!ok) {
       console.error('[paymob] webhook HMAC mismatch');
       return res.status(401).json({ error: 'Invalid HMAC' });
     }

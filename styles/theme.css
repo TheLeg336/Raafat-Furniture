@@ -230,3 +230,26 @@
 @media (prefers-reduced-motion: reduce) {
   .aurora, .shimmer, .marquee-track, .scroll-cue { animation: none !important; }
 }
+
+/* ============================================================
+   Site-native scrollbars — replace the browser's default chrome
+   everywhere with a slim, gold, theme-aware bar. `.scrollbar-hide`
+   (display:none) and `.custom-scrollbar` (!important) still override.
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-primary) 70%, transparent) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }

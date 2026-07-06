@@ -806,10 +806,12 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     className="group cursor-pointer"
                   >
                     <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500">
-                      <img 
-                        src={subCat.imageUrl} 
-                        alt={getCategoryLabel(subCat)} 
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      <img
+                        src={subCat.imageUrl}
+                        alt={getCategoryLabel(subCat)}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-8">
                         <span className="text-white font-bold text-lg flex items-center gap-2">
@@ -836,10 +838,12 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     className="group cursor-pointer"
                   >
                     <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500 bg-[var(--color-secondary)]/5">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.name?.en} 
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name?.en}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       {product.model3d?.url && (
                         <span className="absolute top-4 left-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-white text-[10px] font-bold tracking-wider">

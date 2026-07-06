@@ -12,6 +12,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useSettings } from '../hooks/useSettings';
 import { compressImage as compressImageFile, validateImageFile } from '../lib/imageCompression';
 import { translateProductFields } from '../lib/translate';
+import { apiFetch } from '../lib/api';
 import { Edit, PlusCircle } from 'lucide-react';
 import LogoIcon from '../components/LogoIcon';
 import { LanguageOption, type TFunction, LocalizedString } from '../types';
@@ -324,21 +325,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           }
         }
         
-        // Call server-side Cloudinary deletion API
+        // Call server-side Cloudinary deletion API (admin-gated — apiFetch attaches the ID token)
         if (productToDelete.imageUrl.includes('cloudinary.com')) {
           try {
-            const response = await fetch('/api/cloudinary/delete', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ imageUrl: productToDelete.imageUrl }),
-            });
-            
-            if (!response.ok) {
-              const errorData = await response.json();
-              console.error("Cloudinary deletion failed:", errorData.error);
-            }
+            await apiFetch('/api/cloudinary/delete', { imageUrl: productToDelete.imageUrl });
           } catch (cloudinaryError) {
             console.error("Failed to call Cloudinary deletion API:", cloudinaryError);
           }
