@@ -115,6 +115,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
     }
   };
 
+  const isRtl = language === LanguageOption.Arabic;
   const onHome = location.pathname === '/';
   const overHero = onHome && !scrolled && !isMenuOpen;
   const headerClass = `sticky top-0 z-[100] transition-[background-color,box-shadow,backdrop-filter] duration-500 ${
@@ -275,23 +276,26 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
             </div>
 
             <div className={`relative z-50 flex items-center min-w-[40px] justify-end transition-opacity duration-300 ${isMenuOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-              {cartCount > 0 && (
-                <button
-                  onClick={() => setIsCartOpen(!isCartOpen)}
-                  className={`relative ${fg} p-2 -mr-2`}
-                  aria-label={t('cart')}
-                >
-                  <ShoppingBag size={24} />
-                  <motion.span
-                    key={cartCount}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
-                  >
-                    {cartCount}
-                  </motion.span>
-                </button>
-              )}
+              <button
+                onClick={() => setIsCartOpen(!isCartOpen)}
+                className={`relative ${fg} p-2 -mr-2`}
+                aria-label={t('cart')}
+              >
+                <ShoppingBag size={24} />
+                <AnimatePresence>
+                  {cartCount > 0 && (
+                    <motion.span
+                      key={cartCount}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute top-1 right-1 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                    >
+                      {cartCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
             </div>
           </div>
         </div>
@@ -306,14 +310,14 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1400] md:hidden"
               aria-hidden="true"
             />
             <motion.div
-              className={`fixed top-0 h-full w-[80vw] max-w-sm z-50 bg-[var(--color-background)] shadow-2xl start-0 rounded-e-3xl`}
-              initial={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}
+              className={`fixed top-0 h-full w-[85vw] max-w-sm z-[1500] bg-[var(--color-background)] shadow-2xl start-0 rounded-e-3xl overflow-y-auto`}
+              initial={{ x: isRtl ? '100%' : '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: document.documentElement.dir === 'rtl' ? '100%' : '-100%' }}
+              exit={{ x: isRtl ? '100%' : '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <div className="p-8 h-full flex flex-col items-center relative overflow-hidden">

@@ -27,13 +27,21 @@ const Staff: React.FC<Props> = ({ t }) => {
   const { user, isWorker, isAdmin, loading } = useAuth();
   const toast = useToast();
   const [orders, setOrders] = useState<WorkerOrder[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
-    try { setOrders(await fetchWorkerOrders()); }
-    catch (e: any) { if (orders === null) setOrders([]); console.error(e); }
+    try {
+      setLoadError(null);
+      setOrders(await fetchWorkerOrders());
+    } catch (e: any) {
+      const msg = e?.message || 'Could not load orders';
+      setLoadError(msg);
+      if (orders === null) setOrders([]);
+      console.error(e);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -80,10 +88,23 @@ const Staff: React.FC<Props> = ({ t }) => {
         <Button variant="secondary" size="sm" onClick={load} iconLeft={<RefreshCw size={15} />}>{t('refresh') || 'Refresh'}</Button>
       </div>
 
-      {orders === null ? (
+      {loadError ? (
+        <Card className="p-8 text-start border-[var(--color-danger,#dc2626)]/30">
+          <p className="font-semibold mb-2">Workshop access issue</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-3">{loadError}</p>
+          <ul className="text-sm text-[var(--color-text-secondary)] list-disc ps-5 space-y-1">
+            <li>Your Google/email login must be added in <strong>Admin → Team</strong> with role <em>worker</em> (or sign in as admin).</li>
+            <li>Workers use <code>/staff</code> — not Admin → Orders. No prices or customer names are shown here by design.</li>
+            <li>Orders appear when status is <em>paid</em>, <em>confirmed</em>, or <em>in_production</em> (after a real checkout).</li>
+          </ul>
+        </Card>
+      ) : orders === null ? (
         <PageSpinner />
       ) : orders.length === 0 ? (
-        <Card className="p-12 text-center text-[var(--color-text-secondary)]">{t('staff_empty') || 'No pending orders. Nice work.'}</Card>
+        <Card className="p-12 text-center text-[var(--color-text-secondary)]">
+          <p className="mb-2">{t('staff_empty') || 'No pending orders. Nice work.'}</p>
+          <p className="text-sm max-w-md mx-auto">Orders show here once customers check out and payment is confirmed. Ask an admin to verify checkout is configured.</p>
+        </Card>
       ) : (
         <div className="flex flex-col gap-4">
           {orders.map((o) => {

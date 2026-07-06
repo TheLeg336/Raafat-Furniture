@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Store, Truck, Hammer, CreditCard, Wallet, Landmark, ArrowLeft, Lock, Smartphone } from 'lucide-react';
+import { ShoppingBag, Store, Truck, CreditCard, Wallet, Landmark, ArrowLeft, Lock, Smartphone, MessageCircle } from 'lucide-react';
 import type { TFunction, FulfillmentType, PaymentMethod, OrderItem } from '../types';
 import { useStore } from '../contexts/StoreContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -88,7 +88,6 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const fulfillmentOptions: { id: FulfillmentType; label: string; desc: string; icon: React.ReactNode }[] = [
     { id: 'pickup', label: t('fulfil_pickup') || 'Store pickup', desc: t('fulfil_pickup_desc') || 'Collect from a Raafat showroom', icon: <Store size={20} /> },
     { id: 'shipping', label: t('fulfil_ship') || 'Delivery', desc: t('fulfil_ship_desc') || 'Delivered to your address', icon: <Truck size={20} /> },
-    { id: 'custom', label: t('fulfil_custom') || 'Custom order', desc: t('fulfil_custom_desc') || 'Made to your specification', icon: <Hammer size={20} /> },
   ];
 
   const valid = form.fullName.trim() && /\S+@\S+\.\S+/.test(form.email) && form.phone.trim().length >= 6 &&
@@ -143,7 +142,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
           {/* Fulfillment */}
           <section>
             <h2 className="font-heading text-xl font-bold mb-4">{t('how_to_receive') || 'How would you like to receive it?'}</h2>
-            <div className="grid sm:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               {fulfillmentOptions.map((o) => (
                 <button type="button" key={o.id} onClick={() => setFulfillment(o.id)}
                   className={`text-start p-4 rounded-[var(--radius-md)] border-2 transition-colors ${fulfillment === o.id ? 'border-[var(--color-text-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}>
@@ -156,9 +155,18 @@ const Checkout: React.FC<Props> = ({ t }) => {
             {fulfillment === 'shipping' && (
               <p className="text-xs text-[var(--color-text-secondary)] mt-3">{t('shipping_prepaid_note') || 'Delivery orders are paid in full when placing the order. Shipping cost is confirmed by the store before dispatch.'}</p>
             )}
-            {fulfillment === 'custom' && (
-              <p className="text-xs text-[var(--color-text-secondary)] mt-3">{t('custom_deposit_note') || 'Custom orders require a deposit and are non-returnable once production starts. Our team will contact you to confirm details.'}</p>
-            )}
+            <div className="mt-4 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[hsla(var(--color-primary-hsl-values),0.06)] flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+              <div className="flex items-start gap-3">
+                <MessageCircle size={20} className="text-[var(--color-primary)] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-sm">{t('custom_order_title') || 'Need something custom?'}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{t('custom_order_checkout_note') || 'Bespoke pieces are quoted by our team — contact us with your requirements before ordering.'}</p>
+                </div>
+              </div>
+              <Link to="/contact" className="shrink-0">
+                <Button type="button" variant="secondary" size="sm">{t('contact_us') || 'Contact us'}</Button>
+              </Link>
+            </div>
           </section>
 
           {/* Contact */}

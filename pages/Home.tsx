@@ -43,34 +43,6 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
     }
   }, [location.hash, headerHeight]);
 
-  useEffect(() => {
-    const sections = ['hero', 'shop', 'visit-us', 'contact'];
-    const observerOptions = {
-      root: null,
-      rootMargin: `-${headerHeight}px 0px 0px 0px`,
-      threshold: 0.5,
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.id;
-          if (id && location.hash !== `#${id}`) {
-            // Update hash without triggering a full navigation scroll
-            window.history.replaceState(null, '', `#${id}`);
-          }
-        }
-      });
-    }, observerOptions);
-
-    sections.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [headerHeight, location.hash]);
-
   return (
     <main>
       <div id="hero">

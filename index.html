@@ -6,7 +6,7 @@
     <!-- CSP: enumerated script hosts, no unsafe-eval. 'unsafe-inline' remains for the
          inline theme/tailwind-config snippets; connect-src stays broad for Firebase/
          Cloudinary/Stripe/GA endpoints (all HTTPS). -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: data: blob:; img-src 'self' https: data: blob:; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accept.paymob.com https://*.firebaseapp.com https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss: ws: data: blob:; img-src 'self' https: data: blob:; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accept.paymob.com https://*.firebaseapp.com https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self';" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <title>Raafat Furniture — Handcrafted Luxury Furniture | Egypt, USA & Worldwide</title>
     <meta name="description" content="Raafat Furniture — Egyptian-made handcrafted luxury furniture. Shop sofas, bedroom, dining, office & custom pieces in interactive 3D, preview them in your room with AR, and order for pickup or worldwide delivery. Serving Egypt, the USA & worldwide." />
@@ -14,25 +14,27 @@
     <meta name="author" content="Raafat Furniture" />
     <meta name="theme-color" content="#14213D" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <!-- SEO: replace www.raafatfurniture.com with your real domain in this file, robots.txt and sitemap.xml -->
-    <link rel="canonical" href="https://www.raafatfurniture.com/" />
-    <link rel="alternate" hreflang="en" href="https://www.raafatfurniture.com/" />
-    <link rel="alternate" hreflang="ar" href="https://www.raafatfurniture.com/" />
-    <link rel="alternate" hreflang="x-default" href="https://www.raafatfurniture.com/" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM site summary" />
+    <link rel="alternate" type="text/plain" href="/llms-full.txt" title="LLM full reference" />
+    <!-- SEO: canonical domain — update when custom domain goes live -->
+    <link rel="canonical" href="https://raafat-furniture.vercel.app/" />
+    <link rel="alternate" hreflang="en" href="https://raafat-furniture.vercel.app/" />
+    <link rel="alternate" hreflang="ar" href="https://raafat-furniture.vercel.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://raafat-furniture.vercel.app/" />
     <meta name="geo.region" content="EG" />
     <meta name="geo.placename" content="Cairo, Minya, New Minya" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Raafat Furniture" />
     <meta property="og:title" content="Raafat Furniture — Handcrafted Luxury Furniture" />
     <meta property="og:description" content="Egyptian-made luxury furniture. Browse in 3D, see it in your room with AR, and order for pickup or worldwide delivery." />
-    <meta property="og:url" content="https://www.raafatfurniture.com/" />
-    <meta property="og:image" content="https://www.raafatfurniture.com/og-image.png" />
+    <meta property="og:url" content="https://raafat-furniture.vercel.app/" />
+    <meta property="og:image" content="https://raafat-furniture.vercel.app/og-image.png" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="ar_EG" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Raafat Furniture — Handcrafted Luxury Furniture" />
     <meta name="twitter:description" content="Egyptian-made luxury furniture. Browse in 3D, see it in your room with AR." />
-    <meta name="twitter:image" content="https://www.raafatfurniture.com/og-image.png" />
+    <meta name="twitter:image" content="https://raafat-furniture.vercel.app/og-image.png" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' };</script>
@@ -227,11 +229,11 @@
       "@graph": [
         {
           "@type": ["Organization", "FurnitureStore"],
-          "@id": "https://www.raafatfurniture.com/#org",
+          "@id": "https://raafat-furniture.vercel.app/#org",
           "name": "Raafat Furniture",
-          "url": "https://www.raafatfurniture.com/",
-          "logo": "https://www.raafatfurniture.com/og-image.png",
-          "image": "https://www.raafatfurniture.com/og-image.png",
+          "url": "https://raafat-furniture.vercel.app/",
+          "logo": "https://raafat-furniture.vercel.app/og-image.png",
+          "image": "https://raafat-furniture.vercel.app/og-image.png",
           "description": "Egyptian maker of handcrafted luxury furniture — sofas, bedroom, dining, office and custom pieces. Shop in 3D, preview in your room with AR, and order for pickup or worldwide delivery.",
           "telephone": "+201010279777",
           "priceRange": "$$-$$$",
@@ -243,21 +245,21 @@
         },
         {
           "@type": "WebSite",
-          "@id": "https://www.raafatfurniture.com/#website",
-          "url": "https://www.raafatfurniture.com/",
+          "@id": "https://raafat-furniture.vercel.app/#website",
+          "url": "https://raafat-furniture.vercel.app/",
           "name": "Raafat Furniture",
           "inLanguage": ["en", "ar"],
-          "publisher": { "@id": "https://www.raafatfurniture.com/#org" },
+          "publisher": { "@id": "https://raafat-furniture.vercel.app/#org" },
           "potentialAction": {
             "@type": "SearchAction",
-            "target": { "@type": "EntryPoint", "urlTemplate": "https://www.raafatfurniture.com/shop?q={search_term_string}" },
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://raafat-furniture.vercel.app/shop?q={search_term_string}" },
             "query-input": "required name=search_term_string"
           }
         },
         {
           "@type": "FurnitureStore",
           "name": "Raafat Furniture — Cairo",
-          "parentOrganization": { "@id": "https://www.raafatfurniture.com/#org" },
+          "parentOrganization": { "@id": "https://raafat-furniture.vercel.app/#org" },
           "telephone": "+201010279777",
           "openingHours": "Mo-Sa 12:00-22:00",
           "address": { "@type": "PostalAddress", "streetAddress": "66 Mohamed Refaat Street, next to KFC, El Nozha El Gadida", "addressLocality": "Cairo", "addressCountry": "EG" }
@@ -265,7 +267,7 @@
         {
           "@type": "FurnitureStore",
           "name": "Raafat Furniture — Minya",
-          "parentOrganization": { "@id": "https://www.raafatfurniture.com/#org" },
+          "parentOrganization": { "@id": "https://raafat-furniture.vercel.app/#org" },
           "telephone": "+201010279777",
           "openingHours": "Mo-Sa 12:00-22:00",
           "address": { "@type": "PostalAddress", "streetAddress": "6 Mostafa Kamel Street, Ard Sultan", "addressLocality": "Minya", "addressCountry": "EG" }
@@ -273,7 +275,7 @@
         {
           "@type": "FurnitureStore",
           "name": "Raafat Furniture — New Minya",
-          "parentOrganization": { "@id": "https://www.raafatfurniture.com/#org" },
+          "parentOrganization": { "@id": "https://raafat-furniture.vercel.app/#org" },
           "telephone": "+201010279777",
           "openingHours": "Mo-Sa 12:00-22:00",
           "address": { "@type": "PostalAddress", "streetAddress": "Corner Plaza Mall, 2nd Floor, Third District", "addressLocality": "New Minya", "addressCountry": "EG" }

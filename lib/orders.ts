@@ -130,10 +130,27 @@ export function subscribeUserOrders(userId: string, cb: (orders: Order[]) => voi
 }
 
 /** Live subscription to all orders (admin). */
-export function subscribeAllOrders(cb: (orders: Order[]) => void) {
-  if (!db) return () => {};
+export function subscribeAllOrders(
+  cb: (orders: Order[]) => void,
+  onError?: (message: string) => void,
+) {
+  if (!db) {
+    onError?.('Firebase is not configured — add VITE_FIREBASE_* to .env');
+    return () => {};
+  }
   const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))),
+    (err) => {
+      console.error('Admin orders subscription failed:', err);
+      const msg = err.code === 'permission-denied'
+        ? 'Permission denied — your account must be in the admins collection (Admin → Team, or Firebase Console).'
+        : (err.message || 'Could not load orders');
+      onError?.(msg);
+      cb([]);
+    },
+  );
 }
 
 export async function updateOrderStatus(

@@ -27,7 +27,7 @@ export const useCategories = () => {
         const fetchedCategories = snapshot.docs.map(doc => ({
           ...doc.data()
         })) as Category[];
-        setCategories(fetchedCategories);
+        setCategories(fetchedCategories.length > 0 ? fetchedCategories : FALLBACK_CATEGORIES);
       }
       setLoading(false);
     }, (error) => {

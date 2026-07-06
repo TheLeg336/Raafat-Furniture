@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Core routes. Replace www.raafatfurniture.com with your real domain.
-     Product pages are dynamic (from the database); add them here or generate a
-     dynamic sitemap later if you want each product individually indexed. -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.raafatfurniture.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://www.raafatfurniture.com/shop</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://www.raafatfurniture.com/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.raafatfurniture.com/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.raafatfurniture.com/track</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://www.raafatfurniture.com/legal/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://www.raafatfurniture.com/legal/cookies</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://www.raafatfurniture.com/legal/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://raafat-furniture.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://raafat-furniture.vercel.app/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://raafat-furniture.vercel.app/"/>
+  </url>
+  <url><loc>https://raafat-furniture.vercel.app/shop</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/faq</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/contact</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/track</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/llms.txt</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/llms-full.txt</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/legal/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/legal/cookies</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://raafat-furniture.vercel.app/legal/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

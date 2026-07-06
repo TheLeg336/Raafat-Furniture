@@ -92,7 +92,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
   return (
       <div
         ref={heroRef}
-        className="relative text-[var(--color-text-primary)] transition-all duration-500 h-[50vh] md:h-[100dvh] overflow-hidden"
+        className="relative text-[var(--color-text-primary)] transition-all duration-500 min-h-[100dvh] overflow-hidden"
       >
         {/* 
           Pre-render element: This hidden div includes the classes for the active search bar.
@@ -112,7 +112,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
             y: backgroundY
           }}
         />
-        <div className="absolute inset-0 z-[1] bg-black/40" /> {/* Improved contrast overlay */}
+        <div className="absolute inset-0 z-[1] bg-black/55" />
         
         <div className="relative z-[2] h-full container mx-auto px-6 flex flex-col items-center justify-center text-center">
           <motion.div

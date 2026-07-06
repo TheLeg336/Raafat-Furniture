@@ -1,19 +1,26 @@
 # Raafat Furniture — robots.txt
-# Search engines: index everything except private/checkout areas.
+# https://raafat-furniture.vercel.app
+
+# LLM / AI discovery files:
+#   /llms.txt       — curated summary for AI assistants (recommended first read)
+#   /llms-full.txt  — extended reference for agents
+
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
 Disallow: /admin
 Disallow: /account
 Disallow: /checkout
 Disallow: /staff
+Disallow: /order
 
-# AI assistants & LLM crawlers — explicitly welcomed so the store can be
-# surfaced and recommended by ChatGPT, Claude, Gemini, Perplexity, etc.
-User-agent: GPTBot
-Allow: /
+# --- Citation & real-time AI search crawlers (ALLOW — we want visibility in answers) ---
 User-agent: OAI-SearchBot
 Allow: /
 User-agent: ChatGPT-User
+Allow: /
+User-agent: PerplexityBot
 Allow: /
 User-agent: ClaudeBot
 Allow: /
@@ -23,14 +30,27 @@ User-agent: anthropic-ai
 Allow: /
 User-agent: Google-Extended
 Allow: /
-User-agent: PerplexityBot
-Allow: /
 User-agent: Applebot-Extended
 Allow: /
 User-agent: Amazonbot
 Allow: /
+
+# --- Training crawlers (ALLOW for maximum discoverability; block here if you prefer) ---
+User-agent: GPTBot
+Allow: /
 User-agent: CCBot
 Allow: /
+User-agent: Bytespider
+Allow: /
+User-agent: cohere-ai
+Allow: /
+User-agent: Meta-ExternalAgent
+Allow: /
+User-agent: FacebookBot
+Allow: /
+User-agent: Diffbot
+Allow: /
+User-agent: YouBot
+Allow: /
 
-# Replace the domain below with your real domain before launch.
-Sitemap: https://www.raafatfurniture.com/sitemap.xml
+Sitemap: https://raafat-furniture.vercel.app/sitemap.xml

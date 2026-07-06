@@ -35,6 +35,7 @@ const AdminOrders: React.FC<Props> = () => {
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [view, setView] = useState<'pending' | 'history'>('pending');
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -43,7 +44,11 @@ const AdminOrders: React.FC<Props> = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
-    const unsub = subscribeAllOrders((o) => { setOrders(o); setOrdersLoading(false); });
+    setOrdersError(null);
+    const unsub = subscribeAllOrders(
+      (o) => { setOrders(o); setOrdersLoading(false); },
+      (msg) => { setOrdersError(msg); setOrdersLoading(false); },
+    );
     return () => unsub();
   }, [isAdmin]);
 
@@ -138,11 +143,27 @@ const AdminOrders: React.FC<Props> = () => {
         <Button variant="secondary" size="sm" onClick={exportCSV} iconLeft={<Download size={16} />} disabled={filtered.length === 0}>CSV</Button>
       </div>
 
-      {ordersLoading ? (
+      {ordersError ? (
+        <Card className="p-8 text-start border-[var(--color-danger,#dc2626)]/30 bg-[color-mix(in_srgb,var(--color-danger,#dc2626)_6%,transparent)]">
+          <p className="font-semibold text-[var(--color-danger,#dc2626)] mb-2">Could not load orders</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-4">{ordersError}</p>
+          <ul className="text-sm text-[var(--color-text-secondary)] list-disc ps-5 space-y-1">
+            <li>Sign in with an account listed in <strong>Admin → Team</strong> with role <em>admin</em> or <em>developer</em>.</li>
+            <li>First-time setup: in Firebase Console → Firestore → create <code>admins/{'{your-email}'}</code> with field <code>role: developer</code>.</li>
+            <li>Orders only exist after checkout works — set <code>FIREBASE_SERVICE_ACCOUNT</code> on the server (Vercel env or local <code>.env</code>).</li>
+          </ul>
+        </Card>
+      ) : ordersLoading ? (
         <PageSpinner />
       ) : filtered.length === 0 ? (
         <Card className="p-12 text-center text-[var(--color-text-secondary)]">
-          {view === 'pending' ? 'No pending orders.' : 'No completed orders yet.'}
+          <p className="mb-3">{view === 'pending' ? 'No pending orders yet.' : 'No completed orders yet.'}</p>
+          {orders.length === 0 && view === 'pending' && (
+            <p className="text-sm max-w-md mx-auto">
+              Place a test order from the shop (checkout needs <code>FIREBASE_SERVICE_ACCOUNT</code> configured).
+              Workers see orders at <code>/staff</code> once status is paid, confirmed, or in production.
+            </p>
+          )}
         </Card>
       ) : (
         <div className="flex flex-col gap-2">

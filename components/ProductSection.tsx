@@ -36,6 +36,8 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
   const { categories, loading } = useCategories();
   const [isSticky, setIsSticky] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Home shows a curated subset — full catalog lives on /shop.
+  const featured = categories.slice(0, 4);
 
   useEffect(() => {
     const onScroll = () => {
@@ -54,7 +56,7 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
         {/* Sticks to the very top of the screen and frosts into glass while the section scrolls. */}
         <div
           className={`sticky top-0 transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-md)]' : ''}`}
-          style={{ zIndex: 90 }}
+          style={{ zIndex: 20 }}
         >
           <div className={`container mx-auto px-6 transition-all duration-300 ${isSticky ? 'py-4 md:py-5' : 'pt-8 pb-4 md:pt-20 md:pb-10'}`}>
             <ProductSectionHeader t={t} compact={isSticky} />
@@ -70,13 +72,12 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
             </div>
           ) : (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pb-10"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 pb-10"
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              animate="visible"
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
             >
-              {categories.map((cat) => (
+              {featured.map((cat) => (
                 <CategoryCard key={cat.id} category={cat} t={t} />
               ))}
             </motion.div>

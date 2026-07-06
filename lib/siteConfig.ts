@@ -7,7 +7,7 @@
 // VITE_SITE_URL, then the production domain.
 export const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string) ||
-  (typeof window !== 'undefined' ? window.location.origin : 'https://www.raafatfurniture.com');
+  (typeof window !== 'undefined' ? window.location.origin : 'https://raafat-furniture.vercel.app');
 
 export const SITE = {
   name: 'Raafat Furniture',
