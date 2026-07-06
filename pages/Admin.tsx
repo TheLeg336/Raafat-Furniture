@@ -4,8 +4,8 @@ import { db, storage } from '../lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { differenceInDays, parseISO } from 'date-fns';
-import { Navigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { ArrowLeft, Trash2, Plus, Archive, Folder, LogOut, Image as ImageIcon, X, RefreshCw, Activity, Home, Beaker, ChevronLeft, ChevronRight, LayoutGrid, ClipboardList, Box, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
@@ -15,6 +15,8 @@ import { translateProductFields } from '../lib/translate';
 import { apiFetch } from '../lib/api';
 import { Edit, PlusCircle } from 'lucide-react';
 import LogoIcon from '../components/LogoIcon';
+import { AdminNav } from '../components/admin/AdminNav';
+import { ADMIN_LINKS, isAdminLinkActive } from '../components/admin/adminLinks';
 import { LanguageOption, type TFunction, LocalizedString } from '../types';
 
 const TEST_IMAGES = [
@@ -36,6 +38,7 @@ interface AdminProps {
 const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   
   const activeTab = (searchParams.get('tab') as 'categories' | 'archive' | 'logs') || 'categories';
   const selectedCategory = searchParams.get('category');
@@ -699,6 +702,32 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+          {ADMIN_LINKS.map((link) => {
+            const active = isAdminLinkActive(location.pathname, link);
+            const Icon = link.label === 'Catalog' ? LayoutGrid : link.label === 'Orders' ? ClipboardList : link.label === 'Scans & 3D' ? Box : Users;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                title={isSidebarCollapsed ? link.label : ''}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${active ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+              >
+                <Icon size={20} className="shrink-0" />
+                {!isSidebarCollapsed && <span className="truncate">{link.label}</span>}
+              </Link>
+            );
+          })}
+          <Link
+            to="/staff"
+            title={isSidebarCollapsed ? 'Workshop' : ''}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-secondary)]/5 ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+          >
+            <ClipboardList size={20} className="shrink-0" />
+            {!isSidebarCollapsed && <span className="truncate">Workshop</span>}
+          </Link>
+
+          {!isSidebarCollapsed && <div className="pt-3 pb-1 text-[10px] uppercase tracking-widest text-[var(--color-text-secondary)] opacity-60">Catalog tools</div>}
+
           <button 
             onClick={() => setActiveTab('categories')}
             title={isSidebarCollapsed ? t('admin_tab_categories') : ''}
@@ -783,12 +812,16 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] z-40 flex justify-around p-2 pb-safe">
-        <button onClick={() => { setActiveTab('categories'); setSelectedCategory(null); }} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'categories' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
-          <Folder size={20} />
-          <span className="text-[10px] mt-1 font-medium">{t('admin_tab_categories')}</span>
-        </button>
-        <button onClick={() => setActiveTab('archive')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'archive' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--color-background)] z-40 flex justify-around p-2 pb-safe border-t border-[var(--color-surface-2)]">
+        <Link to="/admin" className={`flex flex-col items-center p-2 rounded-lg ${location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+          <LayoutGrid size={20} />
+          <span className="text-[10px] mt-1 font-medium">Catalog</span>
+        </Link>
+        <Link to="/admin/orders" className={`flex flex-col items-center p-2 rounded-lg ${location.pathname.startsWith('/admin/orders') ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+          <ClipboardList size={20} />
+          <span className="text-[10px] mt-1 font-medium">Orders</span>
+        </Link>
+        <Link to="/admin?tab=archive" className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'archive' && location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
           <div className="relative">
             <Archive size={20} />
             {archivedListings.length > 0 && (
@@ -798,17 +831,20 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
             )}
           </div>
           <span className="text-[10px] mt-1 font-medium">{t('admin_tab_archive')}</span>
-        </button>
+        </Link>
         {isDeveloper && (
-          <button onClick={() => setActiveTab('logs')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'logs' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
+          <Link to="/admin?tab=logs" className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'logs' && location.pathname === '/admin' ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-secondary)]'}`}>
             <Activity size={20} />
             <span className="text-[10px] mt-1 font-medium">{t('admin_tab_logs')}</span>
-          </button>
+          </Link>
         )}
       </div>
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 relative overflow-y-auto h-full pb-24 md:pb-8">
+        <div className="md:hidden">
+          <AdminNav />
+        </div>
         {activeTab === 'categories' && !selectedCategory && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-6 md:mb-8">

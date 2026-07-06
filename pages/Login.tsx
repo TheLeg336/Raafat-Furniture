@@ -11,7 +11,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ t }) => {
-  const { user, isAdmin, loading, loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
+  const { user, isAdmin, isWorker, loading, loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(() => {
     return sessionStorage.getItem('isSignUp') === 'true';
@@ -27,13 +27,11 @@ const Login: React.FC<LoginProps> = ({ t }) => {
 
   useEffect(() => {
     if (!loading && user) {
-      if (isAdmin) {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      if (isAdmin) navigate('/admin');
+      else if (isWorker) navigate('/staff');
+      else navigate('/');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, isAdmin, isWorker, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

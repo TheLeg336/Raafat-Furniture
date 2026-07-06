@@ -12,15 +12,15 @@ export const COLOR_SCHEMES: Record<ColorSchemeOption, ColorScheme> = {
         success: '#DAB449'
     },
     dark: {
-      primary: '#F0B429',
-      primaryHsl: '42, 87%, 54%',
+      primary: '#E8C547',
+      primaryHsl: '47, 81%, 60%',
       secondary: '#14213D',
       background: '#1A202C',
       textPrimary: '#E5E5E5',
       textSecondary: '#A9A9A9',
-      success: '#F0B429',
+      success: '#DAB449',
     },
-    defaultMode: 'dark',
+    defaultMode: 'light',
   },
 };
 

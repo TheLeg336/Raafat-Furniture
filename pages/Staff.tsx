@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ClipboardList, Hammer, RefreshCw, Store, Truck, X } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Hammer, Home, LogOut, RefreshCw, Store, Truck, X } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchWorkerOrders, saveWorkerPrepared, completeWorkerOrder, type WorkerOrder } from '../lib/worker';
@@ -24,7 +24,7 @@ const fulfilIcon: Record<string, React.ReactNode> = {
  * so anyone can pick up where a colleague left off.
  */
 const Staff: React.FC<Props> = ({ t }) => {
-  const { user, isWorker, isAdmin, loading } = useAuth();
+  const { user, isWorker, isAdmin, loading, logout } = useAuth();
   const toast = useToast();
   const [orders, setOrders] = useState<WorkerOrder[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -79,7 +79,28 @@ const Staff: React.FC<Props> = ({ t }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="min-h-screen bg-[var(--color-background)]">
+      <header className="border-b border-[var(--color-surface-2)]">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">
+              <Home size={16} /> {t('nav_home') || 'Store'}
+            </Link>
+            {isAdmin && (
+              <>
+                <span className="text-[var(--color-text-secondary)] opacity-40">·</span>
+                <Link to="/admin" className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Catalog</Link>
+                <Link to="/admin/orders" className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">Orders</Link>
+              </>
+            )}
+          </div>
+          <button type="button" onClick={() => logout()} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-danger,#dc2626)]">
+            <LogOut size={16} /> {t('account_signout') || 'Sign out'}
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-3xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-heading text-3xl font-bold flex items-center gap-3"><ClipboardList size={26} /> {t('staff_title') || 'Workshop orders'}</h1>
@@ -172,6 +193,7 @@ const Staff: React.FC<Props> = ({ t }) => {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 };

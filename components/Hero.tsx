@@ -124,8 +124,7 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
         </motion.div>
       </motion.div>
 
-      <motion.div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-[2] flex flex-col items-center gap-2 text-white/70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }}>
-        <span className="text-[10px] uppercase tracking-[0.22em]">{t('scroll') || 'Scroll'}</span>
+      <motion.div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-[2] text-white/70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }} aria-hidden="true">
         <ArrowDown size={16} className="scroll-cue" />
       </motion.div>
     </div>
