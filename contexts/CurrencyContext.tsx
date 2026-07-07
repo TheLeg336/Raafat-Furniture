@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getPaymentsConfig } from '../lib/api';
-import { currencyForCountry, type StoreCurrency } from '../lib/currency';
+import { type StoreCurrency } from '../lib/currency';
+import { browseCurrencyFromGeo } from '../lib/geo';
 
 interface CurrencyContextType {
   currency: StoreCurrency;
@@ -17,7 +18,7 @@ const LEGACY_STORAGE_KEY = 'rf_currency';
  * this context only controls what prices are shown.
  */
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currency, setCurrencyState] = useState<StoreCurrency>('EGP');
+  const [currency, setCurrencyState] = useState<StoreCurrency>('USD');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let active = true;
     getPaymentsConfig().then((cfg) => {
       if (active) {
-        setCurrencyState(currencyForCountry(cfg.ipCountry));
+        setCurrencyState(browseCurrencyFromGeo(cfg.ipCountry));
         setReady(true);
       }
     });

@@ -12,6 +12,7 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { getDb, verifyIdToken } from './firebaseAdmin';
+import { isBootstrapDeveloperEmail, normalizeStaffRole, type StaffRole } from '../lib/staff';
 import { sendOrderConfirmation, sendOrderStatus } from './email';
 import { orderToEmail } from './orderEmail';
 
@@ -72,17 +73,19 @@ async function reserveOrderNumber(db: FirebaseFirestore.Firestore, cc: string, f
   throw new Error('Could not allocate an order number');
 }
 
-type StaffRole = 'developer' | 'admin' | 'worker';
-
 /** Verify Firebase token and role from the admins collection. */
 export async function staffFromReq(req: Request): Promise<{ email: string; role: StaffRole } | null> {
   const db = await getDb();
   const decoded = await verifyIdToken(req.headers.authorization);
-  if (!db || !decoded?.email) return null;
+  if (!decoded?.email) return null;
   const email = decoded.email.toLowerCase();
+  if (isBootstrapDeveloperEmail(email, decoded.email_verified === true)) {
+    return { email, role: 'developer' };
+  }
+  if (!db) return null;
   const snap = await db.collection('admins').doc(email).get();
   if (!snap.exists) return null;
-  const role = String(snap.data()?.role || 'admin').toLowerCase() as StaffRole;
+  const role = normalizeStaffRole(snap.data()?.role) || 'admin';
   return { email, role };
 }
 

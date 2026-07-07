@@ -33,6 +33,7 @@ const Contact = React.lazy(() => import('./pages/Contact'));
 const FAQ = React.lazy(() => import('./pages/FAQ'));
 const TrackOrder = React.lazy(() => import('./pages/TrackOrder'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
+const MobileScan = React.lazy(() => import('./pages/MobileScan'));
 import { CookieConsent } from './components/CookieConsent';
 import { ComingSoonOverlay } from './components/ComingSoonOverlay';
 import { SmoothScroll } from './components/SmoothScroll';
@@ -245,6 +246,7 @@ const AppContent: React.FC = () => {
         <Route path="login" element={<NotFound t={t} />} />
         <Route path="/onboarding" element={<Onboarding t={t} />} />
         <Route path="/account" element={<UserAccount t={t} />} />
+        <Route path="/m/scan/:scanId" element={<MobileScan />} />
         <Route path="*" element={
           <>
             <Header 
@@ -270,9 +272,7 @@ const AppContent: React.FC = () => {
                 <Route path="*" element={<NotFound t={t} />} />
               </Routes>
             </main>
-            <Footer
-              t={t}
-            />
+            {location.pathname !== '/checkout' && <Footer t={t} />}
             <CartDrawer t={t} />
             <AuthModal t={t} />
             <StoreChrome t={t} />

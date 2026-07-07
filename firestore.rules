@@ -66,18 +66,22 @@ service cloud.firestore {
       return hasAdminDoc() ? adminDoc().data.get('role', 'admin') : '';
     }
 
+    function adminRoleNorm() {
+      return hasAdminDoc() ? lower(adminRole()) : '';
+    }
+
     // Admins & developers — NOT workers (workers use server API only).
     function isAdmin() {
       return isAuthenticated() && (
         isBootstrapDeveloper() ||
-        (hasAdminDoc() && adminRole() != 'worker')
+        (hasAdminDoc() && adminRoleNorm() != 'worker')
       );
     }
 
     function isDeveloper() {
       return isAuthenticated() && (
         isBootstrapDeveloper() ||
-        (hasAdminDoc() && adminRole() == 'developer')
+        (hasAdminDoc() && adminRoleNorm() == 'developer')
       );
     }
 

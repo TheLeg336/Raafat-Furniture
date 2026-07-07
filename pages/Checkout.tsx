@@ -15,6 +15,7 @@ import { computeTotals } from '../lib/orders';
 import { getPaymentsConfig, type PaymentsConfig } from '../lib/api';
 import { countryOptions } from '../lib/countries';
 import { priceFor } from '../lib/currency';
+import { defaultCheckoutCountry } from '../lib/geo';
 import { useProducts } from '../hooks/useProducts';
 
 interface Props { t: TFunction; }
@@ -41,7 +42,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
   });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<any>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  useEffect(() => { getPaymentsConfig().then(setConfig); }, []);
+  useEffect(() => {
+    getPaymentsConfig().then((cfg) => {
+      setConfig(cfg);
+      setForm((f) => ({ ...f, country: defaultCheckoutCountry(cfg.ipCountry) }));
+    });
+  }, []);
 
   const lang = (typeof document !== 'undefined' && document.documentElement.lang === 'ar') ? 'ar' : 'en';
   const countries = useMemo(() => countryOptions(lang as 'en' | 'ar'), [lang]);
@@ -131,17 +137,30 @@ const Checkout: React.FC<Props> = ({ t }) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-5 md:px-6 py-8 md:py-16 max-md:pb-[var(--mobile-tab-offset)]">
-      <Link to="/shop" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] mb-5 md:mb-6">
+    <div className="max-w-6xl mx-auto px-5 md:px-6 py-6 md:py-16 max-md:pb-[calc(var(--mobile-tab-offset)+4.5rem)]">
+      <Link to="/shop" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] mb-4 md:mb-6">
         <ArrowLeft size={16} /> {t('continue_shopping') || 'Continue shopping'}
       </Link>
-      <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6 md:mb-8">{t('checkout') || 'Checkout'}</h1>
+      <h1 className="font-heading text-2xl md:text-4xl font-bold mb-5 md:mb-8">{t('checkout') || 'Checkout'}</h1>
 
-      <form id="checkout-form" onSubmit={submit} className="grid lg:grid-cols-[1fr_400px] gap-6 lg:gap-8 items-start">
-        <div className="flex flex-col gap-6 md:gap-8 order-2 lg:order-1">
+      <form id="checkout-form" onSubmit={submit} className="grid lg:grid-cols-[1fr_400px] gap-5 lg:gap-8 items-start">
+        {/* Mobile summary — compact strip */}
+        <Card className="p-4 lg:hidden order-1">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-[var(--color-text-secondary)]">{cart.length} {t('items') || 'items'}</p>
+              <p className="text-xl font-bold text-[var(--color-primary)]">{formatMoney(totals.total, { currency: chargeCurrency })}</p>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] text-end max-w-[10rem]">
+              {fulfillment === 'pickup' ? (t('fulfil_pickup') || 'Pickup') : (t('fulfil_ship') || 'Delivery')}
+            </p>
+          </div>
+        </Card>
+
+        <div className="flex flex-col gap-5 md:gap-8 order-2 lg:order-1">
           {/* Fulfillment */}
-          <section>
-            <h2 className="font-heading text-xl font-bold mb-4">{t('how_to_receive') || 'How would you like to receive it?'}</h2>
+          <section className="max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-[var(--color-border)] max-lg:bg-[var(--color-surface)] max-lg:p-4">
+            <h2 className="font-heading text-lg md:text-xl font-bold mb-3 md:mb-4">{t('how_to_receive') || 'How would you like to receive it?'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fulfillmentOptions.map((o) => (
                 <button type="button" key={o.id} onClick={() => setFulfillment(o.id)}
@@ -155,7 +174,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
             {fulfillment === 'shipping' && (
               <p className="text-xs text-[var(--color-text-secondary)] mt-3">{t('shipping_prepaid_note') || 'Delivery orders are paid in full when placing the order. Shipping cost is confirmed by the store before dispatch.'}</p>
             )}
-            <div className="mt-4 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[hsla(var(--color-primary-hsl-values),0.06)] flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="mt-4 p-3 md:p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[hsla(var(--color-primary-hsl-values),0.06)] flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
               <div className="flex items-start gap-3">
                 <MessageCircle size={20} className="text-[var(--color-primary)] shrink-0 mt-0.5" />
                 <div>
@@ -170,8 +189,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
           </section>
 
           {/* Contact */}
-          <section>
-            <h2 className="font-heading text-xl font-bold mb-4">{t('your_details') || 'Your details'}</h2>
+          <section className="max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-[var(--color-border)] max-lg:bg-[var(--color-surface)] max-lg:p-4">
+            <h2 className="font-heading text-lg md:text-xl font-bold mb-3 md:mb-4">{t('your_details') || 'Your details'}</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <Input label={t('full_name') || 'Full name'} required value={form.fullName} onChange={set('fullName')} autoComplete="name" />
               <Input label={t('login_email') || 'Email'} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
@@ -180,8 +199,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
           </section>
 
           {/* Address — always required (used for tax and, for delivery, shipping) */}
-          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <h2 className="font-heading text-xl font-bold mb-4">
+          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-[var(--color-border)] max-lg:bg-[var(--color-surface)] max-lg:p-4">
+            <h2 className="font-heading text-lg md:text-xl font-bold mb-3 md:mb-4">
               {fulfillment === 'shipping' ? (t('delivery_address') || 'Delivery address') : (t('billing_address') || 'Your address')}
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -196,8 +215,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
           </motion.section>
 
           {/* Payment */}
-          <section>
-            <h2 className="font-heading text-xl font-bold mb-4">{t('payment') || 'Payment'}</h2>
+          <section className="max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-[var(--color-border)] max-lg:bg-[var(--color-surface)] max-lg:p-4">
+            <h2 className="font-heading text-lg md:text-xl font-bold mb-3 md:mb-4">{t('payment') || 'Payment'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {visible.map((o) => (
                 <button type="button" key={o.id} onClick={() => setPayment(o.id)}
@@ -220,8 +239,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
           </section>
         </div>
 
-        {/* Summary — first on mobile for context, sticky on desktop */}
-        <Card className="p-5 md:p-6 lg:sticky lg:top-24 order-1 lg:order-2">
+        {/* Summary — desktop sticky; hidden duplicate on mobile (compact card above) */}
+        <Card className="p-5 md:p-6 lg:sticky lg:top-24 order-3 lg:order-2 hidden lg:block">
           <h2 className="font-heading text-xl font-bold mb-4">{t('order_summary') || 'Order summary'}</h2>
           <div className="flex flex-col gap-4 max-h-72 overflow-y-auto pe-1">
             {cart.map((c, i) => (
@@ -265,9 +284,9 @@ const Checkout: React.FC<Props> = ({ t }) => {
         </Card>
       </form>
 
-      {/* Mobile sticky checkout bar */}
+      {/* Mobile sticky checkout bar — minimal pill */}
       <div className="lg:hidden fixed inset-x-0 bottom-0 z-[105] px-4 pb-[var(--mobile-tab-offset)] pointer-events-none">
-        <div className="pointer-events-auto mx-auto max-w-lg rounded-full border border-white/20 bg-[var(--color-background)]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] px-4 py-3 flex items-center gap-3">
+        <div className="pointer-events-auto mx-auto max-w-lg rounded-full border border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-xl shadow-[var(--shadow-lg)] px-4 py-3 flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">{t('total') || 'Total'}</p>
             <p className="text-lg font-bold text-[var(--color-primary)]">{formatMoney(totals.total, { currency: chargeCurrency })}</p>

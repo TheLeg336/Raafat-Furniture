@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, Camera, Upload, Plus, Trash2, Loader2, AlertTriangle, Check } from 'lucide-react';
 import type { Model3D, ModelVariant, ScanJob } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeScans, reconstructionConfigured } from '../../lib/scan';
+import { subscribeScans, subscribeScan, reconstructionConfigured, createHandoffScan } from '../../lib/scan';
 import { uploadModel } from '../../lib/modelUpload';
 import { localized } from '../../lib/format';
 import { GuidedScanner } from '../scan/GuidedScanner';
@@ -10,6 +10,10 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useToast } from '../ui/Toast';
+import { useViewport } from '../../hooks/useViewport';
+import { isArCapableDevice } from '../../lib/geo';
+import { SITE_URL } from '../../lib/siteConfig';
+import { DesktopHandoffSheet } from '../ui/DesktopHandoffSheet';
 
 const blankVariant = (): ModelVariant => ({ id: Math.random().toString(36).slice(2, 8), label: '', colorHex: '#8a6a4a' });
 
@@ -18,17 +22,21 @@ interface Props {
   onChange: (model: Model3D | null) => void;
 }
 
-/** 3D model + material variants + guided scan — embedded in the product create/edit form. */
 export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
   const { user } = useAuth();
   const toast = useToast();
+  const tier = useViewport();
   const fileRef = useRef<HTMLInputElement>(null);
   const [modelUrl, setModelUrl] = useState('');
   const [iosUrl, setIosUrl] = useState('');
   const [variants, setVariants] = useState<ModelVariant[]>([]);
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [handoffScanId, setHandoffScanId] = useState<string | null>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
   const [scans, setScans] = useState<ScanJob[]>([]);
+
+  const useMobileScanner = tier === 'mobile' || isArCapableDevice();
 
   useEffect(() => {
     if (value) {
@@ -47,6 +55,23 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (!handoffScanId) return;
+    return subscribeScan(handoffScanId, (job) => {
+      if (!job) return;
+      if (job.modelUrl) {
+        setModelUrl(job.modelUrl);
+        syncParent(job.modelUrl, iosUrl, variants);
+        toast.success('3D scan complete — model attached');
+        setHandoffOpen(false);
+        setHandoffScanId(null);
+      } else if (job.status === 'failed') {
+        toast.error(job.error || 'Scan failed on mobile');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoffScanId]);
+
   const syncParent = (url: string, ios: string, vars: ModelVariant[]) => {
     if (!url.trim()) {
       onChange(null);
@@ -57,7 +82,23 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       iosUrl: ios.trim() || undefined,
       variants: vars.filter((v) => localized(v.label).trim()).map((v) => ({ ...v, swatch: v.swatch || v.colorHex })),
       createdVia: value?.createdVia || 'upload',
+      scanId: handoffScanId || value?.scanId,
     });
+  };
+
+  const startScan = async () => {
+    if (!user) return;
+    if (useMobileScanner) {
+      setScanning(true);
+      return;
+    }
+    try {
+      const id = await createHandoffScan(user.email || user.uid);
+      setHandoffScanId(id);
+      setHandoffOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not start scan handoff');
+    }
   };
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +121,8 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     capturing: 'gold', uploading: 'gold', queued: 'gold', processing: 'info', ready: 'success', failed: 'danger',
   };
 
+  const handoffUrl = handoffScanId ? `${SITE_URL}/m/scan/${handoffScanId}` : '';
+
   return (
     <div className="border border-[var(--color-surface-2)] rounded-xl p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -87,7 +130,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
           <Box size={18} className="text-[var(--color-primary)]" />
           <h3 className="font-semibold text-sm">3D model &amp; AR (optional)</h3>
         </div>
-        <Button type="button" size="sm" variant="secondary" onClick={() => setScanning(true)} iconLeft={<Camera size={16} />}>
+        <Button type="button" size="sm" variant="secondary" onClick={startScan} iconLeft={<Camera size={16} />}>
           Scan object
         </Button>
       </div>
@@ -164,7 +207,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       {scans.length > 0 && (
         <div className="pt-2 border-t border-[var(--color-surface-2)]">
           <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">Recent scan jobs</p>
-          <div className="space-y-1.5 max-h-36 overflow-y-auto">
+          <div className="space-y-1.5 max-h-36 overflow-y-auto" data-lenis-prevent>
             {scans.slice(0, 5).map((s) => (
               <div key={s.id} className="flex items-center gap-2 text-xs">
                 <Badge tone={scanTone[s.status] || 'neutral'}>{s.status}</Badge>
@@ -188,6 +231,17 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
           createdBy={user.email || user.uid}
           onComplete={() => { setScanning(false); toast.success('Scan saved'); }}
           onCancel={() => setScanning(false)}
+        />
+      )}
+
+      {handoffUrl && (
+        <DesktopHandoffSheet
+          open={handoffOpen}
+          onClose={() => { setHandoffOpen(false); }}
+          title="Continue scan on your phone"
+          description="Scan this QR code with your phone to capture the object. When the scan finishes, the 3D model will appear here automatically."
+          url={handoffUrl}
+          qrLabel="Scan to open the scanner"
         />
       )}
     </div>

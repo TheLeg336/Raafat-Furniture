@@ -6,6 +6,7 @@ import { ShieldCheck, Hammer, Trash2, UserPlus, Code2, Smartphone } from 'lucide
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
+import { normalizeStaffRole } from '../lib/staff';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Input, Select, Textarea } from '../components/ui/Input';
@@ -41,6 +42,18 @@ const AdminTeam: React.FC<Props> = () => {
       (snap) => setStaff(snap.docs.map((d) => ({ email: d.id, role: (d.data().role || 'admin') as StaffDoc['role'] }))),
       () => setStaff([]));
   }, [isAdmin]);
+
+  // Heal legacy role casing (Developer → developer) for all team members.
+  useEffect(() => {
+    if (!db || !isDeveloper || !staff?.length) return;
+    const firestore = db;
+    staff.forEach((member) => {
+      const norm = normalizeStaffRole(member.role);
+      if (norm && norm !== member.role) {
+        setDoc(doc(firestore, 'admins', member.email), { role: norm }, { merge: true }).catch(() => {});
+      }
+    });
+  }, [isDeveloper, staff]);
 
   if (!isDeveloper) return <Navigate to={adminPath()} replace />;
 

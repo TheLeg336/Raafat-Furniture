@@ -5,6 +5,8 @@ import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useLaunch } from '../contexts/LaunchContext';
 import { apiFetch } from '../lib/api';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea } from '../components/ui/Input';
@@ -72,12 +74,23 @@ const AdminDev: React.FC<Props> = () => {
 
   const saveSettings = async () => {
     setSaving(true);
+    const payload = {
+      comingSoon,
+      message: message.trim(),
+      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    };
     try {
-      await apiFetch('/api/launch/settings', {
-        comingSoon,
-        message: message.trim(),
-        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      }, 'POST');
+      try {
+        await apiFetch('/api/launch/settings', {
+          comingSoon: payload.comingSoon,
+          message: payload.message,
+          scheduledAt: payload.scheduledAt,
+        }, 'POST');
+      } catch (apiErr) {
+        if (!db) throw apiErr;
+        await setDoc(doc(db, 'settings', 'launch'), payload, { merge: true });
+      }
       await refresh();
       toast.success(comingSoon ? 'Coming soon mode enabled' : 'Coming soon mode disabled');
     } catch (e) {

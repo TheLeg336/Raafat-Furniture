@@ -1101,7 +1101,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain"
+            data-lenis-prevent
           >
             <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
@@ -1309,7 +1310,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto "
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain"
+            data-lenis-prevent
           >
             <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">

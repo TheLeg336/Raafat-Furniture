@@ -4,10 +4,16 @@ import { View, Box, RotateCcw, Move3d } from 'lucide-react';
 import type { Model3D, ModelVariant, TFunction } from '../types';
 import { localized } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
+import { isArCapableDevice } from '../lib/geo';
+import { DesktopHandoffSheet } from './ui/DesktopHandoffSheet';
 
 interface Props {
   model: Model3D;
   productName: string;
+  /** Full URL to this product page — used for desktop AR QR handoff. */
+  productPageUrl?: string;
+  /** When true (e.g. ?ar=1), auto-open AR on capable devices. */
+  autoAr?: boolean;
   t?: TFunction;
   className?: string;
 }
@@ -23,30 +29,24 @@ function hexToFactor(hex?: string): [number, number, number, number] | null {
   return [r, g, b, 1];
 }
 
-/**
- * Google <model-viewer> wrapper: orbit controls, AR (WebXR / Scene Viewer / Quick Look)
- * at real-world scale, and live material/colour variant switching.
- * Requires the model-viewer script (added in index.html).
- */
-export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, className = '' }) => {
+export const ModelViewer3D: React.FC<Props> = ({ model, productName, productPageUrl, autoAr, t, className = '' }) => {
   const ref = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const [arQrOpen, setArQrOpen] = useState(false);
   const [activeVariant, setActiveVariant] = useState<string | null>(
     model.variants?.[0]?.id ?? null,
   );
   const tr = (k: string, fallback: string) => (t ? t(k) : fallback);
+  const arUrl = productPageUrl ? `${productPageUrl}${productPageUrl.includes('?') ? '&' : '?'}ar=1` : '';
 
-  // Apply a chosen variant to the loaded model.
   const applyVariant = (variant: ModelVariant) => {
     const mv = ref.current;
     if (!mv || !mv.model) return;
     try {
-      // 1) Prefer a baked glTF material variant if present.
       if (variant.gltfVariant && Array.isArray(mv.availableVariants) && mv.availableVariants.includes(variant.gltfVariant)) {
         mv.variantName = variant.gltfVariant;
         return;
       }
-      // 2) Otherwise override a material's colour / PBR factors programmatically.
       const materials = mv.model.materials || [];
       const target =
         materials.find((m: any) => m.name === variant.materialName) || materials[0];
@@ -56,9 +56,7 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
       if (factor && pbr?.setBaseColorFactor) pbr.setBaseColorFactor(factor);
       if (variant.roughness != null && pbr?.setRoughnessFactor) pbr.setRoughnessFactor(variant.roughness);
       if (variant.metalness != null && pbr?.setMetallicFactor) pbr.setMetallicFactor(variant.metalness);
-    } catch {
-      /* material API not ready / unsupported — ignore */
-    }
+    } catch { /* unsupported */ }
   };
 
   useEffect(() => {
@@ -68,11 +66,16 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
       setLoaded(true);
       const first = model.variants?.find((v) => v.id === activeVariant) || model.variants?.[0];
       if (first) applyVariant(first);
+      if (autoAr && isArCapableDevice()) {
+        window.setTimeout(() => {
+          try { mv.activateAR?.(); } catch { /* no-op */ }
+        }, 600);
+      }
     };
     mv.addEventListener('load', onLoad);
     return () => mv.removeEventListener('load', onLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model.url]);
+  }, [model.url, autoAr]);
 
   const onPickVariant = (v: ModelVariant) => {
     setActiveVariant(v.id);
@@ -81,12 +84,15 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
   };
 
   const enterAR = () => {
+    if (!isArCapableDevice() && arUrl) {
+      setArQrOpen(true);
+      trackEvent('view_in_ar_qr', { product: productName });
+      return;
+    }
     try {
       ref.current?.activateAR?.();
       trackEvent('view_in_ar', { product: productName });
-    } catch {
-      /* no-op */
-    }
+    } catch { /* no-op */ }
   };
 
   const resetView = () => {
@@ -130,7 +136,6 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
         <div slot="progress-bar" />
       </model-viewer>
 
-      {/* Controls overlay */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 sm:p-4">
         <div className="flex justify-between items-start">
           <span className="pointer-events-auto inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-[var(--color-surface)]/85 backdrop-blur-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)]">
@@ -147,7 +152,6 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
         </div>
 
         <div className="flex flex-col gap-3">
-          {/* Material / colour switcher */}
           {model.variants && model.variants.length > 0 && (
             <div className="pointer-events-auto self-center flex items-center gap-2 rounded-[var(--radius-pill)] bg-[var(--color-surface)]/85 backdrop-blur-md border border-[var(--color-border)] px-2.5 py-2 overflow-x-auto max-w-full scrollbar-hide">
               {model.variants.map((v) => {
@@ -178,7 +182,6 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
             </div>
           )}
 
-          {/* AR button */}
           <motion.button
             onClick={enterAR}
             whileTap={{ scale: 0.96 }}
@@ -194,6 +197,17 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, t, classNam
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <View size={28} className="text-[var(--color-text-secondary)] animate-pulse" />
         </div>
+      )}
+
+      {arUrl && (
+        <DesktopHandoffSheet
+          open={arQrOpen}
+          onClose={() => setArQrOpen(false)}
+          title={tr('viewer_ar_qr_title', 'View in AR on your phone')}
+          description={tr('viewer_ar_qr_desc', 'Scan this code with your phone to open the model in augmented reality. Your room, your piece — seamlessly.')}
+          url={arUrl}
+          qrLabel={tr('viewer_ar_qr_hint', 'Scan to open AR')}
+        />
       )}
     </div>
   );

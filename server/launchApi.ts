@@ -2,9 +2,10 @@
  * Coming-soon mode, waitlist, and launch notifications (developer-only controls).
  */
 import { Router, type Request, type Response } from 'express';
-import { getDb } from './firebaseAdmin';
+import { getDb, verifyIdToken } from './firebaseAdmin';
 import { staffFromReq } from './ordersApi';
 import { sendLaunchAnnouncement } from './email';
+import { isBootstrapDeveloperEmail } from '../lib/staff';
 
 const LAUNCH_DOC = 'settings/launch';
 
@@ -31,16 +32,29 @@ async function readLaunchSettings(): Promise<LaunchSettings> {
   };
 }
 
-async function developerFromReq(req: Request) {
+async function developerFromReq(req: Request): Promise<{ email: string; role: 'developer' } | null> {
+  const decoded = await verifyIdToken(req.headers.authorization);
+  if (!decoded?.email) return null;
   const staff = await staffFromReq(req);
-  if (!staff) return null;
-  const role = staff.role.toLowerCase();
-  if (role !== 'developer') return null;
-  return staff;
+  if (!staff) {
+    if (isBootstrapDeveloperEmail(decoded.email, decoded.email_verified === true)) {
+      return { email: decoded.email.toLowerCase(), role: 'developer' };
+    }
+    return null;
+  }
+  if (staff.role !== 'developer') return null;
+  return { email: staff.email, role: 'developer' };
 }
 
 async function patchLaunchSettings(req: Request, res: Response) {
-  if (!(await developerFromReq(req))) return res.status(401).json({ error: 'Developer access required' });
+  const dev = await developerFromReq(req);
+  if (!dev) {
+    const decoded = await verifyIdToken(req.headers.authorization);
+    if (!decoded) return res.status(401).json({ error: 'Sign in required' });
+    const staff = await staffFromReq(req);
+    if (!staff) return res.status(403).json({ error: 'Your account is not in the admins team list' });
+    return res.status(403).json({ error: 'Developer role required for this action' });
+  }
 
   const db = await getDb();
   if (!db) return res.status(503).json({ error: 'Not configured' });

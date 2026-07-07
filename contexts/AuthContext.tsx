@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
+import { isBootstrapDeveloperEmail, normalizeStaffRole } from '../lib/staff';
 
 interface AuthContextType {
   user: User | null;
@@ -57,15 +58,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // staff (spec-only access); anything else in the collection = admin.
             const adminDoc = await getDoc(doc(db, 'admins', currentUser.email.toLowerCase()));
             const role = adminDoc.exists() ? (adminDoc.data()?.role || 'admin') : null;
-            const roleNorm = typeof role === 'string' ? role.toLowerCase() : role;
-            currentAdminStatus = roleNorm !== null && roleNorm !== 'worker';
-            currentDeveloperStatus = roleNorm === 'developer';
+            const roleNorm = normalizeStaffRole(role);
+            const bootstrapDev = isBootstrapDeveloperEmail(currentUser.email, currentUser.emailVerified);
+            currentAdminStatus = bootstrapDev || (roleNorm !== null && roleNorm !== 'worker');
+            currentDeveloperStatus = bootstrapDev || roleNorm === 'developer';
             // Only update state if the fetch was successful
             setFirstName(fName);
             setLastName(lName);
             setIsAdmin(currentAdminStatus);
             setIsDeveloper(currentDeveloperStatus);
             setIsWorker(roleNorm === 'worker');
+
+            // One-time self-heal: fix legacy role casing in the signed-in user's admin doc.
+            if (adminDoc.exists() && roleNorm && typeof role === 'string' && role !== roleNorm && currentDeveloperStatus) {
+              try {
+                await setDoc(doc(db, 'admins', currentUser.email.toLowerCase()), { role: roleNorm }, { merge: true });
+              } catch { /* non-developers cannot write — ignore */ }
+            }
 
             if (!currentAdminStatus) {
               // Ensure every customer has a profile document. One doc per user

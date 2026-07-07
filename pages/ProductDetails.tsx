@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Check, ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Images, Box, Ruler } from 'lucide-react';
 import type { TFunction } from '../types';
@@ -12,7 +12,6 @@ import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
 import { useToast } from '../components/ui/Toast';
 import { ModelViewer3D } from '../components/ModelViewer3D';
-import { Reviews } from '../components/Reviews';
 import { formatMoney, formatDimensions } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -24,6 +23,7 @@ interface ProductDetailsProps { t: TFunction; }
 
 const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { categories } = useCategories();
@@ -144,7 +144,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
 
   return (
-    <div className="container mx-auto px-5 md:px-8 lg:px-6 pt-8 md:pt-12 lg:pt-16 pb-28 md:pb-24 lg:pb-24 min-h-[80vh]">
+    <div className="container mx-auto px-5 md:px-8 lg:px-6 pt-8 md:pt-12 lg:pt-16 pb-20 md:pb-24 lg:pb-24 min-h-[80vh]">
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-2 mb-8 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
@@ -173,7 +173,14 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
 
           {mediaMode === '3d' && has3D ? (
             <div className="rounded-[var(--radius-lg)] overflow-hidden border border-[var(--color-border)] aspect-square">
-              <ModelViewer3D model={product.model3d!} productName={name} t={t} className="h-full" />
+              <ModelViewer3D
+                model={product.model3d!}
+                productName={name}
+                productPageUrl={`${SITE_URL}/product/${product.id}`}
+                autoAr={searchParams.get('ar') === '1'}
+                t={t}
+                className="h-full"
+              />
             </div>
           ) : (
             <div className="bg-[var(--color-secondary)] rounded-[var(--radius-lg)] overflow-hidden relative shadow-[var(--shadow-lg)] group aspect-square">
@@ -239,8 +246,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             )}
           </div>
 
-          <div className="hidden md:flex flex-col sm:flex-row gap-3">
-            <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
+          <div className="flex flex-col sm:flex-row gap-3 mt-2">
+            <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1 md:flex-none" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
               <AnimatePresence mode="wait" initial={false}>
                 {isAdding ? (
                   <motion.span key="added" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="inline-flex items-center gap-2"><Check size={18} /> {t('added') || 'Added'}</motion.span>
@@ -255,30 +262,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           </div>
         </motion.div>
       </div>
-
-      {/* Mobile-only sticky purchase bar */}
-      <div className="md:hidden fixed inset-x-0 bottom-0 z-[105] border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-xl px-4 py-3 pb-[var(--mobile-tab-offset)]">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-[var(--color-text-secondary)] truncate">{name}</p>
-            <p className="text-lg font-bold text-[var(--color-primary)]">
-              {priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : t('price_on_request')}
-            </p>
-          </div>
-          <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="shrink-0 min-w-[9.5rem]" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
-            {isAdding ? (t('added') || 'Added') : (t('add_to_cart') || 'Add to Cart')}
-          </Button>
-          <button
-            type="button"
-            onClick={() => toggleWishlist(product.id)}
-            className="shrink-0 p-3 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
-            aria-label={t('toggle_wishlist') || 'Toggle wishlist'}
-          >
-            <Heart size={20} className={isWishlisted ? 'fill-[var(--color-primary)] text-[var(--color-primary)]' : ''} />
-          </button>
-        </div>
-      </div>
-      <Reviews t={t} productId={String(product.id)} />
     </div>
   );
 };

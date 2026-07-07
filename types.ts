@@ -115,6 +115,7 @@ export interface ScanJob {
   realDimensions?: { width?: number; height?: number; depth?: number; unit?: 'm' | 'cm' };
   modelUrl?: string;                 // populated once reconstruction completes
   productId?: string;
+  handoffFrom?: 'desktop';
   error?: string;
   createdAt: string;
   updatedAt: string;

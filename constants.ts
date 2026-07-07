@@ -3,13 +3,13 @@ import { LayoutOption, ColorSchemeOption, TypographyOption, ColorScheme, Product
 export const COLOR_SCHEMES: Record<ColorSchemeOption, ColorScheme> = {
   [ColorSchemeOption.BlackGold]: {
     light: {
-        primary: '#E8C547',
-        primaryHsl: '47, 81%, 60%',
+        primary: '#C9A227',
+        primaryHsl: '44, 70%, 47%',
         secondary: '#14213D',
-        background: '#FFFFFF',
-        textPrimary: '#1A202C',
-        textSecondary: '#4A5568',
-        success: '#DAB449'
+        background: '#FAF8F5',
+        textPrimary: '#14213D',
+        textSecondary: '#5A6578',
+        success: '#C9A227'
     },
     dark: {
       primary: '#E8C547',

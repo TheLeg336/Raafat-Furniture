@@ -13,6 +13,8 @@ import type { ScanJob } from '../../types';
 
 interface Props {
   createdBy: string;
+  /** Resume an existing scan (desktop handoff). */
+  scanId?: string;
   targetFrames?: number;
   onComplete: (scanId: string) => void;
   onCancel: () => void;
@@ -28,6 +30,7 @@ type Phase = 'intro' | 'capturing' | 'dimensions' | 'uploading' | 'done' | 'erro
  */
 export const GuidedScanner: React.FC<Props> = ({
   createdBy,
+  scanId: existingScanId,
   targetFrames = 32,
   onComplete,
   onCancel,
@@ -146,7 +149,7 @@ export const GuidedScanner: React.FC<Props> = ({
     setPhase('uploading');
     setProgressMsg('Creating scan…');
     try {
-      const scanId = await createScanJob(createdBy);
+      const scanId = existingScanId || await createScanJob(createdBy);
       const frameUrls: string[] = [];
       for (let i = 0; i < framesRef.current.length; i++) {
         setProgressMsg(`Uploading frame ${i + 1} of ${framesRef.current.length}…`);

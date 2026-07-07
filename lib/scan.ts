@@ -88,3 +88,27 @@ export function subscribeScans(cb: (scans: ScanJob[]) => void) {
   const q = query(collection(db, 'scans'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ScanJob))));
 }
+
+/** Listen to a single scan job (desktop handoff while phone captures). */
+export function subscribeScan(scanId: string, cb: (scan: ScanJob | null) => void) {
+  if (!db) return () => {};
+  return onSnapshot(doc(db, 'scans', scanId), (snap) => {
+    cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as ScanJob) : null);
+  });
+}
+
+/** Create a scan reserved for mobile handoff from desktop admin. */
+export async function createHandoffScan(createdBy: string): Promise<string> {
+  if (!db) throw new Error('Database not configured');
+  const now = new Date().toISOString();
+  const job: Omit<ScanJob, 'id'> = {
+    createdBy,
+    status: 'capturing',
+    frameCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    handoffFrom: 'desktop',
+  };
+  const r = await addDoc(collection(db, 'scans'), job);
+  return r.id;
+}
