@@ -40,7 +40,12 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
 
   useEffect(() => {
     const onScroll = () => {
-      if (sentinelRef.current) setIsSticky(sentinelRef.current.getBoundingClientRect().top <= 1);
+      if (!sentinelRef.current) return;
+      // Hysteresis: avoid flicker at the sticky threshold.
+      const top = sentinelRef.current.getBoundingClientRect().top;
+      const enter = headerHeight + 2;
+      const exit = headerHeight + 24;
+      setIsSticky((prev) => (prev ? top <= exit : top <= enter));
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -50,12 +55,13 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
   return (
     <section id="shop" className="relative bg-[var(--color-background)] transition-colors duration-500">
       <div className="relative">
-        <div ref={sentinelRef} className="absolute w-full h-px pointer-events-none" />
+        <div ref={sentinelRef} className="absolute w-full h-px pointer-events-none" style={{ top: 0 }} />
+        {/* Constant min-height sticky bar — padding/content changes must not resize the layout. */}
         <div
-          className={`sticky top-0 transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-md)]' : ''}`}
-          style={{ zIndex: 20 }}
+          className={`sticky transition-all duration-300 ${isSticky ? 'glass-panel shadow-[var(--shadow-md)]' : ''}`}
+          style={{ zIndex: 20, top: 'var(--header-height, 0px)' }}
         >
-          <div className={`container mx-auto px-5 md:px-8 lg:px-6 min-h-[4.5rem] flex items-center transition-all duration-300 ${isSticky ? 'py-3 md:py-4 lg:py-5' : 'pt-6 pb-4 md:pt-12 md:pb-6 lg:pt-20 lg:pb-10'}`}>
+          <div className="container mx-auto px-5 md:px-8 lg:px-6 min-h-[5.5rem] md:min-h-[6.5rem] flex items-center py-4 md:py-5">
             <ProductSectionHeader t={t} compact={isSticky} />
           </div>
         </div>

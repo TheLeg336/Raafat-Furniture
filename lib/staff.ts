@@ -13,5 +13,6 @@ export function normalizeStaffRole(role: unknown): StaffRole | null {
   const r = role.trim().toLowerCase();
   if (r === 'developer' || r === 'admin' || r === 'worker') return r;
   if (r === 'dev') return 'developer';
-  return 'admin';
+  // Unknown / typo roles must not escalate to admin.
+  return null;
 }

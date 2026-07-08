@@ -46,7 +46,8 @@ export const SmoothScroll: React.FC = () => {
     const samePage = prev.current.pathname === pathname;
     const hashChanged = prev.current.hash !== hash;
 
-    if (hashId && samePage && hashChanged && !isPageReload() && prev.current.hash) {
+    // Same-page hash changes (including first hash from empty) — one smooth scroll owner.
+    if (hashId && samePage && hashChanged && !isPageReload()) {
       scrollToSection(hashId, false);
     }
 

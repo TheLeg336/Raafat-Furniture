@@ -19,13 +19,13 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight, themeMode }) => {
   });
 
   return (
-    <main>
+    <div>
       <div id="hero">
         <Hero t={t} themeMode={themeMode} />
       </div>
       <ProductSection t={t} headerHeight={headerHeight} />
       <VisitUsSection t={t} />
-    </main>
+    </div>
   );
 };
 

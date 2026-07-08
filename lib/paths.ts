@@ -17,8 +17,16 @@ export function adminPath(segment = ''): string {
 export const STAFF_PATH = `/${STAFF_BASE}`;
 
 /** Legacy guessable paths — show 404 (do not redirect, avoids leaking the new base). */
-export const LEGACY_BLOCKED_PREFIXES = ['/admin', '/staff', '/login'];
+export const LEGACY_BLOCKED_PREFIXES = ['/admin', '/staff'];
 
 export function isLegacyBlockedPath(pathname: string): boolean {
   return LEGACY_BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/** Safe internal return path for post-login redirects (blocks open redirects). */
+export function safeReturnPath(raw: string | null | undefined, fallback = '/'): string {
+  if (!raw) return fallback;
+  const path = raw.trim();
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) return fallback;
+  return path;
 }

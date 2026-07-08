@@ -42,7 +42,8 @@ export async function getPaymentsConfig(): Promise<PaymentsConfig> {
     configCache = await res.json();
     cacheSet(CONFIG_CACHE_KEY, configCache!);
   } catch {
-    configCache = { stripe: false, paymob: false, cardProvider: null, ipCountry: null, cashPickupAllowed: true, ordersConfigured: false };
+    // Fail closed: do not advertise cash pickup when config cannot be verified.
+    configCache = { stripe: false, paymob: false, cardProvider: null, ipCountry: null, cashPickupAllowed: false, ordersConfigured: false };
   }
   return configCache!;
 }

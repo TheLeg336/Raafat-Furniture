@@ -20,6 +20,7 @@ import { PICKUP_LOCATIONS, pickupLabel } from '../lib/pickupLocations';
 import { addressFieldsForCountry, isAddressComplete, type AddressFieldKey } from '../lib/addressFormats';
 import { loadSavedAddress, saveAddressForUser, persistCheckoutDraft, readCheckoutDraft, clearCheckoutDraft } from '../lib/savedAddress';
 import { useProducts } from '../hooks/useProducts';
+import { LOGIN_PATH } from '../lib/paths';
 
 interface Props { t: TFunction; }
 
@@ -148,7 +149,9 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const addressValues: Record<AddressFieldKey, string> = {
     line1: form.line1, city: form.city, governorate: form.governorate, postalCode: form.postalCode,
   };
-  const addressValid = isAddressComplete(form.country, addressValues);
+  const addressValid = fulfillment === 'pickup'
+    ? true
+    : isAddressComplete(form.country, addressValues);
   const allValid = fulfillmentValid && detailsValid && addressValid;
 
   const markDone = (step: StepId) => setDoneSteps((s) => new Set([...s, step]));
@@ -161,7 +164,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
   };
 
   const handleAddressContinue = () => {
-    if (!addressValid) return;
+    if (fulfillment === 'shipping' && !addressValid) return;
+    // Pickup: skip address save prompts — showroom address is used server-side.
+    if (fulfillment === 'pickup') {
+      advanceFrom('address');
+      return;
+    }
     if (user) {
       setSavePrompt('signed-in');
     } else if (!guestDeclinedAccount) {
@@ -193,7 +201,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const handleGuestAccount = (create: boolean) => {
     if (create) {
       persistCheckoutDraft({ fulfillment, pickupLocationId, payment, form, done: [...doneSteps, 'details'] });
-      navigate(`/login?return=${encodeURIComponent('/checkout')}`);
+      navigate(`${LOGIN_PATH}?return=${encodeURIComponent('/checkout')}&signup=true`);
       return;
     }
     setGuestDeclinedAccount(true);
@@ -209,13 +217,22 @@ const Checkout: React.FC<Props> = ({ t }) => {
       const pickupNote = fulfillment === 'pickup'
         ? `Pickup: ${pickupLabel(pickupLoc, lang)}`
         : undefined;
+      const pickupLocForOrder = PICKUP_LOCATIONS.find((l) => l.id === pickupLocationId) || PICKUP_LOCATIONS[0];
       const { order, redirected, paymentError } = await placeOrder({
         items,
         contact: {
           fullName: form.fullName.trim(), email: form.email.trim(), phone: form.phone.trim(),
-          line1: form.line1.trim(), city: form.city.trim(),
-          governorate: form.governorate.trim() || undefined, country: form.country,
-          postalCode: form.postalCode.trim() || undefined,
+          ...(fulfillment === 'pickup'
+            ? {
+                line1: pickupLocForOrder.street.en,
+                city: pickupLocForOrder.city,
+                country: 'EG',
+              }
+            : {
+                line1: form.line1.trim(), city: form.city.trim(),
+                governorate: form.governorate.trim() || undefined, country: form.country,
+                postalCode: form.postalCode.trim() || undefined,
+              }),
         },
         fulfillment,
         pickupLocationId: fulfillment === 'pickup' ? pickupLocationId : undefined,
@@ -318,8 +335,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
 
           <CheckoutStep
             step={3}
-            title={fulfillment === 'shipping' ? (t('delivery_address') || 'Delivery address') : (t('billing_address') || 'Your address')}
-            summary={form.line1 ? `${form.city}, ${form.country}` : undefined}
+            title={fulfillment === 'shipping' ? (t('delivery_address') || 'Delivery address') : (t('pickup_confirm') || 'Confirm pickup')}
+            summary={fulfillment === 'pickup'
+              ? pickupLoc.name[lang]
+              : (form.line1 ? `${form.city}, ${form.country}` : undefined)}
             open={openStep === 'address'}
             done={doneSteps.has('address')}
             onToggle={() => setOpenStep('address')}
@@ -327,40 +346,52 @@ const Checkout: React.FC<Props> = ({ t }) => {
             continueDisabled={!addressValid}
             continueLabel={savePrompt !== 'none' ? undefined : (t('continue') || 'Continue')}
           >
-            <Select label={t('country') || 'Country'} value={form.country} onChange={set('country')}>
-              {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </Select>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {addrFields.map((field) => (
-                <Input
-                  key={field.key}
-                  label={t(field.labelKey) || field.fallback}
-                  required={field.required}
-                  value={form[field.key]}
-                  onChange={set(field.key)}
-                  autoComplete={field.autoComplete}
-                  className={field.className}
-                />
-              ))}
-            </div>
+            {fulfillment === 'pickup' ? (
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+                <p className="text-sm font-semibold mb-1">{pickupLoc.name[lang]}</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">{pickupLoc.street[lang]}</p>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-2">
+                  {t('pickup_no_address_needed') || 'No delivery address needed — collect from this showroom.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <Select label={t('country') || 'Country'} value={form.country} onChange={set('country')}>
+                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </Select>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {addrFields.map((field) => (
+                    <Input
+                      key={field.key}
+                      label={t(field.labelKey) || field.fallback}
+                      required={field.required}
+                      value={form[field.key]}
+                      onChange={set(field.key)}
+                      autoComplete={field.autoComplete}
+                      className={field.className}
+                    />
+                  ))}
+                </div>
 
-            {savePrompt === 'signed-in' && (
-              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-3">
-                <p className="text-sm">{t('save_address_prompt') || 'Save this address to your account for next time?'}</p>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" onClick={() => confirmSaveAddress(true)}>{t('save') || 'Save'}</Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => confirmSaveAddress(false)}>{t('not_now') || 'Not now'}</Button>
-                </div>
-              </div>
-            )}
-            {savePrompt === 'guest' && (
-              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-3">
-                <p className="text-sm">{t('guest_save_prompt') || 'Create an account to save your address for future orders?'}</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" size="sm" onClick={() => handleGuestAccount(true)}>{t('create_account') || 'Create account'}</Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => handleGuestAccount(false)}>{t('continue_guest') || 'Continue as guest'}</Button>
-                </div>
-              </div>
+                {savePrompt === 'signed-in' && (
+                  <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-3">
+                    <p className="text-sm">{t('save_address_prompt') || 'Save this address to your account for next time?'}</p>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" onClick={() => confirmSaveAddress(true)}>{t('save') || 'Save'}</Button>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => confirmSaveAddress(false)}>{t('not_now') || 'Not now'}</Button>
+                    </div>
+                  </div>
+                )}
+                {savePrompt === 'guest' && (
+                  <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-3">
+                    <p className="text-sm">{t('guest_save_prompt') || 'Create an account to save your address for future orders?'}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" size="sm" onClick={() => handleGuestAccount(true)}>{t('create_account') || 'Create account'}</Button>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => handleGuestAccount(false)}>{t('continue_guest') || 'Continue as guest'}</Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CheckoutStep>
 

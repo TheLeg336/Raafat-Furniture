@@ -121,7 +121,7 @@ export const CartDrawer: React.FC<{ t: any }> = ({ t }) => {
                     <button 
                       onClick={() => {
                         setIsCartOpen(false);
-                        navigate('/#shop');
+                        navigate('/shop');
                       }}
                       className="mt-6 px-6 py-2 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-medium"
                     >

@@ -8,7 +8,7 @@ import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useStore } from '../contexts/StoreContext';
-import { scrollToSection, scrollToY } from '../lib/scrollNav';
+import { scrollToY } from '../lib/scrollNav';
 import { adminPath, STAFF_PATH, LOGIN_PATH } from '../lib/paths';
 interface HeaderProps {
   language: LanguageOption;
@@ -84,12 +84,11 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
       return;
     }
 
-    // If we are already on the home page and clicking a hash link, prevent default and scroll
+    // Same-page hash: let SmoothScroll own the scroll (avoid double smooth-scroll).
     if (location.pathname === '/' && href.startsWith('/#')) {
       e.preventDefault();
       const id = href.slice(2);
       navigate({ pathname: '/', hash: id }, { replace: false });
-      scrollToSection(id, false);
       return;
     }
   };

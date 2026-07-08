@@ -92,7 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } catch (error) {
             console.error("Error checking user status:", error);
-            // On error, do not update the state variables so we don't wipe out existing profile data
+            // Fail closed on role-fetch errors — never keep stale privilege flags.
+            setIsAdmin(false);
+            setIsDeveloper(false);
+            setIsWorker(false);
           }
         }
         

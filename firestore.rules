@@ -63,7 +63,7 @@ service cloud.firestore {
     }
 
     function adminRole() {
-      return hasAdminDoc() ? adminDoc().data.get('role', 'admin') : '';
+      return hasAdminDoc() ? adminDoc().data.get('role', '') : '';
     }
 
     function adminRoleNorm() {
@@ -71,10 +71,11 @@ service cloud.firestore {
     }
 
     // Admins & developers — NOT workers (workers use server API only).
+    // Fail closed: only exact 'admin' / 'developer' (unknown / whitespace typos = no access).
     function isAdmin() {
       return isAuthenticated() && (
         isBootstrapDeveloper() ||
-        (hasAdminDoc() && adminRoleNorm() != 'worker')
+        (hasAdminDoc() && (adminRoleNorm() == 'admin' || adminRoleNorm() == 'developer'))
       );
     }
 

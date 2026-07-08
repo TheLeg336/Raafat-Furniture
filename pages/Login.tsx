@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, User as UserIcon, ArrowLeft } from 'lucide-react';
 
 import { type TFunction } from '../types';
-import { adminPath, STAFF_PATH } from '../lib/paths';
+import { adminPath, STAFF_PATH, safeReturnPath } from '../lib/paths';
 
 interface LoginProps {
   t: TFunction;
@@ -14,8 +14,10 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ t }) => {
   const { user, isAdmin, isWorker, loading, loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = safeReturnPath(searchParams.get('return'), '/');
   const [isSignUp, setIsSignUp] = useState(() => {
-    return sessionStorage.getItem('isSignUp') === 'true';
+    return searchParams.get('signup') === 'true' || sessionStorage.getItem('isSignUp') === 'true';
   });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,9 +32,9 @@ const Login: React.FC<LoginProps> = ({ t }) => {
     if (!loading && user) {
       if (isAdmin) navigate(adminPath());
       else if (isWorker) navigate(STAFF_PATH);
-      else navigate('/');
+      else navigate(returnTo);
     }
-  }, [user, isAdmin, isWorker, loading, navigate]);
+  }, [user, isAdmin, isWorker, loading, navigate, returnTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +119,8 @@ const Login: React.FC<LoginProps> = ({ t }) => {
         <button 
           onClick={() => navigate(-1)}
           className="absolute top-4 start-4 md:top-6 md:start-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
-          title="Go Back"
+          title={t('nav_go_back') || 'Go Back'}
+          aria-label={t('nav_go_back') || 'Go Back'}
         >
           <span className="block"><ArrowLeft size={20} /></span>
         </button>

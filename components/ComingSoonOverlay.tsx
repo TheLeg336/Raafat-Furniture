@@ -14,7 +14,7 @@ interface Props {
 
 /** Full-page coming soon — blocks the entire storefront for non-team visitors. */
 export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
-  const { blocked, status, loading } = useComingSoonGate();
+  const { blocked, status, loading, allowlisted } = useComingSoonGate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -32,7 +32,8 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
     return undefined;
   }, [blocked]);
 
-  if (loading || !blocked) return null;
+  // Never cover allowlisted money-path / sign-in routes.
+  if (loading || !blocked || allowlisted) return null;
 
   const scheduledLabel = status.scheduledAt
     ? new Date(status.scheduledAt).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })

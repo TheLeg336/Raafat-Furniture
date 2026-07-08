@@ -28,7 +28,7 @@ const Footer: React.FC<FooterProps> = ({ t }) => {
           <p className="font-heading text-2xl sm:text-3xl font-bold">{t('footer_tagline') || 'Raafat Furniture'}</p>
           <p className="text-sm sm:text-base opacity-80 max-w-md">{t('footer_hours')}</p>
           <a
-            href={`tel:${t('footer_phone_number')}`}
+            href="tel:+201010279777"
             className="inline-flex items-center gap-2 text-lg font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity"
             dir="ltr"
           >

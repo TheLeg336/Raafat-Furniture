@@ -14,6 +14,7 @@ interface Props { t: TFunction; }
 
 /** Customer-facing timeline steps (internal states map onto the nearest step). */
 const STEPS: { key: OrderStatus; labelKey: string; fallback: string }[] = [
+  { key: 'pending_payment', labelKey: 'step_awaiting_payment', fallback: 'Awaiting payment' },
   { key: 'paid', labelKey: 'step_confirmed', fallback: 'Order confirmed' },
   { key: 'in_production', labelKey: 'step_preparing', fallback: 'Being prepared' },
   { key: 'ready', labelKey: 'step_ready', fallback: 'Ready' },
@@ -22,12 +23,12 @@ const STEPS: { key: OrderStatus; labelKey: string; fallback: string }[] = [
 ];
 
 const STATUS_RANK: Partial<Record<OrderStatus, number>> = {
-  pending_payment: -1, payment_verification: -1,
-  paid: 0, confirmed: 0,
-  in_production: 1, awaiting_approval: 1,
-  ready: 2,
-  shipped: 3,
-  completed: 4,
+  pending_payment: 0, payment_verification: 0,
+  paid: 1, confirmed: 1,
+  in_production: 2, awaiting_approval: 2,
+  ready: 3,
+  shipped: 4,
+  completed: 5,
 };
 
 const TrackOrder: React.FC<Props> = ({ t }) => {

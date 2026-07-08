@@ -698,7 +698,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
           </aside>
 
           {/* Main Content Area */}
-          <main className="flex-1">
+          <div className="flex-1">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32 gap-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary)]"></div>
@@ -890,7 +890,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 )}
               </div>
             )}
-          </main>
+          </div>
         </div>
       </div>
     </div>

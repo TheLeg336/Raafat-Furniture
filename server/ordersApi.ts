@@ -85,7 +85,8 @@ export async function staffFromReq(req: Request): Promise<{ email: string; role:
   if (!db) return null;
   const snap = await db.collection('admins').doc(email).get();
   if (!snap.exists) return null;
-  const role = normalizeStaffRole(snap.data()?.role) || 'admin';
+  const role = normalizeStaffRole(snap.data()?.role);
+  if (!role) return null;
   return { email, role };
 }
 
@@ -109,7 +110,7 @@ function workerView(o: any, id: string) {
   return {
     id,
     orderNumber: o.orderNumber, createdAt: o.createdAt, status: o.status,
-    fulfillment: o.fulfillment, prepared: o.prepared || [], customerNote: o.customerNote || '',
+    fulfillment: o.fulfillment, prepared: o.prepared || [],
     items: (o.items || []).map((it: any) => ({
       name: it.name, quantity: it.quantity, color: it.color || '',
       material: it.material || '', customDimensions: it.customDimensions || '', imageUrl: it.imageUrl || '',
@@ -172,9 +173,11 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       if (!contact?.fullName || String(contact.fullName).length > 120) return res.status(400).json({ error: 'Name is required' });
       if (!/^\S+@\S+\.\S+$/.test(contact?.email || '')) return res.status(400).json({ error: 'Valid email is required' });
       if (!contact?.phone || String(contact.phone).trim().length < 6) return res.status(400).json({ error: 'Phone is required' });
-      if (!contact?.line1 || !contact?.city || !contact?.country) return res.status(400).json({ error: 'Address (street, city, country) is required' });
       if (!['pickup', 'shipping', 'custom'].includes(fulfillment)) return res.status(400).json({ error: 'Invalid fulfillment' });
       if (fulfillment === 'pickup' && !pickupLocationId) return res.status(400).json({ error: 'Pickup location is required' });
+      if (fulfillment !== 'pickup' && (!contact?.line1 || !contact?.city || !contact?.country)) {
+        return res.status(400).json({ error: 'Address (street, city, country) is required' });
+      }
 
       // ---- payment-method rules ----
       const geo = ipCountry(req);
@@ -324,6 +327,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
   r.get('/api/worker/orders', rateLimit(60), async (req: Request, res: Response) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: 'Unauthorized' });
+    if (staff.role !== 'worker' && !isAdminRole(staff.role)) return res.status(403).json({ error: 'Forbidden' });
     const db = (await getDb())!;
     const q = await db.collection('orders').where('status', 'in', ACTIVE_STATUSES).get();
     const orders = q.docs
@@ -336,11 +340,16 @@ export function ordersRouter(rateLimit: (n: number) => any) {
   r.post('/api/worker/orders/:id/prepared', rateLimit(120), async (req: Request, res: Response) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: 'Unauthorized' });
+    if (staff.role !== 'worker' && !isAdminRole(staff.role)) return res.status(403).json({ error: 'Forbidden' });
     const db = (await getDb())!;
     const ref = db.collection('orders').doc(String(req.params.id));
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: 'Order not found' });
-    const itemCount = ((snap.data() as any).items || []).length;
+    const order = snap.data() as any;
+    if (!ACTIVE_STATUSES.includes(order.status)) {
+      return res.status(400).json({ error: 'Order is not in an active workshop status' });
+    }
+    const itemCount = (order.items || []).length;
     const prepared = Array.isArray(req.body?.prepared)
       ? [...new Set(req.body.prepared.map(Number).filter((n: number) => Number.isInteger(n) && n >= 0 && n < itemCount))]
       : [];
@@ -352,11 +361,15 @@ export function ordersRouter(rateLimit: (n: number) => any) {
   r.post('/api/worker/orders/:id/complete', rateLimit(30), async (req: Request, res: Response) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: 'Unauthorized' });
+    if (staff.role !== 'worker' && !isAdminRole(staff.role)) return res.status(403).json({ error: 'Forbidden' });
     const db = (await getDb())!;
     const ref = db.collection('orders').doc(String(req.params.id));
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: 'Order not found' });
     const order = snap.data() as any;
+    if (!ACTIVE_STATUSES.includes(order.status)) {
+      return res.status(400).json({ error: 'Order is not in an active workshop status' });
+    }
     const prepared: number[] = order.prepared || [];
     if ((order.items || []).some((_: any, i: number) => !prepared.includes(i))) {
       return res.status(400).json({ error: 'All items must be checked off first.' });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ColorSchemeOption, LanguageOption, TypographyOption, type TFunction } from './types';
 import { COLOR_SCHEMES, TEXTS } from './constants';
@@ -92,12 +92,15 @@ const AppContent: React.FC = () => {
 
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  // Redirection logic for onboarding
+  // Redirection logic for onboarding — never interrupt checkout / order flows.
   useEffect(() => {
-    // Only redirect if we are sure the user is logged in, auth is not loading,
-    // and we have explicitly checked the profile and found it missing.
-    if (!authLoading && user && firstName === null && lastName === null && location.pathname !== '/onboarding') {
-      // Small delay to ensure state is settled
+    const skipOnboarding =
+      location.pathname === '/onboarding' ||
+      location.pathname === '/checkout' ||
+      location.pathname.startsWith('/order/') ||
+      location.pathname === '/track' ||
+      location.pathname === LOGIN_PATH;
+    if (!authLoading && user && firstName === null && lastName === null && !skipOnboarding) {
       const timer = setTimeout(() => {
         if (firstName === null && lastName === null) {
           navigate('/onboarding');
@@ -246,7 +249,7 @@ const AppContent: React.FC = () => {
         <Route path={LOGIN_PATH.slice(1)} element={<Login t={t} />} />
         <Route path="admin/*" element={<NotFound t={t} />} />
         <Route path="staff/*" element={<NotFound t={t} />} />
-        <Route path="login" element={<NotFound t={t} />} />
+        <Route path="login" element={<Navigate to={`${LOGIN_PATH}${location.search}`} replace />} />
         <Route path="/onboarding" element={<Onboarding t={t} />} />
         <Route path="/account" element={<UserAccount t={t} />} />
         <Route path="/m/scan/:scanId" element={<MobileScan />} />
