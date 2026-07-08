@@ -231,6 +231,27 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
+    // client_errors — silent reliability reports (create: any; manage: developer)
+    // No PII beyond coarse path / UA; see docs/ERROR-REPORTING.md
+    // ---------------------------------------------------------------
+    match /client_errors/{id} {
+      allow create: if true
+        && request.resource.data.keys().hasAll(['message', 'path', 'source', 'resolved', 'createdAt'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 600
+        && request.resource.data.path is string
+        && request.resource.data.path.size() <= 400
+        && request.resource.data.resolved == false
+        && request.resource.data.keys().hasOnly([
+          'message', 'stack', 'name', 'path', 'intendedPath', 'href',
+          'userAgent', 'language', 'signedIn', 'roleHint', 'source',
+          'createdAt', 'createdAtServer', 'resolved'
+        ]);
+      allow read, update: if isDeveloper();
+      allow delete: if isDeveloper();
+    }
+
+    // ---------------------------------------------------------------
     // Default deny
     // ---------------------------------------------------------------
     match /{document=**} {

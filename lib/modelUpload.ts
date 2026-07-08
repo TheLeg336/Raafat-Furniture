@@ -40,6 +40,22 @@ export async function uploadModel(file: File): Promise<string> {
   const optimized = await optimizeGlb(file);
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '') || 'model';
   const r = storageRef(storage, `models/${Date.now()}-${safe}.glb`);
-  await uploadBytes(r, optimized, { contentType: 'model/gltf-binary' });
+  // Always set an explicit contentType — Windows often leaves File.type empty for .glb,
+  // and Storage rules reject empty types when they only allow model/*.
+  try {
+    await uploadBytes(r, optimized, {
+      contentType: 'model/gltf-binary',
+      customMetadata: { originalName: file.name.slice(0, 120) },
+    });
+  } catch (err: any) {
+    const code = err?.code || '';
+    const msg = String(err?.message || '');
+    if (code === 'storage/unauthorized' || /insufficient permissions|permission/i.test(msg)) {
+      throw new Error(
+        'Missing or insufficient permissions to upload 3D models. Sign in as admin or developer, and deploy the latest storage.rules (firebase deploy --only storage).',
+      );
+    }
+    throw err;
+  }
   return getDownloadURL(r);
 }

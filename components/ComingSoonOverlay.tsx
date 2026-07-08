@@ -4,6 +4,7 @@ import { Bell, Sparkles } from 'lucide-react';
 import type { TFunction } from '../types';
 import { LOGIN_PATH } from '../lib/paths';
 import { useComingSoonGate } from '../hooks/useComingSoonGate';
+import { useAuth } from '../contexts/AuthContext';
 import LogoIcon from './LogoIcon';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -15,6 +16,7 @@ interface Props {
 /** Full-page coming soon — blocks the entire storefront for non-team visitors. */
 export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
   const { blocked, status, loading, allowlisted } = useComingSoonGate();
+  const { user, isAdmin, isWorker, logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -23,6 +25,10 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+
+  /** Signed-in customer (not team) still sees coming soon — offer Log out, not "Team sign in". */
+  const showLogout = !!user && !isAdmin && !isWorker;
 
   useEffect(() => {
     if (blocked) {
@@ -122,9 +128,23 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
         )}
 
         <p className="mt-6 text-xs text-[var(--color-text-secondary)]">
-          <Link to={LOGIN_PATH} className="underline hover:text-[var(--color-primary)]">
-            {t('coming_soon_sign_in') || 'Team member? Sign in'}
-          </Link>
+          {showLogout ? (
+            <button
+              type="button"
+              disabled={signingOut}
+              className="underline hover:text-[var(--color-primary)] disabled:opacity-60"
+              onClick={async () => {
+                setSigningOut(true);
+                try { await logout(); } finally { setSigningOut(false); }
+              }}
+            >
+              {t('account_signout') || 'Log out'}
+            </button>
+          ) : (
+            <Link to={LOGIN_PATH} className="underline hover:text-[var(--color-primary)]">
+              {t('coming_soon_sign_in') || 'Team member? Sign in'}
+            </Link>
+          )}
         </p>
       </div>
     </div>

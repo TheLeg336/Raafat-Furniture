@@ -2,27 +2,43 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Admin = owner, or an admins/{email} doc whose role is exactly admin/developer.
-    // Workers are deliberately excluded (mirrors firestore.rules) so they cannot
-    // overwrite 3D models or read raw scan frames. Unknown/whitespace roles fail closed.
+    // Admin = bootstrap owner, or admins/{email} with role admin OR developer.
+    // Developers have the same Storage write access as admins (models + scans).
+    // Workers are excluded. Unknown/whitespace roles fail closed.
+    function emailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    function adminDocPath() {
+      return /databases/(default)/documents/admins/$(emailLower());
+    }
+
+    function roleLower() {
+      return firestore.get(adminDocPath()).data.get('role', '').lower();
+    }
+
     function isAdmin() {
       return request.auth != null && (
         (request.auth.token.email == "youssefhanna336@gmail.com" && request.auth.token.email_verified == true) ||
-        (firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email.lower())) &&
-         (firestore.get(/databases/(default)/documents/admins/$(request.auth.token.email.lower())).data.get('role', '').lower() == 'admin' ||
-          firestore.get(/databases/(default)/documents/admins/$(request.auth.token.email.lower())).data.get('role', '').lower() == 'developer'))
+        (firestore.exists(adminDocPath()) && (roleLower() == 'admin' || roleLower() == 'developer' || roleLower() == 'dev'))
       );
     }
 
-    // Finished 3D models — world-readable (users view & AR them), admin-writable.
+    function modelContentOk() {
+      return request.resource.contentType == null
+        || request.resource.contentType == ''
+        || request.resource.contentType.matches('model/.*|application/octet-stream|application/.*');
+    }
+
+    // Finished 3D models — world-readable (users view & AR them), admin/dev-writable.
     match /models/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin()
                    && request.resource.size < 50 * 1024 * 1024
-                   && request.resource.contentType.matches('model/.*|application/octet-stream');
+                   && modelContentOk();
     }
 
-    // Raw scan frames — admin-only (may contain incidental surroundings).
+    // Raw scan frames — admin/dev only (may contain incidental surroundings).
     match /scans/{scanId}/{frame} {
       allow read: if isAdmin();
       allow write: if isAdmin()

@@ -5,5 +5,11 @@
   "project": {
     "name": "Raafat Furniture",
     "siteUrl": "https://raafat-furniture.vercel.app"
-  }
+  },
+  "mempalace": {
+    "enabled": true,
+    "capture_artifacts": true,
+    "wing": "raafat-furniture"
+  },
+  "project_code": "raafat-furniture"
 }

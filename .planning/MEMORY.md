@@ -1,30 +1,31 @@
-# Raafat Furniture — agent memory
+# Raafat Furniture — project memory (Obsidian + agents)
 
-## Live site
-- URL: https://raafat-furniture.vercel.app
-- Stack: Vite SPA + Vercel serverless (`api/`), Firebase, Stripe/Paymob/InstaPay
+## Live
+- https://raafat-furniture.vercel.app
+- Stack: React 19 + Vite + Firebase + Express on Vercel
 
-## Money path (do not regress)
-- Orders only via `POST /api/orders/create` — server prices from Firestore
-- InstaPay / bank: customer puts `{orderNumber} {fullName}` in transfer note; admin verifies manually
-- Cash on pickup: removed
-- Guest track: `POST /api/orders/track` only
+## Roles
+- `developer` = full admin powers (catalog, orders, uploads, scans) **plus** team + Dev tools + error inbox
+- `admin` = catalog/orders/reviews/analytics
+- `worker` = `/staff` API only (no Storage/Firestore admin writes)
+- Bootstrap: `youssefhanna336@gmail.com` (verified)
 
-## Messaging
-- Admin → customer: `POST /api/admin/orders/:id/message` + Resend when configured
-- Customer replies: Resend inbound → `POST /api/email/inbound` → `unreadCustomerReplies` badge on admin orders
-- Docs: `docs/EMAIL-MESSAGING.md`
+## Known issues fixed (2026-07-08)
+- Scan "Start camera" crash: safer getUserMedia fallbacks, portal overlay z=2100 above nav, attach stream after video mounts
+- Dev GLB upload "insufficient permissions": Storage rules accept admin|developer|dev; explicit `model/gltf-binary` contentType; clearer error if rules not deployed
+- Coming soon: signed-in non-team users see **Log out** instead of "Team member? Sign in"
+- Admin nav: Analytics (BarChart3) + Reviews (Star) icons; Dev badge for unresolved client errors
+- Silent error inbox: `client_errors` + Dev → Errors panel
+- Home scroll "clip to section": removed ProductSection sticky snap; hero slightly under full viewport; overflow-anchor off
 
-## Analytics
-- Consent-gated GA4 via `VITE_GA_MEASUREMENT_ID` — see `docs/GA4-SETUP.md`
-- Events: page_view, view_item, add_to_cart, begin_checkout, purchase
-- Admin Analytics page aggregates Firestore orders (works without GA)
+## Deploy reminders
+```bash
+firebase deploy --only firestore:rules,storage
+```
+Vercel env still needed: GA, Resend, FIREBASE_SERVICE_ACCOUNT, Stripe/Paymob
 
-## 3D / AR
-- `ModelViewer3D` applies `model.variants` (colorHex / gltfVariant / materialName)
-- Product color/material selectors sync to preferred variant when labels match
-
-## Env still needed from owner
-- `VITE_GA_MEASUREMENT_ID`
-- `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `CONTACT_EMAIL`, `SITE_URL`
-- Legal placeholders in `lib/legalContent.ts`
+## Graphify / MemPalace / Obsidian
+- `.planning/config.json`: graphify.enabled + mempalace.enabled (wing: raafat-furniture)
+- Graph built via `graphify update .` → `graphify-out/` (gitignored; rebuild locally)
+- Obsidian vault sync: `OneDrive/Documents/Obsidian Vault/Raafat-Furniture/` (Index, MEMORY, docs)
+- Repo memory: `.planning/MEMORY.md` + `docs/`

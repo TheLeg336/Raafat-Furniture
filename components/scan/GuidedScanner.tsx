@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, Check, X, RotateCw, Ruler, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -23,10 +24,8 @@ interface Props {
 type Phase = 'intro' | 'capturing' | 'dimensions' | 'uploading' | 'done' | 'error';
 
 /**
- * Guided object capture. The user slowly walks around the object; the site auto-captures
- * frames at even angular intervals (gated by device heading when available, else a manual
- * shutter). Frames + real dimensions are uploaded as a ScanJob; reconstruction runs on a
- * pluggable backend (see lib/scan.ts).
+ * Guided object capture. Portaled to document.body so storefront/admin chrome
+ * cannot paint above the scanner.
  */
 export const GuidedScanner: React.FC<Props> = ({
   createdBy,
@@ -39,6 +38,7 @@ export const GuidedScanner: React.FC<Props> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const framesRef = useRef<Blob[]>([]);
   const headingRef = useRef<{ start: number | null; last: number | null }>({ start: null, last: null });
+  const startingRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [count, setCount] = useState(0);
@@ -47,19 +47,44 @@ export const GuidedScanner: React.FC<Props> = ({
   const [error, setError] = useState('');
   const [dims, setDims] = useState({ width: '', height: '', depth: '', unit: 'cm' as 'cm' | 'm' });
   const [progressMsg, setProgressMsg] = useState('');
+  const [starting, setStarting] = useState(false);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((tk) => tk.stop());
     streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
+
+  // Lock page scroll + mark body while scanner is open (covers admin/store chrome).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.dataset.scannerOpen = '1';
+    return () => {
+      document.body.style.overflow = prev;
+      delete document.body.dataset.scannerOpen;
+    };
+  }, []);
+
+  // Attach stream after the capturing phase mounts the visible video.
+  useEffect(() => {
+    if (phase !== 'capturing') return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    const play = () => { void video.play().catch(() => {}); };
+    if (video.readyState >= 2) play();
+    else video.addEventListener('loadedmetadata', play, { once: true });
+    return () => video.removeEventListener('loadedmetadata', play);
+  }, [phase]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return;
     const canvas = document.createElement('canvas');
-    // Downscale to keep upload sizes sane; long edge ~1280.
     const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
@@ -81,7 +106,6 @@ export const GuidedScanner: React.FC<Props> = ({
     );
   }, [targetFrames, stopCamera]);
 
-  // Heading-gated auto capture (when DeviceOrientation available).
   useEffect(() => {
     if (phase !== 'capturing' || !headingSupported) return;
     const step = 360 / targetFrames;
@@ -95,7 +119,6 @@ export const GuidedScanner: React.FC<Props> = ({
         captureFrame();
         return;
       }
-      // shortest angular delta since last capture
       let delta = Math.abs(alpha - (h.last as number));
       if (delta > 180) delta = 360 - delta;
       if (delta >= step) {
@@ -108,31 +131,50 @@ export const GuidedScanner: React.FC<Props> = ({
     return () => window.removeEventListener('deviceorientation', onOrient as any, true);
   }, [phase, headingSupported, targetFrames, captureFrame]);
 
+  const requestCamera = async (): Promise<MediaStream> => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Camera API is not available in this browser. Use HTTPS (or localhost) and a supported browser.');
+    }
+    const attempts: MediaStreamConstraints[] = [
+      { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { audio: false, video: { facingMode: 'environment' } },
+      { audio: false, video: { facingMode: 'user' } },
+      { audio: false, video: true },
+    ];
+    let lastErr: unknown;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('Could not start camera.');
+  };
+
   const startCapture = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setError('');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      const stream = await requestCamera();
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
-      }
-      // Ask for orientation permission on iOS 13+.
+
+      // Orientation permission (iOS) — never let this fail the camera start.
       let oriented = false;
-      const DOE: any = (window as any).DeviceOrientationEvent;
-      if (DOE && typeof DOE.requestPermission === 'function') {
-        try {
+      try {
+        const DOE: any = (window as any).DeviceOrientationEvent;
+        if (DOE && typeof DOE.requestPermission === 'function') {
           const res = await DOE.requestPermission();
           oriented = res === 'granted';
-        } catch {
-          oriented = false;
+        } else if (DOE) {
+          oriented = true;
         }
-      } else if (DOE) {
-        oriented = true;
+      } catch {
+        oriented = false;
       }
+
       setHeadingSupported(oriented);
       setHint(oriented ? 'Walk slowly around the object — frames capture automatically' : 'Tap the shutter from each angle as you circle the object');
       framesRef.current = [];
@@ -140,8 +182,19 @@ export const GuidedScanner: React.FC<Props> = ({
       setCount(0);
       setPhase('capturing');
     } catch (e: any) {
-      setError(e?.name === 'NotAllowedError' ? 'Camera permission denied.' : e?.message || 'Could not start camera.');
+      stopCamera();
+      const name = e?.name || '';
+      let msg = e?.message || 'Could not start camera.';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') msg = 'Camera permission denied. Allow camera access in your browser settings and try again.';
+      else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') msg = 'No camera found on this device.';
+      else if (name === 'NotReadableError' || name === 'TrackStartError') msg = 'Camera is in use by another app. Close it and try again.';
+      else if (name === 'OverconstrainedError') msg = 'This camera does not support the required settings. Try again on a phone.';
+      else if (/secure|https|Only secure/i.test(msg)) msg = 'Camera requires HTTPS (or localhost). Open the site over a secure connection.';
+      setError(msg);
       setPhase('error');
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   };
 
@@ -195,9 +248,15 @@ export const GuidedScanner: React.FC<Props> = ({
 
   const pct = Math.min(100, Math.round((count / targetFrames) * 100));
 
-  return (
-    <div className="fixed inset-0 bg-black text-white flex flex-col" style={{ zIndex: 'var(--z-modal)' as any }}>
-      <div className="flex items-center justify-between p-4">
+  const ui = (
+    <div
+      className="fixed inset-0 bg-black text-white flex flex-col"
+      style={{ zIndex: 2100 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Scan an object"
+    >
+      <div className="flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <h2 className="font-heading text-xl font-bold">Scan an object</h2>
         <button onClick={() => { stopCamera(); onCancel(); }} aria-label="Close scanner" className="p-2 rounded-full hover:bg-white/10">
           <X size={22} />
@@ -205,15 +264,14 @@ export const GuidedScanner: React.FC<Props> = ({
       </div>
 
       <div className="flex-1 relative overflow-hidden">
-        {/* Live camera */}
         <video
           ref={videoRef}
           playsInline
           muted
-          className={`absolute inset-0 w-full h-full object-cover ${phase === 'capturing' ? '' : 'opacity-0'}`}
+          autoPlay
+          className={`absolute inset-0 w-full h-full object-cover ${phase === 'capturing' ? '' : 'opacity-0 pointer-events-none'}`}
         />
 
-        {/* INTRO */}
         {phase === 'intro' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 gap-5">
             <Camera size={48} className="text-[var(--color-primary)]" />
@@ -221,22 +279,20 @@ export const GuidedScanner: React.FC<Props> = ({
               Place the object on the floor or a table with space to walk around it, in even light.
               Move slowly in a full circle. {targetFrames} frames will be captured.
             </p>
-            <Button onClick={startCapture} iconLeft={<Camera size={18} />}>Start camera</Button>
+            <Button onClick={startCapture} loading={starting} iconLeft={<Camera size={18} />}>Start camera</Button>
             {!reconstructionConfigured() && (
               <p className="text-xs text-white/50 max-w-xs">
-                Note: a reconstruction service isn't connected yet — frames will be saved &amp; queued, and
+                Note: a reconstruction service isn&apos;t connected yet — frames will be saved &amp; queued, and
                 you can attach the finished 3D model afterwards.
               </p>
             )}
           </div>
         )}
 
-        {/* CAPTURING overlay */}
         {phase === 'capturing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-between p-6 pointer-events-none">
             <div className="mt-2 px-4 py-2 rounded-[var(--radius-pill)] bg-black/50 backdrop-blur-md text-sm">{hint}</div>
 
-            {/* Progress ring */}
             <div className="relative">
               <svg width="160" height="160" viewBox="0 0 160 160" className="-rotate-90">
                 <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
@@ -268,7 +324,6 @@ export const GuidedScanner: React.FC<Props> = ({
           </div>
         )}
 
-        {/* DIMENSIONS */}
         {phase === 'dimensions' && (
           <div className="absolute inset-0 bg-[var(--color-background)] text-[var(--color-text-primary)] overflow-y-auto">
             <div className="max-w-md mx-auto px-6 py-8 flex flex-col gap-5">
@@ -301,7 +356,6 @@ export const GuidedScanner: React.FC<Props> = ({
           </div>
         )}
 
-        {/* UPLOADING / DONE / ERROR */}
         {(phase === 'uploading' || phase === 'done' || phase === 'error') && (
           <div className="absolute inset-0 bg-[var(--color-background)] text-[var(--color-text-primary)] flex flex-col items-center justify-center text-center px-8 gap-4">
             {phase === 'uploading' && <Loader2 size={40} className="text-[var(--color-primary)] animate-spin" />}
@@ -314,6 +368,8 @@ export const GuidedScanner: React.FC<Props> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(ui, document.body) : ui;
 };
 
 export default GuidedScanner;

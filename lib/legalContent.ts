@@ -55,6 +55,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
           'Order & transaction data: the items you order, order number, fulfilment choice (pickup, delivery, or custom order), delivery address, and order history.',
           'Payment data: card payments are processed directly by our payment providers (Stripe, Inc. for international cards and wallets; Paymob for cards in Egypt). InstaPay and bank transfers are made directly from your banking app — we receive only the transfer reference you give us. We do not collect or store your full card number on our servers; we receive only a confirmation and limited transaction metadata.',
           'Technical & usage data: IP address, device and browser type, and pages viewed. We collect analytics data only where you have given consent (see our Cookie Policy).',
+          'Reliability diagnostics: if the site encounters a technical error, we may silently record a short diagnostic (error message, page path, approximate destination, and browser type) so our developers can fix bugs. This does not include form contents, payment details, passwords, camera frames, or precise location, and it is not used for advertising.',
           'Communications: messages you send us (e.g. enquiries, custom-order requests) and our replies.',
           'We do not intentionally collect special-category (sensitive) data, and we ask that you do not send it to us.',
         ],
@@ -65,6 +66,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
           'To create your account, process and fulfil your orders, and provide customer support — necessary for the performance of our contract with you (and, where you are not yet a customer, to take steps at your request before entering a contract).',
           'To send you transactional messages such as order confirmations, payment receipts, and delivery or pickup updates — necessary for the contract.',
           'To operate, secure, and improve our website and prevent fraud — based on our legitimate interests, balanced against your rights, and on consent where the law requires it (e.g. analytics cookies).',
+          'To diagnose and fix technical failures on the site (silent error reports) — based on our legitimate interests in keeping the store reliable and secure; limited to technical diagnostics described above.',
           'To understand how the site is used — based on your consent (analytics).',
           'To comply with tax, accounting, consumer-protection, and other legal obligations — necessary for compliance with a legal obligation.',
           'Where we rely on consent, you can withdraw it at any time; this does not affect processing carried out before withdrawal.',
@@ -152,7 +154,7 @@ export const LEGAL_DOCS: Record<LegalDoc['slug'], LegalDoc> = {
       {
         heading: 'The categories we use',
         body: [
-          'Strictly necessary (always on, no consent required): sign-in/authentication, your shopping cart and saved items, your theme and language preference, security, and a record of your cookie choice. The site cannot function properly without these.',
+          'Strictly necessary (always on, no consent required): sign-in/authentication, your shopping cart and saved items, your theme and language preference, security, a record of your cookie choice, and limited technical error diagnostics used only to keep the site working (error message and page path — never form contents, payments, or camera data). The site cannot function properly without these.',
           'Analytics (consent required): Google Analytics 4, to understand how the site is used so we can improve it. These load only after you accept. We enable IP anonymisation and Google Consent Mode, so no analytics cookies are set until you opt in.',
           'Marketing (consent required): we currently use no advertising or marketing cookies. If we add them in future they will appear in this category and will remain off until you opt in.',
           'Third-party cookies may also be set when you use Stripe Checkout or Paymob (payment) or sign in with Google; these are governed by those providers’ own privacy and cookie policies.',

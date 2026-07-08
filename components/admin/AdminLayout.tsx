@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Home, LogOut, Menu, LayoutGrid, ClipboardList, Users, Code2 } from 'lucide-react';
+import { Home, LogOut, Menu, LayoutGrid, ClipboardList, Users, Code2, BarChart3, Star } from 'lucide-react';
 import type { TFunction } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import LogoIcon from '../LogoIcon';
@@ -9,10 +9,13 @@ import { MobilePillNav } from '../ui/MobilePillNav';
 import { MobileBottomSheet } from '../ui/MobileBottomSheet';
 import { ADMIN_LINKS, DEV_ONLY_LINKS, isAdminLinkActive } from './adminLinks';
 import { LOGIN_PATH } from '../../lib/paths';
+import { subscribeClientErrors } from '../../lib/clientErrors';
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
   Catalog: <LayoutGrid size={18} />,
   Orders: <ClipboardList size={18} />,
+  Analytics: <BarChart3 size={18} />,
+  Reviews: <Star size={18} />,
   Team: <Users size={18} />,
   Dev: <Code2 size={18} />,
 };
@@ -26,6 +29,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
   const { user, isAdmin, isDeveloper, loading, logout, firstName, lastName } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openErrors, setOpenErrors] = useState(0);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="robots"]');
@@ -37,6 +41,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isDeveloper) { setOpenErrors(0); return; }
+    return subscribeClientErrors((rows) => {
+      setOpenErrors(rows.filter((r) => !r.resolved).length);
+    }, { unresolvedOnly: true });
+  }, [isDeveloper]);
 
   if (loading) return <PageSpinner />;
   if (!user) return <Navigate to={LOGIN_PATH} replace />;
@@ -67,11 +78,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
     to, label, exact, onClick,
   }) => {
     const active = isAdminLinkActive(location.pathname, { to, label, exact });
+    const showBadge = label === 'Dev' && openErrors > 0;
     return (
       <Link
         to={to}
         onClick={onClick}
-        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium transition-colors ${
+        className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium transition-colors ${
           active
             ? 'bg-[var(--color-primary)]/12 text-[var(--color-primary)]'
             : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)]'
@@ -79,6 +91,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ t }) => {
       >
         {NAV_ICONS[label]}
         <span className="truncate">{label}</span>
+        {showBadge && (
+          <span className="ms-auto min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-[var(--color-danger)] text-white text-[10px] font-bold flex items-center justify-center">
+            {openErrors > 99 ? '99+' : openErrors}
+          </span>
+        )}
       </Link>
     );
   };

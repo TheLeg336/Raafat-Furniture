@@ -127,7 +127,7 @@ export const TEXTS: Record<string, Record<string, string>> = {
     login_dont_have: "Don't have an account? Sign up",
     account_title: 'My Account',
     account_email: 'Email',
-    account_signout: 'Sign Out',
+    account_signout: 'Log out',
     // Admin
     admin_dashboard: 'Admin Dashboard',
     admin_tab_categories: 'Categories',

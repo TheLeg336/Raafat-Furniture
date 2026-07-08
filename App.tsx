@@ -40,6 +40,7 @@ import { CookieConsent } from './components/CookieConsent';
 import { ComingSoonOverlay } from './components/ComingSoonOverlay';
 import { SmoothScroll } from './components/SmoothScroll';
 import { initAnalytics, trackPageView } from './lib/analytics';
+import { installClientErrorReporting } from './lib/clientErrors';
 import { db } from './lib/firebase';
 import { ADMIN_BASE, STAFF_BASE, LOGIN_PATH } from './lib/paths';
 
@@ -80,11 +81,19 @@ const AppContent: React.FC = () => {
   const colorScheme = ColorSchemeOption.BlackGold;
   const typography = TypographyOption.LuxeModern;
 
-  const { user, firstName, lastName, loading: authLoading } = useAuth();
+  const { user, isAdmin, isDeveloper, isWorker, firstName, lastName, loading: authLoading } = useAuth();
   const { blocked: comingSoonBlocked } = useComingSoonGate();
   const navigate = useNavigate();
   const location = useLocation();
   const isCheckout = location.pathname === '/checkout';
+
+  // Silent client error reporting (Dev → Errors). Never surfaces UI to customers.
+  useEffect(() => {
+    installClientErrorReporting(() => ({
+      signedIn: !!user,
+      roleHint: isDeveloper ? 'developer' : isAdmin ? 'admin' : isWorker ? 'worker' : user ? 'customer' : 'unknown',
+    }));
+  }, [user, isAdmin, isDeveloper, isWorker]);
 
   const [language, setLanguage] = useState<LanguageOption>(getInitialLanguage);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);

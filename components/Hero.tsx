@@ -88,9 +88,10 @@ const Hero: React.FC<HeroProps> = ({ t, themeMode }) => {
   return (
     <div
       ref={heroRef}
-      className={`relative grain h-[100dvh] min-h-[520px] md:h-[92dvh] md:min-h-[600px] lg:h-[100dvh] lg:min-h-[640px] overflow-hidden ${
+      className={`relative grain h-[88dvh] min-h-[520px] md:h-[88dvh] md:min-h-[600px] lg:h-[90dvh] lg:min-h-[640px] overflow-hidden ${
         isDark ? 'text-white' : 'text-[var(--color-text-primary)]'
       }`}
+      style={{ overflowAnchor: 'none' }}
     >
       <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }} />
       <div className="absolute inset-0 z-[1]" style={{ background: heroOverlay }} />
