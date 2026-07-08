@@ -8,9 +8,10 @@ import { useSeo } from '../lib/seo';
 interface HomeProps {
   t: TFunction;
   headerHeight: number;
+  themeMode: 'light' | 'dark';
 }
 
-const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
+const Home: React.FC<HomeProps> = ({ t, headerHeight, themeMode }) => {
   useSeo({
     title: 'Raafat Furniture — Handcrafted Luxury Furniture | Egypt, USA & Worldwide',
     description: 'Egyptian-made handcrafted luxury furniture. Shop sofas, bedroom, dining, office and custom pieces in interactive 3D, preview them in your room with AR, and order for pickup or worldwide delivery.',
@@ -20,7 +21,7 @@ const Home: React.FC<HomeProps> = ({ t, headerHeight }) => {
   return (
     <main>
       <div id="hero">
-        <Hero t={t} />
+        <Hero t={t} themeMode={themeMode} />
       </div>
       <ProductSection t={t} headerHeight={headerHeight} />
       <VisitUsSection t={t} />

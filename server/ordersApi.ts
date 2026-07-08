@@ -163,7 +163,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Ordering is not configured on the server (FIREBASE_SERVICE_ACCOUNT missing).' });
     try {
-      const { items, contact, fulfillment, paymentMethod, customerNote } = req.body || {};
+      const { items, contact, fulfillment, paymentMethod, customerNote, pickupLocationId } = req.body || {};
       const decoded = await verifyIdToken(req.headers.authorization);
       const userId = decoded?.uid ?? null;
 
@@ -174,6 +174,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       if (!contact?.phone || String(contact.phone).trim().length < 6) return res.status(400).json({ error: 'Phone is required' });
       if (!contact?.line1 || !contact?.city || !contact?.country) return res.status(400).json({ error: 'Address (street, city, country) is required' });
       if (!['pickup', 'shipping', 'custom'].includes(fulfillment)) return res.status(400).json({ error: 'Invalid fulfillment' });
+      if (fulfillment === 'pickup' && !pickupLocationId) return res.status(400).json({ error: 'Pickup location is required' });
 
       // ---- payment-method rules ----
       const geo = ipCountry(req);
@@ -248,6 +249,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
           postalCode: String(contact.postalCode || '').slice(0, 20),
         },
         customerNote: String(customerNote || '').slice(0, 1000),
+        ...(fulfillment === 'pickup' && pickupLocationId ? { pickupLocationId: String(pickupLocationId).slice(0, 40) } : {}),
         adminNotes: '',
         prepared: [],
         createdAt: now, updatedAt: now,

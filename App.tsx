@@ -72,14 +72,17 @@ const getInitialLanguage = (): LanguageOption => {
 import { CartDrawer } from './components/CartDrawer';
 import { AuthModal } from './components/AuthModal';
 import StoreChrome from './components/StoreChrome';
+import { useComingSoonGate } from './hooks/useComingSoonGate';
 
 const AppContent: React.FC = () => {
   const colorScheme = ColorSchemeOption.BlackGold;
   const typography = TypographyOption.LuxeModern;
 
   const { user, firstName, lastName, loading: authLoading } = useAuth();
+  const { blocked: comingSoonBlocked } = useComingSoonGate();
   const navigate = useNavigate();
   const location = useLocation();
+  const isCheckout = location.pathname === '/checkout';
 
   const [language, setLanguage] = useState<LanguageOption>(getInitialLanguage);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
@@ -248,6 +251,7 @@ const AppContent: React.FC = () => {
         <Route path="/account" element={<UserAccount t={t} />} />
         <Route path="/m/scan/:scanId" element={<MobileScan />} />
         <Route path="*" element={
+          comingSoonBlocked ? null : (
           <>
             <Header 
               ref={headerRef} 
@@ -258,9 +262,9 @@ const AppContent: React.FC = () => {
               themeMode={themeMode}
               setThemeMode={setThemeMode}
             />
-            <main id="main-content" className="flex-grow max-md:pb-[var(--mobile-tab-offset)]">
+            <main id="main-content" className={`flex-grow ${isCheckout ? '' : 'max-md:pb-[var(--mobile-tab-offset)]'}`}>
               <Routes>
-                <Route path="/" element={<Home t={t} headerHeight={headerHeight} />} />
+                <Route path="/" element={<Home t={t} headerHeight={headerHeight} themeMode={themeMode} />} />
                 <Route path="/shop" element={<Shop t={t} />} />
                 <Route path="/product/:id" element={<ProductDetails t={t} />} />
                 <Route path="/checkout" element={<Checkout t={t} />} />
@@ -272,11 +276,12 @@ const AppContent: React.FC = () => {
                 <Route path="*" element={<NotFound t={t} />} />
               </Routes>
             </main>
-            {location.pathname !== '/checkout' && <Footer t={t} />}
+            {!isCheckout && <Footer t={t} />}
             <CartDrawer t={t} />
             <AuthModal t={t} />
-            <StoreChrome t={t} />
+            {!isCheckout && <StoreChrome t={t} />}
           </>
+          )
         } />
       </Routes>
       </React.Suspense>

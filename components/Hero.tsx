@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, AnimatePresence, Variants, useReducedMotion } from 'framer-motion';
+import { motion, Variants, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDown } from 'lucide-react';
 import type { TFunction } from '../types';
@@ -10,15 +10,17 @@ import { useSettings } from '../hooks/useSettings';
 interface HeroProps {
   t: TFunction;
   headerHeight?: number;
+  themeMode: 'light' | 'dark';
 }
 
 const DEFAULT_HERO_IMAGE =
   'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1920&q=80';
 
-const Hero: React.FC<HeroProps> = ({ t }) => {
+const Hero: React.FC<HeroProps> = ({ t, themeMode }) => {
   const heroRef = useRef(null);
   const navigate = useNavigate();
   const reduce = useReducedMotion();
+  const isDark = themeMode === 'dark';
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,10 +68,28 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.25, 1, 0.5, 1], delay: 0.7 } },
   };
 
+  const heroOverlay = isDark
+    ? 'linear-gradient(180deg, rgba(10,16,32,0.55) 0%, rgba(10,16,32,0.30) 35%, rgba(10,16,32,0.75) 100%)'
+    : 'linear-gradient(180deg, rgba(243,240,232,0.55) 0%, rgba(243,240,232,0.25) 35%, rgba(243,240,232,0.80) 100%)';
+
+  const subtitleClass = isDark ? 'text-white/80' : 'text-[var(--color-text-secondary)]';
+  const scrollCueClass = isDark ? 'text-white/70' : 'text-[var(--color-text-secondary)]';
+  const searchIconClass = isDark
+    ? 'text-white/80 hover:text-white'
+    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]';
+  const searchInputClass = isDark
+    ? 'text-white placeholder-white/70'
+    : 'text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]';
+
   return (
-    <div ref={heroRef} className="relative grain text-white h-[100dvh] min-h-[520px] md:h-[92dvh] md:min-h-[600px] lg:h-[100dvh] lg:min-h-[640px] overflow-hidden">
+    <div
+      ref={heroRef}
+      className={`relative grain h-[100dvh] min-h-[520px] md:h-[92dvh] md:min-h-[600px] lg:h-[100dvh] lg:min-h-[640px] overflow-hidden ${
+        isDark ? 'text-white' : 'text-[var(--color-text-primary)]'
+      }`}
+    >
       <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }} />
-      <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(180deg, rgba(10,16,32,0.55) 0%, rgba(10,16,32,0.30) 35%, rgba(10,16,32,0.75) 100%)' }} />
+      <div className="absolute inset-0 z-[1]" style={{ background: heroOverlay }} />
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent opacity-90" />
       {!reduce && <div className="aurora z-[1] opacity-50" aria-hidden="true" />}
 
@@ -83,74 +103,78 @@ const Hero: React.FC<HeroProps> = ({ t }) => {
             ))}
           </h1>
 
-          <motion.p variants={fadeUp} className="text-white/80 max-w-xl mx-auto mb-8 md:mb-9 text-base md:text-lg lg:text-xl measure px-2 md:px-0">
+          <motion.p variants={fadeUp} className={`${subtitleClass} max-w-xl mx-auto mb-8 md:mb-9 text-base md:text-lg lg:text-xl measure px-2 md:px-0`}>
             {t('hero_subtitle') || 'Furniture made to be lived with, crafted, considered, and yours.'}
           </motion.p>
 
           <motion.div variants={fadeUp} className="relative flex items-center justify-center w-full px-2 md:px-0">
-            <div ref={searchContainerRef} className="w-full max-w-lg">
+            <div className="w-full max-w-lg flex justify-center">
               <motion.div
-                className="relative mx-auto overflow-hidden rounded-full"
-                animate={{
-                  width: isSearchVisible ? '100%' : 'auto',
-                  maxWidth: isSearchVisible ? '100%' : '14rem',
+                ref={searchContainerRef}
+                layout
+                onClick={() => !isSearchVisible && setIsSearchVisible(true)}
+                className={`relative flex items-center justify-center origin-center overflow-hidden rounded-full w-full md:w-auto ${
+                  isSearchVisible
+                    ? 'max-w-lg h-14 glass shadow-lg'
+                    : 'h-14 px-8 md:px-10 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] hover:brightness-105 shine-effect shine-onload cursor-pointer shadow-[var(--gold-glow)]'
+                }`}
+                transition={{
+                  layout: { type: 'spring', stiffness: 300, damping: 35, mass: 0.8 },
                 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               >
-                <AnimatePresence mode="wait" initial={false}>
-                  {!isSearchVisible ? (
-                    <motion.button
-                      key="explore-cta"
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <motion.span
+                    className="font-bold text-[var(--color-ink-on-gold)] whitespace-nowrap uppercase tracking-widest text-sm"
+                    animate={{ opacity: isSearchVisible ? 0 : 1 }}
+                    transition={{ duration: 0.12 }}
+                    style={{ pointerEvents: isSearchVisible ? 'none' : 'auto' }}
+                  >
+                    {t('hero_cta_explore') || 'Explore'}
+                  </motion.span>
+
+                  <motion.form
+                    onSubmit={handleSearchSubmit}
+                    className="absolute inset-0 flex items-center px-4 md:px-5"
+                    initial={false}
+                    animate={{ opacity: isSearchVisible ? 1 : 0 }}
+                    transition={{ duration: 0.15, delay: isSearchVisible ? 0.08 : 0 }}
+                    style={{ pointerEvents: isSearchVisible ? 'auto' : 'none' }}
+                  >
+                    <button type="submit" className={`${searchIconClass} shrink-0 me-2 transition-colors`} aria-label={t('nav_shop')}>
+                      <SearchIcon />
+                    </button>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      maxLength={100}
+                      placeholder={t('search_placeholder') || 'Search furniture, styles, and more…'}
+                      className={`w-full min-w-0 bg-transparent outline-none text-sm md:text-base ${searchInputClass}`}
+                    />
+                    <button
                       type="button"
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      transition={{ duration: 0.18 }}
-                      onClick={() => setIsSearchVisible(true)}
-                      className="w-full h-14 px-8 md:px-10 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] hover:brightness-105 shine-effect shine-onload shadow-[var(--gold-glow)] rounded-full font-bold uppercase tracking-widest text-sm"
+                      onClick={(e) => { e.stopPropagation(); closeSearch(); }}
+                      className={`ms-2 shrink-0 p-1 transition-colors ${searchIconClass}`}
+                      aria-label={t('aria_close_search')}
                     >
-                      {t('hero_cta_explore') || 'Explore'}
-                    </motion.button>
-                  ) : (
-                    <motion.form
-                      key="explore-search"
-                      onSubmit={handleSearchSubmit}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex h-14 w-full items-center px-4 glass shadow-lg rounded-full"
-                    >
-                      <button type="submit" className="text-white/80 hover:text-white shrink-0 me-2 transition-colors" aria-label={t('nav_shop')}>
-                        <SearchIcon />
-                      </button>
-                      <input
-                        ref={searchInputRef}
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        maxLength={100}
-                        placeholder={t('search_placeholder') || 'Search furniture, styles, and more…'}
-                        className="w-full min-w-0 bg-transparent text-white placeholder-white/70 outline-none text-sm md:text-base"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); closeSearch(); }}
-                        className="ms-2 text-white/80 hover:text-white shrink-0 p-1"
-                        aria-label={t('aria_close_search')}
-                      >
-                        <CloseIcon />
-                      </button>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
+                      <CloseIcon />
+                    </button>
+                  </motion.form>
+                </div>
               </motion.div>
             </div>
           </motion.div>
         </motion.div>
       </motion.div>
 
-      <motion.div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-[2] text-white/70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.8 }} aria-hidden="true">
+      <motion.div
+        className={`absolute bottom-7 left-1/2 -translate-x-1/2 z-[2] ${scrollCueClass}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.4, duration: 0.8 }}
+        aria-hidden="true"
+      >
         <ArrowDown size={16} className="scroll-cue" />
       </motion.div>
     </div>

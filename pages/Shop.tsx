@@ -767,7 +767,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                 ))}
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className={`grid ${productGridCols} gap-x-3 gap-y-5 md:gap-x-6 md:gap-y-10 lg:gap-x-8 lg:gap-y-12`}>
+              <div className={`grid ${productGridCols} gap-x-3 gap-y-5 md:gap-x-6 md:gap-y-10 lg:gap-x-8 lg:gap-y-12 items-stretch`}>
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}
@@ -776,9 +776,9 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ y: -10 }}
                     onClick={() => navigate(`/product/${product.id}`)}
-                    className="group cursor-pointer"
+                    className="group cursor-pointer h-full flex flex-col"
                   >
-                    <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 shadow-sm group-hover:shadow-2xl transition-all duration-500 bg-[var(--color-secondary)]/5">
+                    <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-4 md:mb-5 shadow-sm group-hover:shadow-2xl transition-all duration-500 bg-[var(--color-secondary)]/5 shrink-0">
                       <img
                         src={product.imageUrl}
                         alt={product.name?.en}
@@ -804,18 +804,18 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         />
                       </button>
                     </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading leading-tight">
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <h3 className="text-lg md:text-xl font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors font-heading leading-snug line-clamp-2 min-h-[2.75rem]">
                         {(() => {
                           const lang = document.documentElement.lang as 'en' | 'ar';
                           return product.name?.[lang] || (product.nameKey ? t(product.nameKey) : '');
                         })()}
                       </h3>
-                      <p className="text-[var(--color-primary)] font-semibold">
+                      <p className="text-[var(--color-primary)] font-semibold mt-1">
                         {priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : t('price_on_request')}
                       </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-[var(--color-text-secondary)] font-medium">
+                      <div className="flex items-center justify-between mt-1 min-h-[1.25rem]">
+                        <p className="text-sm text-[var(--color-text-secondary)] font-medium truncate pe-2">
                           {(() => {
                             const lang = document.documentElement.lang as 'en' | 'ar';
                             // 1. Try CMS category object
@@ -854,7 +854,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             material: product.materials?.[0],
                           });
                         }}
-                        className="w-full mt-3 md:mt-4 py-2.5 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+                        className="w-full mt-auto pt-3 md:pt-4 py-2.5 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
                       >
                         {t('add_to_cart') || 'Add to Cart'}
                       </button>

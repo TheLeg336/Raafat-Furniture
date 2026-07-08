@@ -6,7 +6,7 @@ export const COLOR_SCHEMES: Record<ColorSchemeOption, ColorScheme> = {
         primary: '#C9A227',
         primaryHsl: '44, 70%, 47%',
         secondary: '#14213D',
-        background: '#FAF8F5',
+        background: '#F3F0E8',
         textPrimary: '#14213D',
         textSecondary: '#5A6578',
         success: '#C9A227'

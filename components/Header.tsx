@@ -97,11 +97,12 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
   const isRtl = language === LanguageOption.Arabic;
   const onHome = location.pathname === '/';
   const overHero = onHome && !scrolled && !isMenuOpen;
+  const overDarkHero = overHero && themeMode === 'dark';
   const headerClass = `sticky top-0 z-[100] transition-[background-color,box-shadow,backdrop-filter] duration-500 ${
     overHero ? 'bg-transparent' : 'glass-panel shadow-[var(--shadow-md)]'
   }`;
-  const fg = overHero ? 'text-white' : 'text-[var(--color-text-primary)]';
-  const fgMuted = overHero ? 'text-white/85' : 'text-[var(--color-text-secondary)]';
+  const fg = overDarkHero ? 'text-white' : 'text-[var(--color-text-primary)]';
+  const fgMuted = overDarkHero ? 'text-white/85' : 'text-[var(--color-text-secondary)]';
   const navClass = 'text-lg font-medium tracking-wide font-heading';
 
   const NavLinks: React.FC<{isMobile?: boolean}> = ({ isMobile }) => (

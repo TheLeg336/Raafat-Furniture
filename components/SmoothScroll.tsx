@@ -1,36 +1,19 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import Lenis from 'lenis';
 import { isPageReload, scrollToSection, scrollToY, setScrollImpl } from '../lib/scrollNav';
 
-let lenisInstance: Lenis | null = null;
-
-/** Programmatic smooth-scroll to a target (used by in-page anchor nav). */
-export function smoothScrollTo(target: number | HTMLElement, offset = 0) {
-  if (lenisInstance) {
-    if (typeof target === 'number') lenisInstance.scrollTo(target, { offset });
-    else {
-      const top = target.getBoundingClientRect().top + window.pageYOffset + offset;
-      lenisInstance.scrollTo(top);
-    }
-  } else if (typeof target === 'number') {
+/** Programmatic smooth-scroll (native — Lenis removed to fix desktop wheel scroll). */
+export function smoothScrollTo(target: number | HTMLElement, _offset = 0) {
+  if (typeof target === 'number') {
     window.scrollTo({ top: target, behavior: 'smooth' });
   } else {
     target.scrollIntoView({ behavior: 'smooth' });
   }
 }
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function isTouchDevice() {
-  return typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-}
-
 /**
- * Lenis smooth scroll on desktop pointer devices only. Touch / mobile uses native
- * scrolling to avoid scroll fighting and landing-page jumpiness.
+ * Hash navigation helpers only — native document scroll everywhere so mouse
+ * wheel and trackpad work reliably on desktop.
  */
 export const SmoothScroll: React.FC = () => {
   const location = useLocation();
@@ -38,40 +21,11 @@ export const SmoothScroll: React.FC = () => {
 
   useLayoutEffect(() => {
     if (typeof window !== 'undefined') window.history.scrollRestoration = 'manual';
-  }, []);
-
-  useEffect(() => {
-    if (prefersReducedMotion() || isTouchDevice()) return;
-
-    const lenis = new Lenis({
-      duration: 1.05,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      touchMultiplier: 1,
-    });
-    lenisInstance = lenis;
     setScrollImpl((top, immediate) => {
-      lenis.scrollTo(top, { immediate });
+      window.scrollTo({ top, behavior: immediate ? 'auto' : 'smooth' });
     });
-
-    let raf = 0;
-    const loop = (time: number) => {
-      lenis.raf(time);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      lenis.destroy();
-      lenisInstance = null;
-      setScrollImpl((top, immediate) => {
-        window.scrollTo({ top, behavior: immediate ? 'auto' : 'smooth' });
-      });
-    };
   }, []);
 
-  // Snap on reload or cross-page hash links only (not every home visit).
   useLayoutEffect(() => {
     const { pathname, hash } = location;
     const hashId = hash ? hash.slice(1) : '';
@@ -86,7 +40,6 @@ export const SmoothScroll: React.FC = () => {
     }
   }, [location.pathname, location.hash]);
 
-  // Smooth in-page hash navigation after explicit user nav clicks.
   useEffect(() => {
     const { pathname, hash } = location;
     const hashId = hash ? hash.slice(1) : '';

@@ -51,12 +51,18 @@
   --mobile-tab-height: 56px;
   --mobile-tab-offset: calc(var(--mobile-tab-height) + 1.35rem + env(safe-area-inset-bottom, 0px));
 
-  /* Light mode — visible structure (dark mode tokens override in :root.dark) */
-  --color-surface: #ffffff;
-  --color-surface-2: #f0ede6;
-  --color-border: rgba(20, 33, 61, 0.09);
-  --color-border-strong: rgba(20, 33, 61, 0.16);
-  --shadow-glass: 0 4px 18px rgba(20, 33, 61, 0.07), 0 1px 3px rgba(20, 33, 61, 0.05);
+  /* Light mode — mirrors dark structure with inverted luminance */
+  --color-surface: #FFFFFF;
+  --color-surface-2: #E8E4DB;
+  --color-border: rgba(20, 33, 61, 0.11);
+  --color-border-strong: rgba(20, 33, 61, 0.20);
+  --shadow-glass: 0 2px 14px rgba(20, 33, 61, 0.08), 0 1px 3px rgba(20, 33, 61, 0.05);
+  --color-overlay: rgba(20, 33, 61, 0.45);
+  --shadow-md: 0 6px 18px rgba(20, 33, 61, 0.10);
+  --shadow-lg: 0 18px 44px rgba(20, 33, 61, 0.14);
+  --shadow-2xl: 0 28px 64px rgba(20, 33, 61, 0.18);
+  --gold-glow: 0 10px 22px hsla(var(--color-primary-hsl-values), 0.28);
+  --gold-glow-strong: 0 14px 30px hsla(var(--color-primary-hsl-values), 0.38);
   --scrollbar-size: 7px;
   --scrollbar-thumb: color-mix(in srgb, var(--color-text-secondary) 22%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 55%, var(--color-text-secondary) 25%);
@@ -157,15 +163,17 @@
    All reduced-motion-aware (see the global reduce rule above).
    ============================================================ */
 
-/* Glassmorphism — purposeful floating layers only (DESIGN.md) */
+/* Glassmorphism — same element types as dark, lighter tint in light mode */
 .glass {
-  background: hsla(0, 0%, 100%, 0.08);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  background: hsla(220, 45%, 18%, 0.05);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
   box-shadow: var(--shadow-glass);
+  border: 1px solid var(--color-border);
 }
 :root.dark .glass {
   background: hsla(0, 0%, 100%, 0.06);
+  border-color: transparent;
 }
 .glass-panel {
   background: color-mix(in oklab, var(--color-surface) 88%, transparent);

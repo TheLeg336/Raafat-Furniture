@@ -4,10 +4,14 @@ import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { CATEGORIES as FALLBACK_CATEGORIES } from '../constants';
 import { Category } from '../types';
+import { cacheGet, cacheSet } from '../lib/dataCache';
+
+const CACHE_KEY = 'rf_categories_v1';
 
 export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = cacheGet<Category[]>(CACHE_KEY, 10 * 60 * 1000);
+  const [categories, setCategories] = useState<Category[]>(cached || []);
+  const [loading, setLoading] = useState(!cached?.length);
 
   useEffect(() => {
     if (!db) {
@@ -28,6 +32,7 @@ export const useCategories = () => {
           ...doc.data()
         })) as Category[];
         setCategories(fetchedCategories.length > 0 ? fetchedCategories : FALLBACK_CATEGORIES);
+        cacheSet(CACHE_KEY, fetchedCategories.length > 0 ? fetchedCategories : FALLBACK_CATEGORIES);
       }
       setLoading(false);
     }, (error) => {

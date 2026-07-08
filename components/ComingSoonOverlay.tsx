@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Sparkles } from 'lucide-react';
 import type { TFunction } from '../types';
 import { LOGIN_PATH } from '../lib/paths';
-import { useAuth } from '../contexts/AuthContext';
-import { useLaunch } from '../contexts/LaunchContext';
+import { useComingSoonGate } from '../hooks/useComingSoonGate';
 import LogoIcon from './LogoIcon';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -13,10 +12,9 @@ interface Props {
   t: TFunction;
 }
 
-/** Full-site overlay when coming-soon mode is on. Signed-in admins bypass; /login stays reachable. */
+/** Full-page coming soon — blocks the entire storefront for non-team visitors. */
 export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
-  const { status, loading } = useLaunch();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { blocked, status, loading } = useComingSoonGate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -26,10 +24,15 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
-  const onLoginPath = location.pathname === LOGIN_PATH;
-  const blocked = !loading && !authLoading && status.comingSoon && !isAdmin && !onLoginPath;
+  useEffect(() => {
+    if (blocked) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+    return undefined;
+  }, [blocked]);
 
-  if (!blocked) return null;
+  if (loading || !blocked) return null;
 
   const scheduledLabel = status.scheduledAt
     ? new Date(status.scheduledAt).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
@@ -57,14 +60,16 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6 bg-[var(--color-background)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="coming-soon-title"
     >
-      <div className="absolute inset-0 bg-[var(--color-background)]/80 backdrop-blur-md" aria-hidden />
+      {!location.pathname.startsWith(LOGIN_PATH) && (
+        <div className="absolute inset-0 aurora opacity-40 pointer-events-none" aria-hidden />
+      )}
 
-      <div className="relative w-full max-w-md glass-card rounded-[var(--radius-lg)] p-6 sm:p-8 shadow-2xl border border-[var(--color-surface-2)] text-center animate-fade-in">
+      <div className="relative w-full max-w-md glass-panel rounded-[var(--radius-lg)] p-6 sm:p-8 shadow-[var(--shadow-2xl)] text-center">
         <div className="flex justify-center mb-4">
           <LogoIcon size={48} className="rounded-xl" />
         </div>
@@ -105,29 +110,10 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
 
         {open && !done && (
           <form onSubmit={submit} className="text-start space-y-3 mt-2">
-            <Input
-              label={t('coming_soon_name') || 'Your name'}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoComplete="name"
-            />
-            <Input
-              label={t('coming_soon_email') || 'Email address'}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-            <Input
-              label={t('coming_soon_phone') || 'Phone (optional)'}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
-            />
-            {error && <p className="text-xs text-[var(--color-danger,#dc2626)]">{error}</p>}
+            <Input label={t('coming_soon_name') || 'Your name'} value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+            <Input label={t('coming_soon_email') || 'Email address'} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+            <Input label={t('coming_soon_phone') || 'Phone (optional)'} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+            {error && <p className="text-xs text-[var(--color-danger)]">{error}</p>}
             <Button type="submit" className="w-full" loading={busy}>
               {t('coming_soon_notify') || 'Notify me'}
             </Button>

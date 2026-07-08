@@ -62,15 +62,16 @@
             root.style.setProperty('--color-text-secondary', '#A9A9A9');
             root.style.setProperty('--color-success', '#DAB449');
           } else {
-            root.style.setProperty('--color-primary', '#E8C547');
-            root.style.setProperty('--color-primary-hsl-values', '47, 81%, 60%');
+            root.style.setProperty('--color-primary', '#C9A227');
+            root.style.setProperty('--color-primary-hsl-values', '44, 70%, 47%');
             root.style.setProperty('--color-secondary', '#14213D');
-            root.style.setProperty('--color-background', '#FFFFFF');
-            root.style.setProperty('--color-text-primary', '#1A202C');
-            root.style.setProperty('--color-text-secondary', '#4A5568');
-            root.style.setProperty('--color-success', '#DAB449');
+            root.style.setProperty('--color-background', '#F3F0E8');
+            root.style.setProperty('--color-text-primary', '#14213D');
+            root.style.setProperty('--color-text-secondary', '#5A6578');
+            root.style.setProperty('--color-success', '#C9A227');
           }
-          root.style.backgroundColor = theme === 'dark' ? '#1A202C' : '#FFFFFF';
+          root.style.backgroundColor = theme === 'dark' ? '#1A202C' : '#F3F0E8';
+          root.classList.toggle('dark', theme === 'dark');
         } catch (e) {}
       })();
     </script>

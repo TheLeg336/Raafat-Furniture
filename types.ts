@@ -199,6 +199,8 @@ export interface Order {
   statusHistory: OrderStatusEvent[];
   contact: OrderContact;
   customerNote?: string;
+  /** Showroom id when fulfillment is pickup (cairo | minya | new-minya). */
+  pickupLocationId?: string;
   adminNotes?: string;
   /** Indices into items[] the workshop has prepared (admin/worker checklist). */
   prepared?: number[];

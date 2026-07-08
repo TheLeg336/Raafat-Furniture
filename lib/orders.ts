@@ -55,6 +55,7 @@ export interface NewOrderInput {
   paymentMethod: PaymentMethod;
   userId?: string | null;
   customerNote?: string;
+  pickupLocationId?: string;
   shipping?: number;
   tax?: number;
   currency?: string;
@@ -82,6 +83,7 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
     fulfillment: input.fulfillment,
     paymentMethod: input.paymentMethod,
     customerNote: input.customerNote,
+    pickupLocationId: input.pickupLocationId,
   });
   return order;
 }

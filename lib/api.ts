@@ -1,5 +1,8 @@
 /** Small fetch helpers for the server API (attaches the Firebase ID token when signed in). */
 import { auth } from './firebase';
+import { cacheGet, cacheSet } from './dataCache';
+
+const CONFIG_CACHE_KEY = 'rf_payments_config';
 
 export async function apiFetch<T = any>(path: string, body?: unknown, method = 'POST'): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -29,9 +32,15 @@ export interface PaymentsConfig {
 let configCache: PaymentsConfig | null = null;
 export async function getPaymentsConfig(): Promise<PaymentsConfig> {
   if (configCache) return configCache;
+  const cached = cacheGet<PaymentsConfig>(CONFIG_CACHE_KEY, 10 * 60 * 1000);
+  if (cached) {
+    configCache = cached;
+    return cached;
+  }
   try {
     const res = await fetch('/api/config');
     configCache = await res.json();
+    cacheSet(CONFIG_CACHE_KEY, configCache!);
   } catch {
     configCache = { stripe: false, paymob: false, cardProvider: null, ipCountry: null, cashPickupAllowed: true, ordersConfigured: false };
   }
