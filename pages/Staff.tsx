@@ -170,6 +170,9 @@ const Staff: React.FC<Props> = ({ t }) => {
                   <Badge tone="info">{fulfilIcon[o.fulfillment]}{t(`fulfil_${o.fulfillment}`) || o.fulfillment}</Badge>
                   <span className="text-xs text-[var(--color-text-secondary)] ms-auto">{formatDate(o.createdAt)}</span>
                 </div>
+                {o.customerNote && (
+                  <p className="text-sm italic text-[var(--color-text-secondary)] mb-3 p-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-2)]">“{o.customerNote}”</p>
+                )}
                 <ul className="flex flex-col gap-2">
                   {o.items.map((it, i) => {
                     const done = o.prepared.includes(i);

@@ -56,18 +56,10 @@ export const AuthModal: React.FC<{ t: any }> = ({ t }) => {
                     setShowAuthModal(false);
                     navigate(LOGIN_PATH);
                   }}
-                  className="w-full py-3 px-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-bold hover:brightness-105 transition-all shadow-[var(--gold-glow)]"
+                  className="w-full py-3 px-6 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-full font-bold hover:brightness-105 transition-all shadow-[var(--gold-glow)] flex items-center justify-center gap-2"
                 >
-                  {t('sign_in') || 'Sign In'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAuthModal(false);
-                    navigate(`${LOGIN_PATH}?signup=true`);
-                  }}
-                  className="w-full py-3 px-6 bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-full font-bold hover:bg-[var(--color-surface)] transition-all"
-                >
-                  {t('create_account') || 'Create Account'}
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-5 h-5" />
+                  {t('login_google') || 'Continue with Google'}
                 </button>
               </div>
             </motion.div>

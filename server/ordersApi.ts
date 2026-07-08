@@ -105,12 +105,12 @@ function trackView(o: any, id: string) {
   };
 }
 
-/** Spec-only view for the workshop: no prices, no customer details. */
+/** Spec-only view for the workshop: no prices, no customer contact — notes OK for production. */
 function workerView(o: any, id: string) {
   return {
     id,
     orderNumber: o.orderNumber, createdAt: o.createdAt, status: o.status,
-    fulfillment: o.fulfillment, prepared: o.prepared || [],
+    fulfillment: o.fulfillment, prepared: o.prepared || [], customerNote: o.customerNote || '',
     items: (o.items || []).map((it: any) => ({
       name: it.name, quantity: it.quantity, color: it.color || '',
       material: it.material || '', customDimensions: it.customDimensions || '', imageUrl: it.imageUrl || '',
@@ -179,15 +179,19 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         return res.status(400).json({ error: 'Address (street, city, country) is required' });
       }
 
-      // ---- payment-method rules ----
+      // ---- payment-method rules (no cash — prepaid / transfer only) ----
       const geo = ipCountry(req);
-      const cashAllowed = geo === 'EG' || (!geo && process.env.NODE_ENV !== 'production');
-      const allowed = fulfillment === 'shipping'
-        ? ['stripe', 'paymob', 'instapay', 'bank_transfer'] // shipping must be prepaid
-        : ['stripe', 'paymob', 'instapay', 'bank_transfer', ...(cashAllowed ? ['cash_on_pickup'] : [])];
+      const allowed = ['stripe', 'paymob', 'instapay', 'bank_transfer'];
       if (!allowed.includes(paymentMethod)) return res.status(400).json({ error: 'Payment method not available for this order' });
       if (paymentMethod === 'stripe' && !process.env.STRIPE_SECRET_KEY) return res.status(400).json({ error: 'Card payments are not configured' });
       if (paymentMethod === 'paymob' && !process.env.PAYMOB_API_KEY) return res.status(400).json({ error: 'Card payments are not configured' });
+      // InstaPay is Egypt-oriented; still allow if customer chose EG destination/pickup.
+      if (paymentMethod === 'instapay') {
+        const destPreview = fulfillment === 'shipping' ? toISO2(contact.country) : STORE_COUNTRY;
+        if (destPreview !== 'EG' && geo && geo !== 'EG') {
+          return res.status(400).json({ error: 'InstaPay is only available for Egypt orders' });
+        }
+      }
 
       // Charge currency is locked to the verified destination, not anything the client says.
       const destination = fulfillment === 'shipping' ? toISO2(contact.country) : STORE_COUNTRY;
@@ -264,7 +268,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
 
       // Direct methods get their confirmation immediately (instapay/bank emails show
       // "awaiting payment"); gateway confirmations go out when payment lands.
-      if (['cash_on_pickup', 'instapay', 'bank_transfer'].includes(paymentMethod)) {
+      if (['instapay', 'bank_transfer'].includes(paymentMethod)) {
         sendOrderConfirmation(order.contact.email, orderToEmail(order)).catch(() => {});
       }
       res.json({ order: { id: ref.id, ...order } });

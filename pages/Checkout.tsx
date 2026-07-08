@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, Store, Truck, CreditCard, Wallet, Landmark, ArrowLeft, Lock, Smartphone } from 'lucide-react';
+import { ShoppingBag, Store, Truck, CreditCard, Landmark, ArrowLeft, Lock, Smartphone } from 'lucide-react';
 import type { TFunction, FulfillmentType, PaymentMethod, OrderItem, OrderContact } from '../types';
 import { useStore } from '../contexts/StoreContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,11 +16,12 @@ import { getPaymentsConfig, type PaymentsConfig } from '../lib/api';
 import { countryOptions } from '../lib/countries';
 import { priceFor } from '../lib/currency';
 import { defaultCheckoutCountry } from '../lib/geo';
-import { PICKUP_LOCATIONS, pickupLabel } from '../lib/pickupLocations';
+import { PICKUP_LOCATIONS, pickupLabel, sortPickupByDistance, resolveEgyptHintCoords } from '../lib/pickupLocations';
 import { addressFieldsForCountry, isAddressComplete, type AddressFieldKey } from '../lib/addressFormats';
 import { loadSavedAddress, saveAddressForUser, persistCheckoutDraft, readCheckoutDraft, clearCheckoutDraft } from '../lib/savedAddress';
 import { useProducts } from '../hooks/useProducts';
 import { LOGIN_PATH } from '../lib/paths';
+import { MapPin, Navigation } from 'lucide-react';
 
 interface Props { t: TFunction; }
 
@@ -58,7 +59,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const [config, setConfig] = useState<PaymentsConfig | null>(null);
   const [fulfillment, setFulfillment] = useState<FulfillmentType>(draft?.fulfillment || 'pickup');
   const [pickupLocationId, setPickupLocationId] = useState(draft?.pickupLocationId || PICKUP_LOCATIONS[0].id);
-  const [payment, setPayment] = useState<PaymentMethod>(draft?.payment || 'cash_on_pickup');
+  const [payment, setPayment] = useState<PaymentMethod>(draft?.payment && draft.payment !== 'cash_on_pickup' ? draft.payment : 'stripe');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     ...emptyForm,
@@ -70,8 +71,48 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const [doneSteps, setDoneSteps] = useState<Set<StepId>>(new Set(draft?.done || []));
   const [savePrompt, setSavePrompt] = useState<'none' | 'signed-in' | 'guest'>('none');
   const [guestDeclinedAccount, setGuestDeclinedAccount] = useState(false);
+  const [nearHint, setNearHint] = useState('');
+  const [sortedPickup, setSortedPickup] = useState(() => PICKUP_LOCATIONS.map((loc) => ({ loc, km: null as number | null })));
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoError, setGeoError] = useState('');
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<any>) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const applyOrigin = (origin: { lat: number; lng: number }) => {
+    const ranked = sortPickupByDistance(origin);
+    setSortedPickup(ranked.map(({ loc, km }) => ({ loc, km })));
+    if (ranked[0]) setPickupLocationId(ranked[0].loc.id);
+  };
+
+  const useMyLocation = () => {
+    setGeoError('');
+    if (!navigator.geolocation) {
+      setGeoError(t('geo_unsupported') || 'Location is not available in this browser.');
+      return;
+    }
+    setGeoBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        applyOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeoBusy(false);
+      },
+      () => {
+        setGeoError(t('geo_denied') || 'Could not read your location. Try a city or postal code instead.');
+        setGeoBusy(false);
+      },
+      { enableHighAccuracy: false, timeout: 10000 },
+    );
+  };
+
+  const applyNearHint = () => {
+    const coords = resolveEgyptHintCoords(nearHint);
+    if (!coords) {
+      setGeoError(t('geo_hint_unknown') || 'Could not match that city or postal code. Try Cairo, Minya, Alexandria, or a 5-digit postal code.');
+      return;
+    }
+    setGeoError('');
+    applyOrigin(coords);
+  };
 
   useEffect(() => {
     getPaymentsConfig().then((cfg) => {
@@ -129,12 +170,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const cardAvailable = !!config?.cardProvider;
   const cardMethod: PaymentMethod = config?.cardProvider === 'paymob' ? 'paymob' : 'stripe';
   const instapayAvailable = config ? (config.ipCountry === 'EG' || !config.ipCountry || form.country === 'EG') : true;
-  const cashAvailable = fulfillment !== 'shipping' && (config ? config.cashPickupAllowed : true);
 
   const paymentOptions: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode; show: boolean }[] = [
     { id: cardMethod, label: t('pay_card') || 'Card / Apple Pay / Google Pay', icon: <CreditCard size={18} />, show: cardAvailable },
     { id: 'instapay', label: t('pay_instapay') || 'InstaPay', desc: t('pay_instapay_desc') || 'Transfer from any Egyptian bank app', icon: <Smartphone size={18} />, show: instapayAvailable },
-    { id: 'cash_on_pickup', label: t('pay_pickup') || 'Cash on pickup', desc: t('pay_pickup_desc') || 'Pay at the showroom (Egypt only)', icon: <Wallet size={18} />, show: cashAvailable },
     { id: 'bank_transfer', label: t('pay_bank') || 'Bank transfer', icon: <Landmark size={18} />, show: true },
   ];
   const visible = paymentOptions.filter((o) => o.show);
@@ -149,9 +188,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const addressValues: Record<AddressFieldKey, string> = {
     line1: form.line1, city: form.city, governorate: form.governorate, postalCode: form.postalCode,
   };
-  const addressValid = fulfillment === 'pickup'
-    ? true
-    : isAddressComplete(form.country, addressValues);
+  const needsBillingAddress = fulfillment === 'shipping' || payment === 'stripe' || payment === 'paymob';
+  const addressValid = needsBillingAddress
+    ? isAddressComplete(form.country, addressValues)
+    : true;
   const allValid = fulfillmentValid && detailsValid && addressValid;
 
   const markDone = (step: StepId) => setDoneSteps((s) => new Set([...s, step]));
@@ -164,9 +204,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
   };
 
   const handleAddressContinue = () => {
-    if (fulfillment === 'shipping' && !addressValid) return;
-    // Pickup: skip address save prompts — showroom address is used server-side.
-    if (fulfillment === 'pickup') {
+    if (needsBillingAddress && !addressValid) return;
+    if (!needsBillingAddress) {
       advanceFrom('address');
       return;
     }
@@ -218,20 +257,21 @@ const Checkout: React.FC<Props> = ({ t }) => {
         ? `Pickup: ${pickupLabel(pickupLoc, lang)}`
         : undefined;
       const pickupLocForOrder = PICKUP_LOCATIONS.find((l) => l.id === pickupLocationId) || PICKUP_LOCATIONS[0];
+      const useCustomerAddress = needsBillingAddress && form.line1.trim() && form.city.trim();
       const { order, redirected, paymentError } = await placeOrder({
         items,
         contact: {
           fullName: form.fullName.trim(), email: form.email.trim(), phone: form.phone.trim(),
-          ...(fulfillment === 'pickup'
+          ...(useCustomerAddress
             ? {
-                line1: pickupLocForOrder.street.en,
-                city: pickupLocForOrder.city,
-                country: 'EG',
-              }
-            : {
                 line1: form.line1.trim(), city: form.city.trim(),
                 governorate: form.governorate.trim() || undefined, country: form.country,
                 postalCode: form.postalCode.trim() || undefined,
+              }
+            : {
+                line1: pickupLocForOrder.street.en,
+                city: pickupLocForOrder.city,
+                country: 'EG',
               }),
         },
         fulfillment,
@@ -299,16 +339,40 @@ const Checkout: React.FC<Props> = ({ t }) => {
               ))}
             </div>
             {fulfillment === 'pickup' && (
-              <div className="space-y-2 pt-2">
+              <div className="space-y-3 pt-2">
                 <p className="text-sm font-semibold">{t('pickup_location') || 'Choose a showroom'}</p>
-                {PICKUP_LOCATIONS.map((loc) => (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button type="button" size="sm" variant="secondary" loading={geoBusy} onClick={useMyLocation} iconLeft={<Navigation size={14} />}>
+                    {t('use_my_location') || 'Use my location'}
+                  </Button>
+                  <div className="flex flex-1 gap-2 items-end">
+                    <input
+                      value={nearHint}
+                      onChange={(e) => setNearHint(e.target.value)}
+                      placeholder={t('near_hint_placeholder') || 'City or postal code (e.g. Cairo, 11771)'}
+                      className="flex-1 min-w-0 bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-[var(--radius-md)] px-3 py-2.5 text-sm outline-none placeholder:text-[var(--color-text-secondary)]"
+                    />
+                    <Button type="button" size="sm" variant="secondary" onClick={applyNearHint} iconLeft={<MapPin size={14} />}>
+                      {t('sort_nearest') || 'Nearest'}
+                    </Button>
+                  </div>
+                </div>
+                {geoError && <p className="text-xs text-[var(--color-danger)]">{geoError}</p>}
+                {sortedPickup.map(({ loc, km }) => (
                   <button
                     type="button"
                     key={loc.id}
                     onClick={() => setPickupLocationId(loc.id)}
                     className={`w-full text-start p-3 rounded-[var(--radius-md)] border transition-colors ${pickupLocationId === loc.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)]'}`}
                   >
-                    <span className="block font-semibold text-sm">{loc.name[lang]}</span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="block font-semibold text-sm">{loc.name[lang]}</span>
+                      {km != null && (
+                        <span className="text-[10px] uppercase tracking-wide text-[var(--color-text-secondary)] shrink-0">
+                          ~{km < 10 ? km.toFixed(1) : Math.round(km)} km
+                        </span>
+                      )}
+                    </span>
                     <span className="block text-xs text-[var(--color-text-secondary)] mt-0.5">{loc.street[lang]}</span>
                   </button>
                 ))}
@@ -335,8 +399,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
 
           <CheckoutStep
             step={3}
-            title={fulfillment === 'shipping' ? (t('delivery_address') || 'Delivery address') : (t('pickup_confirm') || 'Confirm pickup')}
-            summary={fulfillment === 'pickup'
+            title={fulfillment === 'shipping'
+              ? (t('delivery_address') || 'Delivery address')
+              : needsBillingAddress
+                ? (t('billing_address') || 'Billing address')
+                : (t('pickup_confirm') || 'Confirm pickup')}
+            summary={fulfillment === 'pickup' && !needsBillingAddress
               ? pickupLoc.name[lang]
               : (form.line1 ? `${form.city}, ${form.country}` : undefined)}
             open={openStep === 'address'}
@@ -346,16 +414,22 @@ const Checkout: React.FC<Props> = ({ t }) => {
             continueDisabled={!addressValid}
             continueLabel={savePrompt !== 'none' ? undefined : (t('continue') || 'Continue')}
           >
-            {fulfillment === 'pickup' ? (
-              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4">
+            {fulfillment === 'pickup' && (
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 mb-3">
                 <p className="text-sm font-semibold mb-1">{pickupLoc.name[lang]}</p>
                 <p className="text-sm text-[var(--color-text-secondary)]">{pickupLoc.street[lang]}</p>
                 <p className="text-xs text-[var(--color-text-secondary)] mt-2">
-                  {t('pickup_no_address_needed') || 'No delivery address needed — collect from this showroom.'}
+                  {t('pickup_collect_here') || 'You will collect your order from this showroom.'}
                 </p>
               </div>
-            ) : (
+            )}
+            {needsBillingAddress ? (
               <>
+                {fulfillment === 'pickup' && (
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-2">
+                    {t('billing_for_card') || 'Card payments need a billing address (where your card is registered).'}
+                  </p>
+                )}
                 <Select label={t('country') || 'Country'} value={form.country} onChange={set('country')}>
                   {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </Select>
@@ -392,6 +466,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
                   </div>
                 )}
               </>
+            ) : (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {t('pickup_no_address_needed') || 'No delivery address needed for transfer payments — collect from the showroom above.'}
+              </p>
             )}
           </CheckoutStep>
 

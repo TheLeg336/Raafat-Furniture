@@ -68,7 +68,7 @@ const Header = forwardRef<HTMLElement, HeaderProps>(({ language, setLanguage, t,
 
   const navLinks = [
     { key: 'nav_home', href: '/' },
-    { key: 'nav_shop', href: '/#shop' },
+    { key: 'nav_shop', href: '/shop' },
     { key: 'nav_about', href: '/#visit-us' },
     { key: 'faq_short', href: '/faq' },
     { key: 'nav_contact', href: '/contact' },
