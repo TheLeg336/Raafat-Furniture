@@ -1,34 +1,28 @@
 # Obsidian vault — Raafat Furniture
 
-This folder is the **agent-readable knowledge base** for the project.
+This folder is the **portable agent knowledge base** — it lives entirely in the repo and travels with the codebase.
 
 ## Open in Obsidian
 
-**Option A — from repo (recommended for agents + git):**
+**Open folder as vault:**
+
+```
+<repo-root>/docs/obsidian
+```
+
+Example (adjust to your clone path):
+
 ```
 C:\Users\youss\Downloads\Raafat-Furniture-main\docs\obsidian
 ```
 
-**Option B — OneDrive mirror (synced copy):**
-```
-C:\Users\youss\OneDrive\Documents\Obsidian Vault\Raafat-Furniture
-```
+No sync script or external copy needed. Edit notes here; commit to git like any other docs.
 
 ## Start here
 
 Open **[[Home]]** in Obsidian graph view to see connections.
 
 Agents without Obsidian: read `Home.md` then `Agent Quickstart.md` in this folder.
-
-## Sync
-
-Repo is source of truth. After edits in repo, run from project root:
-
-```powershell
-.\scripts\sync-obsidian-vault.ps1
-```
-
-Or copy `docs/obsidian/*.md` to your OneDrive vault manually.
 
 ## Structure
 

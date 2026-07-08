@@ -16,10 +16,8 @@
 2. `docs/obsidian/Money Path Invariants.md`
 3. `CLAUDE.md` (repo root)
 
-## Sync Obsidian (OneDrive)
-```powershell
-.\scripts\sync-obsidian-vault.ps1
-```
+## Obsidian vault
+Portable in repo: `docs/obsidian/` — open that folder directly in Obsidian (no external sync).
 
 ## Graphify
 ```bash
