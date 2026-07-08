@@ -13,7 +13,7 @@ import { PageSpinner } from '../components/ui/Spinner';
 import { useToast } from '../components/ui/Toast';
 import { ModelViewer3D } from '../components/ModelViewer3D';
 import { formatMoney, formatDimensions } from '../lib/format';
-import { trackEvent } from '../lib/analytics';
+import { trackAddToCart, trackViewItem } from '../lib/analytics';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { priceFor } from '../lib/currency';
 import { useSeo } from '../lib/seo';
@@ -52,6 +52,18 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
       if (product.materials?.length && !selectedMaterial) setSelectedMaterial(product.materials[0]);
     }
   }, [product, selectedColor, selectedMaterial]);
+
+  useEffect(() => {
+    if (!product) return;
+    const nameEn = product.name?.en || (product.nameKey ? t(product.nameKey) : String(product.id));
+    trackViewItem({
+      id: String(product.id),
+      name: nameEn,
+      price: priceFor(product, currency) ?? undefined,
+      currency,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, currency]);
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -128,17 +140,24 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
 
   const handleAddToCart = () => {
     setIsAdding(true);
+    const price = priceFor(product, currency);
     addToCart({
       productId: product.id,
       name,
-      price: priceFor(product, currency),
+      price,
       imageUrl: product.imageUrl,
       quantity: 1,
       color: selectedColor || undefined,
       material: selectedMaterial || undefined,
       customDimensions: customDims.trim() || undefined,
     });
-    trackEvent('add_to_cart', { product: name, value: priceFor(product, currency) });
+    trackAddToCart({
+      id: String(product.id),
+      name,
+      price: price ?? undefined,
+      currency,
+      quantity: 1,
+    });
     toast.success(t('added_to_cart') || 'Added to cart');
     setTimeout(() => setIsAdding(false), 800);
   };
@@ -178,6 +197,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
                 productName={name}
                 productPageUrl={`${SITE_URL}/product/${product.id}`}
                 autoAr={searchParams.get('ar') === '1'}
+                preferredColor={selectedColor || undefined}
+                preferredMaterial={selectedMaterial || undefined}
                 t={t}
                 className="h-full"
               />

@@ -29,6 +29,8 @@ const AdminOrders = React.lazy(() => import('./pages/AdminOrders'));
 const Staff = React.lazy(() => import('./pages/Staff'));
 const AdminTeam = React.lazy(() => import('./pages/AdminTeam'));
 const AdminDev = React.lazy(() => import('./pages/AdminDev'));
+const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
+const AdminReviews = React.lazy(() => import('./pages/AdminReviews'));
 const Contact = React.lazy(() => import('./pages/Contact'));
 const FAQ = React.lazy(() => import('./pages/FAQ'));
 const TrackOrder = React.lazy(() => import('./pages/TrackOrder'));
@@ -242,6 +244,8 @@ const AppContent: React.FC = () => {
         <Route element={<AdminLayout t={t} />}>
           <Route path={ADMIN_BASE} element={<Admin t={t} language={language} />} />
           <Route path={`${ADMIN_BASE}/orders`} element={<AdminOrders t={t} />} />
+          <Route path={`${ADMIN_BASE}/analytics`} element={<AdminAnalytics t={t} />} />
+          <Route path={`${ADMIN_BASE}/reviews`} element={<AdminReviews t={t} />} />
           <Route path={`${ADMIN_BASE}/team`} element={<AdminTeam t={t} />} />
           <Route path={`${ADMIN_BASE}/dev`} element={<AdminDev t={t} />} />
         </Route>

@@ -10,6 +10,8 @@ export interface AdminLink {
 export const ADMIN_LINKS: AdminLink[] = [
   { to: adminPath(), label: 'Catalog', exact: true },
   { to: adminPath('orders'), label: 'Orders' },
+  { to: adminPath('analytics'), label: 'Analytics' },
+  { to: adminPath('reviews'), label: 'Reviews' },
 ];
 
 /** Developer-only: team management and launch / dev tools. */

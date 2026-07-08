@@ -31,6 +31,9 @@ export interface OrderEmailData {
   storeName?: string;
   siteUrl?: string;
   orderUrl?: string;
+  /** Shown for InstaPay / bank so the customer knows what to put in the transfer note. */
+  transferNoteHint?: string;
+  instapayAddress?: string;
 }
 
 const NAVY = '#14213d';
@@ -140,6 +143,22 @@ export function buildOrderEmail(d: OrderEmailData): { subject: string; html: str
         </td></tr>
 
         ${
+          d.transferNoteHint
+            ? `<tr><td style="padding:20px 32px 0;">
+                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;border:1px solid ${BORDER};border-radius:12px;">
+                   <tr><td style="padding:16px 20px;font-family:Arial,sans-serif;font-size:14px;color:${INK};">
+                     <strong style="color:${NAVY};">How to pay</strong>
+                     ${d.instapayAddress ? `<br><span style="color:${MUTED};">InstaPay: <strong>${escapeHtml(d.instapayAddress)}</strong></span>` : ''}
+                     <br><span style="color:${MUTED};">In the transfer note / title, write exactly:</span>
+                     <div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed ${GOLD};border-radius:8px;font-family:Consolas,monospace;font-size:15px;font-weight:bold;color:${NAVY};">${escapeHtml(d.transferNoteHint)}</div>
+                     <div style="margin-top:8px;color:${MUTED};font-size:13px;">Amount: <strong>${money(d.total, d.currency)}</strong></div>
+                   </td></tr>
+                 </table>
+               </td></tr>`
+            : ''
+        }
+
+        ${
           d.orderUrl
             ? `<tr><td style="padding:28px 32px 8px;text-align:center;">
                  <a href="${d.orderUrl}" style="display:inline-block;background:${GOLD};color:${NAVY};font-family:Arial,sans-serif;font-weight:bold;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:9999px;">View your order</a>
@@ -190,10 +209,12 @@ function taxLabel(d: OrderEmailData): string {
 }
 
 /** Map a Firestore order document to the email payload. */
-export function orderToEmail(order: any): OrderEmailData {
+export function orderToEmail(order: any, extras?: { instapayAddress?: string }): OrderEmailData {
+  const isTransfer = order.paymentMethod === 'instapay' || order.paymentMethod === 'bank_transfer';
+  const name = order.contact?.fullName || '';
   return {
     orderNumber: order.orderNumber,
-    customerName: order.contact?.fullName || '',
+    customerName: name,
     currency: order.currency || 'USD',
     items: (order.items || []).map((i: any) => ({
       name: typeof i.name === 'string' ? i.name : i.name?.en || 'Item',
@@ -215,7 +236,42 @@ export function orderToEmail(order: any): OrderEmailData {
     storeName: 'Raafat Furniture',
     siteUrl: process.env.SITE_URL || '',
     orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : '',
+    ...(isTransfer
+      ? {
+          transferNoteHint: `${order.orderNumber} ${name}`.trim(),
+          instapayAddress: extras?.instapayAddress || '',
+        }
+      : {}),
   };
+}
+
+/** Admin message to customer — replyable thread email. */
+export function buildOrderMessageEmail(opts: {
+  orderNumber: string;
+  customerName: string;
+  body: string;
+  siteUrl?: string;
+}): { subject: string; html: string; text: string } {
+  const store = 'Raafat Furniture';
+  const subject = `${store} — Message about order ${opts.orderNumber}`;
+  const replyHint = 'Reply to this email to continue the conversation. Your reply will be attached to your order.';
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f6f5f2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;border:1px solid ${BORDER};">
+      <tr><td style="background:${NAVY};padding:22px 32px;border-radius:16px 16px 0 0;">
+        <span style="font-family:Georgia,serif;font-size:20px;color:${GOLD};">${store}</span>
+      </td></tr>
+      <tr><td style="padding:28px 32px;">
+        <p style="font-family:Arial,sans-serif;font-size:15px;color:${INK};margin:0 0 12px;">Hi ${escapeHtml(opts.customerName || 'there')},</p>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:${MUTED};margin:0 0 16px;">Order <strong style="color:${NAVY};">${escapeHtml(opts.orderNumber)}</strong></p>
+        <div style="font-family:Arial,sans-serif;font-size:15px;color:${INK};line-height:1.6;white-space:pre-wrap;padding:16px;background:#faf8f3;border-radius:12px;border:1px solid ${BORDER};">${escapeHtml(opts.body)}</div>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:${MUTED};margin:18px 0 0;">${replyHint}</p>
+        ${opts.siteUrl ? `<p style="font-family:Arial,sans-serif;font-size:13px;margin:12px 0 0;"><a href="${escapeHtml(opts.siteUrl)}/order/confirmation?order=${escapeHtml(opts.orderNumber)}" style="color:${NAVY};">View your order</a></p>` : ''}
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`;
+  const text = `${subject}\n\nHi ${opts.customerName},\nOrder ${opts.orderNumber}\n\n${opts.body}\n\n${replyHint}`;
+  return { subject, html, text };
 }
 
 /** Short status update email: ready for pickup / shipped with tracking. */

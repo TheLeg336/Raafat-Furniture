@@ -14,6 +14,9 @@ interface Props {
   productPageUrl?: string;
   /** When true (e.g. ?ar=1), auto-open AR on capable devices. */
   autoAr?: boolean;
+  /** Product color/material selectors — matched to model variants when possible. */
+  preferredColor?: string;
+  preferredMaterial?: string;
   t?: TFunction;
   className?: string;
 }
@@ -29,13 +32,34 @@ function hexToFactor(hex?: string): [number, number, number, number] | null {
   return [r, g, b, 1];
 }
 
-export const ModelViewer3D: React.FC<Props> = ({ model, productName, productPageUrl, autoAr, t, className = '' }) => {
+function matchVariant(
+  variants: ModelVariant[] | undefined,
+  preferredColor?: string,
+  preferredMaterial?: string,
+): ModelVariant | undefined {
+  if (!variants?.length) return undefined;
+  const norm = (s: string) => s.trim().toLowerCase();
+  const color = preferredColor ? norm(preferredColor) : '';
+  const material = preferredMaterial ? norm(preferredMaterial) : '';
+  if (color || material) {
+    const hit = variants.find((v) => {
+      const label = norm(localized(v.label));
+      return (color && (label.includes(color) || color.includes(label)))
+        || (material && (label.includes(material) || material.includes(label) || (v.materialName && norm(v.materialName).includes(material))));
+    });
+    if (hit) return hit;
+  }
+  return variants[0];
+}
+
+export const ModelViewer3D: React.FC<Props> = ({
+  model, productName, productPageUrl, autoAr, preferredColor, preferredMaterial, t, className = '',
+}) => {
   const ref = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
   const [arQrOpen, setArQrOpen] = useState(false);
-  const [activeVariant, setActiveVariant] = useState<string | null>(
-    model.variants?.[0]?.id ?? null,
-  );
+  const initial = matchVariant(model.variants, preferredColor, preferredMaterial);
+  const [activeVariant, setActiveVariant] = useState<string | null>(initial?.id ?? model.variants?.[0]?.id ?? null);
   const tr = (k: string, fallback: string) => (t ? t(k) : fallback);
   const arUrl = productPageUrl ? `${productPageUrl}${productPageUrl.includes('?') ? '&' : '?'}ar=1` : '';
 
@@ -64,8 +88,12 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, productPage
     if (!mv) return;
     const onLoad = () => {
       setLoaded(true);
-      const first = model.variants?.find((v) => v.id === activeVariant) || model.variants?.[0];
-      if (first) applyVariant(first);
+      const matched = matchVariant(model.variants, preferredColor, preferredMaterial);
+      const first = matched || model.variants?.find((v) => v.id === activeVariant) || model.variants?.[0];
+      if (first) {
+        setActiveVariant(first.id);
+        applyVariant(first);
+      }
       if (autoAr && isArCapableDevice()) {
         window.setTimeout(() => {
           try { mv.activateAR?.(); } catch { /* no-op */ }
@@ -76,6 +104,16 @@ export const ModelViewer3D: React.FC<Props> = ({ model, productName, productPage
     return () => mv.removeEventListener('load', onLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model.url, autoAr]);
+
+  // Keep 3D/AR in sync when the customer picks a product color or material.
+  useEffect(() => {
+    if (!loaded) return;
+    const matched = matchVariant(model.variants, preferredColor, preferredMaterial);
+    if (!matched || matched.id === activeVariant) return;
+    setActiveVariant(matched.id);
+    applyVariant(matched);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferredColor, preferredMaterial, loaded]);
 
   const onPickVariant = (v: ModelVariant) => {
     setActiveVariant(v.id);

@@ -12,6 +12,7 @@ import { CheckoutStep } from '../components/checkout/CheckoutStep';
 import { formatMoney, localized } from '../lib/format';
 import { placeOrder } from '../lib/checkout';
 import { computeTotals } from '../lib/orders';
+import { trackBeginCheckout } from '../lib/analytics';
 import { getPaymentsConfig, type PaymentsConfig } from '../lib/api';
 import { countryOptions } from '../lib/countries';
 import { priceFor } from '../lib/currency';
@@ -182,6 +183,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
     if (!visible.some((o) => o.id === payment) && visible.length > 0) setPayment(visible[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fulfillment, config, form.country]);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    trackBeginCheckout(totals.total, chargeCurrency, items.reduce((n, it) => n + it.quantity, 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fulfillmentValid = fulfillment === 'shipping' || !!pickupLocationId;
   const detailsValid = form.fullName.trim().length > 1 && /\S+@\S+\.\S+/.test(form.email) && form.phone.trim().length >= 6;

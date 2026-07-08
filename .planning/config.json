@@ -1,0 +1,9 @@
+{
+  "graphify": {
+    "enabled": true
+  },
+  "project": {
+    "name": "Raafat Furniture",
+    "siteUrl": "https://raafat-furniture.vercel.app"
+  }
+}

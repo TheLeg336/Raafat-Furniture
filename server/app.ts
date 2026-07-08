@@ -303,5 +303,65 @@ export function createApiApp() {
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+  /**
+   * Resend inbound webhook — customer replies to order emails land here.
+   * Configure Resend inbound for EMAIL_REPLY_TO domain; recipient uses plus-addressing:
+   *   orders+{orderId}@yourdomain.com
+   * Optional: set RESEND_INBOUND_SECRET and send it as ?secret= or x-webhook-secret.
+   */
+  app.post('/api/email/inbound', rateLimit(60), async (req: Request, res: Response) => {
+    const secret = process.env.RESEND_INBOUND_SECRET || '';
+    if (secret) {
+      const got = String(req.query.secret || req.headers['x-webhook-secret'] || '');
+      if (got !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Not configured' });
+
+    const payload = req.body || {};
+    // Resend inbound shapes vary; accept common fields.
+    const toRaw = String(
+      payload.to || payload.recipient || payload.data?.to?.[0] || payload.data?.to || '',
+    );
+    const fromRaw = String(payload.from || payload.sender || payload.data?.from || '');
+    const text = String(
+      payload.text || payload.plain || payload.data?.text || payload.data?.email?.text || '',
+    ).trim();
+    const html = String(payload.html || payload.data?.html || '');
+    const body = (text || html.replace(/<[^>]+>/g, ' ')).trim().slice(0, 4000);
+    if (!body) return res.status(200).json({ ok: true, ignored: 'empty' });
+
+    // Extract orderId from plus-address: local+ORDERID@domain
+    const m = toRaw.match(/\+([A-Za-z0-9_-]+)@/);
+    const orderId = m?.[1];
+    if (!orderId) return res.status(200).json({ ok: true, ignored: 'no-order-id' });
+
+    const ref = db.collection('orders').doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(200).json({ ok: true, ignored: 'unknown-order' });
+    const order = snap.data() as any;
+    const customerEmail = String(order.contact?.email || '').toLowerCase();
+    const fromEmail = fromRaw.match(/[\w.+-]+@[\w.-]+/)?.[0]?.toLowerCase() || '';
+    // Soft check — still accept if From is missing (some relays strip it).
+    if (fromEmail && customerEmail && fromEmail !== customerEmail) {
+      console.warn('[email/inbound] from mismatch', fromEmail, customerEmail);
+    }
+
+    const now = new Date().toISOString();
+    const msg = {
+      id: `m_${Date.now().toString(36)}`,
+      from: 'customer' as const,
+      body,
+      at: now,
+      by: fromEmail || customerEmail,
+    };
+    await ref.update({
+      messages: [...(order.messages || []), msg],
+      unreadCustomerReplies: Number(order.unreadCustomerReplies || 0) + 1,
+      updatedAt: now,
+    });
+    res.json({ ok: true });
+  });
+
   return app;
 }

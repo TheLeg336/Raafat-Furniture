@@ -13,7 +13,7 @@
 import { Router, type Request, type Response } from 'express';
 import { getDb, verifyIdToken } from './firebaseAdmin';
 import { isBootstrapDeveloperEmail, normalizeStaffRole, type StaffRole } from '../lib/staff';
-import { sendOrderConfirmation, sendOrderStatus } from './email';
+import { sendOrderConfirmation, sendOrderStatus, sendOrderMessage } from './email';
 import { orderToEmail } from './orderEmail';
 
 const STORE_COUNTRY = 'EG';
@@ -259,6 +259,8 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         ...(fulfillment === 'pickup' && pickupLocationId ? { pickupLocationId: String(pickupLocationId).slice(0, 40) } : {}),
         adminNotes: '',
         prepared: [],
+        messages: [],
+        unreadCustomerReplies: 0,
         createdAt: now, updatedAt: now,
         ipCountry: geo || '',
       };
@@ -269,9 +271,14 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       // Direct methods get their confirmation immediately (instapay/bank emails show
       // "awaiting payment"); gateway confirmations go out when payment lands.
       if (['instapay', 'bank_transfer'].includes(paymentMethod)) {
-        sendOrderConfirmation(order.contact.email, orderToEmail(order)).catch(() => {});
+        let instapayAddress = '';
+        try {
+          const paySnap = await db.collection('settings').doc('payments').get();
+          if (paySnap.exists) instapayAddress = String(paySnap.data()?.instapayAddress || '');
+        } catch { /* optional */ }
+        sendOrderConfirmation(order.contact.email, orderToEmail(order, { instapayAddress })).catch(() => {});
       }
-      res.json({ order: { id: ref.id, ...order } });
+      res.json({ order: { id: ref.id, ...order, messages: [], unreadCustomerReplies: 0 } });
     } catch (e: any) {
       console.error('[orders/create]', e.message);
       res.status(500).json({ error: 'Could not place the order. Please try again.' });
@@ -324,6 +331,54 @@ export function ordersRouter(rateLimit: (n: number) => any) {
     } else {
       return res.status(400).json({ error: 'type must be ready or shipped' });
     }
+    res.json({ ok: true });
+  });
+
+  /** Admin: email the customer and store the message on the order thread. */
+  r.post('/api/admin/orders/:id/message', rateLimit(30), async (req: Request, res: Response) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: 'Unauthorized' });
+    const body = String(req.body?.body || '').trim().slice(0, 4000);
+    if (!body) return res.status(400).json({ error: 'Message body is required' });
+    const db = (await getDb())!;
+    const ref = db.collection('orders').doc(String(req.params.id));
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: 'Order not found' });
+    const order = snap.data() as any;
+    const email = order.contact?.email;
+    if (!email) return res.status(400).json({ error: 'Order has no customer email' });
+    const now = new Date().toISOString();
+    const msg = {
+      id: `m_${Date.now().toString(36)}`,
+      from: 'admin' as const,
+      body,
+      at: now,
+      by: staff.email,
+      emailSent: false,
+    };
+    const sent = await sendOrderMessage(email, {
+      orderNumber: order.orderNumber,
+      customerName: order.contact?.fullName || '',
+      body,
+      orderId: snap.id,
+    });
+    msg.emailSent = sent;
+    await ref.update({
+      messages: [...(order.messages || []), msg],
+      updatedAt: now,
+    });
+    res.json({ ok: true, message: msg, emailed: sent });
+  });
+
+  /** Admin: clear unread customer-reply badge after opening the thread. */
+  r.post('/api/admin/orders/:id/messages/read', rateLimit(60), async (req: Request, res: Response) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: 'Unauthorized' });
+    const db = (await getDb())!;
+    await db.collection('orders').doc(String(req.params.id)).update({
+      unreadCustomerReplies: 0,
+      updatedAt: new Date().toISOString(),
+    });
     res.json({ ok: true });
   });
 

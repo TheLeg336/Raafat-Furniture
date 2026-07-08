@@ -179,6 +179,16 @@ export interface OrderStatusEvent {
   note?: string;
 }
 
+/** Admin ↔ customer thread stored on the order (emails + in-app). */
+export interface OrderMessage {
+  id: string;
+  from: 'admin' | 'customer';
+  body: string;
+  at: string;
+  by?: string;            // admin email when from admin
+  emailSent?: boolean;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;    // e.g. EG482913KY — country + 6 digits + random letter + name initial
@@ -207,6 +217,10 @@ export interface Order {
   payment?: { reference?: string };            // Instapay / bank transfer reference
   tracking?: { number: string; carrier?: string };
   stripe?: { sessionId?: string; paymentIntentId?: string };
+  /** Thread with the customer (admin-initiated + inbound replies). */
+  messages?: OrderMessage[];
+  /** Unread customer replies — drives the Orders list notification badge. */
+  unreadCustomerReplies?: number;
   createdAt: string;
   updatedAt: string;
 }

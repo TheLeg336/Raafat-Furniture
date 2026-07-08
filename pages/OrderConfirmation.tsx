@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import type { Order, TFunction } from '../types';
 import { trackOrder, submitPaymentReference } from '../lib/orders';
 import { recallOrderEmail, rememberOrderEmail, syncStripePayment } from '../lib/checkout';
+import { trackPurchase } from '../lib/analytics';
 import { db } from '../lib/firebase';
 import { useStore } from '../contexts/StoreContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,6 +37,7 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
   const [needEmail, setNeedEmail] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const handled = useRef(false);
+  const purchaseTracked = useRef(false);
 
   const load = async (email: string) => {
     if (paid && !handled.current) {
@@ -45,7 +47,14 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
       await syncStripePayment(orderNumber, email);
     }
     const o = await trackOrder(orderNumber, email);
-    if (o) { setOrder(o); setNeedEmail(false); }
+    if (o) {
+      setOrder(o);
+      setNeedEmail(false);
+      if (!purchaseTracked.current) {
+        purchaseTracked.current = true;
+        trackPurchase({ orderNumber: o.orderNumber, value: o.total, currency: o.currency || 'USD' });
+      }
+    }
     return o;
   };
 
@@ -261,6 +270,22 @@ const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => v
               {((isInstapay && !instapayAddress) || (!isInstapay && !bankDetails)) && (
                 <span className="block mt-1 italic">{t('transfer_details_soon') || 'Our team will send you the transfer details by email shortly.'}</span>
               )}
+            </li>
+            <li>
+              <span className="font-medium text-[var(--color-text-primary)]">
+                {t('instapay_note_label') || 'In the transfer note / title, write exactly:'}
+              </span>
+              <button
+                type="button"
+                onClick={() => copy(`${order.orderNumber} ${order.contact.fullName}`)}
+                className="mt-1.5 w-full text-start rounded-[var(--radius-md)] border border-[var(--color-primary)]/40 bg-[hsla(var(--color-primary-hsl-values),0.08)] px-3 py-2 font-mono text-sm font-semibold text-[var(--color-text-primary)] inline-flex items-center justify-between gap-2"
+              >
+                <span>{order.orderNumber} {order.contact.fullName}</span>
+                <Copy size={14} className="text-[var(--color-primary)] shrink-0" />
+              </button>
+              <span className="block text-xs mt-1">
+                {t('instapay_note_hint') || 'Order number + your name. This is how we match your payment.'}
+              </span>
             </li>
             <li>{t('transfer_step2') || 'Copy the transaction reference number from your app.'}</li>
             <li>{t('transfer_step3') || 'Paste it below so we can verify your payment.'}</li>

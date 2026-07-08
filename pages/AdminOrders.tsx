@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search, Download, DollarSign, Clock, CheckCircle2, Phone, Mail, MapPin, StickyNote,
-  History, Inbox, BellRing, Truck, BadgeCheck,
+  History, Inbox, BellRing, Truck, BadgeCheck, MessageSquare, Send,
 } from 'lucide-react';
 import type { Order, OrderStatus, TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
   subscribeAllOrders, updateOrderStatus, setAdminNotes, setPrepared, notifyOrder, ordersToCSV,
-  ORDER_STATUSES, ORDER_FLOW, OPEN_STATUSES,
+  ORDER_STATUSES, ORDER_FLOW, OPEN_STATUSES, sendOrderCustomerMessage, markOrderMessagesRead,
 } from '../lib/orders';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
@@ -60,11 +60,14 @@ const AdminOrders: React.FC<Props> = () => {
   }, [orders]);
 
   const stats = useMemo(() => {
-    const revenue = orders.filter((o) => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0);
+    const paidOrders = orders.filter((o) => o.paymentStatus === 'paid');
+    const revenue = paidOrders.reduce((s, o) => s + o.total, 0);
+    const itemsSold = paidOrders.reduce((s, o) => s + o.items.reduce((n, it) => n + it.quantity, 0), 0);
     const pending = orders.filter((o) => OPEN_STATUSES.includes(o.status)).length;
     const approval = orders.filter((o) => o.status === 'awaiting_approval').length;
     const completed = orders.filter((o) => o.status === 'completed').length;
-    return { revenue, pending, approval, completed, currency: orders[0]?.currency };
+    const unread = orders.reduce((s, o) => s + (o.unreadCustomerReplies || 0), 0);
+    return { revenue, itemsSold, pending, approval, completed, unread, currency: orders[0]?.currency };
   }, [orders]);
 
   const filtered = useMemo(() => {
@@ -109,11 +112,12 @@ const AdminOrders: React.FC<Props> = () => {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Stat icon={<Clock size={18} />} label="Open orders" value={String(stats.pending)} />
         <Stat icon={<BadgeCheck size={18} />} label="Awaiting approval" value={String(stats.approval)} />
         <Stat icon={<DollarSign size={18} />} label="Revenue (paid)" value={formatMoney(stats.revenue, { currency: stats.currency, compact: true })} />
-        <Stat icon={<CheckCircle2 size={18} />} label="Completed" value={String(stats.completed)} />
+        <Stat icon={<CheckCircle2 size={18} />} label="Items sold" value={String(stats.itemsSold)} />
+        <Stat icon={<MessageSquare size={18} />} label="Unread replies" value={String(stats.unread)} />
       </div>
 
       {/* Filters */}
@@ -169,6 +173,11 @@ const AdminOrders: React.FC<Props> = () => {
                     <span className="font-heading font-bold tracking-wider text-[var(--color-text-secondary)]">{o.orderNumber}</span>
                     <Badge tone={statusTone[o.status]}>{label(o.status)}</Badge>
                     {o.paymentStatus !== 'paid' && <Badge tone="gold">{label(o.paymentStatus)}</Badge>}
+                    {(o.unreadCustomerReplies || 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] text-[10px] font-bold">
+                        <MessageSquare size={10} /> {o.unreadCustomerReplies}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-[var(--color-text-secondary)] mt-0.5 truncate">
                     {formatDate(o.createdAt)} · {o.items.reduce((n, it) => n + it.quantity, 0)} items
@@ -201,9 +210,20 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
   const [trackingNumber, setTrackingNumber] = useState('');
   const [carrier, setCarrier] = useState('');
   const [busy, setBusy] = useState(false);
+  const [msgBody, setMsgBody] = useState('');
 
   useEffect(() => {
-    if (order) { setNotes(order.adminNotes || ''); setNewStatus(''); setNote(''); setTrackingNumber(order.tracking?.number || ''); setCarrier(order.tracking?.carrier || ''); }
+    if (order) {
+      setNotes(order.adminNotes || '');
+      setNewStatus('');
+      setNote('');
+      setTrackingNumber(order.tracking?.number || '');
+      setCarrier(order.tracking?.carrier || '');
+      setMsgBody('');
+      if ((order.unreadCustomerReplies || 0) > 0) {
+        markOrderMessagesRead(order.id).catch(() => {});
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id]);
 
@@ -213,11 +233,25 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
   const allPrepared = order.items.length > 0 && order.items.every((_, i) => prepared.includes(i));
   const inPreparation = ['paid', 'confirmed', 'in_production'].includes(order.status);
   const needsPaymentCheck = order.paymentStatus !== 'paid' && ['instapay', 'bank_transfer'].includes(order.paymentMethod);
+  const messages = order.messages || [];
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
     try { await fn(); toast.success(ok); }
     catch (e: any) { toast.error(e?.message || 'Action failed'); }
+    setBusy(false);
+  };
+
+  const sendMessage = async () => {
+    if (!msgBody.trim()) return;
+    setBusy(true);
+    try {
+      const res = await sendOrderCustomerMessage(order.id, msgBody.trim());
+      setMsgBody('');
+      toast.success(res.emailed ? 'Message emailed to customer' : 'Message saved (email not configured — set RESEND_API_KEY)');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not send message');
+    }
     setBusy(false);
   };
 
@@ -367,6 +401,50 @@ const OrderDetail: React.FC<{ order: Order | null; onClose: () => void; adminEma
             onClick={() => run(async () => { await updateOrderStatus(order.id, newStatus as OrderStatus, adminEmail, note.trim() || undefined, order); setNote(''); }, `Status → ${label(newStatus)}`)}>
             Apply status
           </Button>
+        </section>
+
+        {/* Customer messaging thread */}
+        <section className="flex flex-col gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)]">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <MessageSquare size={15} /> Messages with customer
+          </div>
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            Emails the customer. When they reply, it appears here and shows a notification on the order list.
+            Requires RESEND_API_KEY + EMAIL_REPLY_TO + Resend inbound webhook.
+          </p>
+          <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
+            {messages.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-secondary)] italic">No messages yet.</p>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`text-sm p-3 rounded-[var(--radius-sm)] ${
+                    m.from === 'admin'
+                      ? 'bg-[hsla(var(--color-primary-hsl-values),0.1)] ms-4'
+                      : 'bg-[var(--color-surface-2)] me-4'
+                  }`}
+                >
+                  <div className="flex justify-between gap-2 text-[10px] uppercase tracking-wide text-[var(--color-text-secondary)] mb-1">
+                    <span>{m.from === 'admin' ? `Admin${m.by ? ` · ${m.by}` : ''}` : 'Customer'}</span>
+                    <span>{formatDate(m.at, true)}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap">{m.body}</p>
+                </div>
+              ))
+            )}
+          </div>
+          <Textarea
+            value={msgBody}
+            onChange={(e) => setMsgBody(e.target.value)}
+            rows={3}
+            placeholder="Write a message to the customer…"
+          />
+          <div className="flex justify-end">
+            <Button size="sm" loading={busy} disabled={!msgBody.trim()} iconLeft={<Send size={14} />} onClick={sendMessage}>
+              Send email
+            </Button>
+          </div>
         </section>
 
         {/* Admin notes */}

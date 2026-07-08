@@ -77,3 +77,36 @@ export function trackEvent(name: string, params: Record<string, any> = {}) {
   if (!GA_ID || !window.gtag || !getConsent().analytics) return;
   window.gtag('event', name, params);
 }
+
+/** Ecommerce helpers — fire only after analytics consent. */
+export function trackViewItem(item: { id: string; name: string; price?: number; currency?: string }) {
+  trackEvent('view_item', {
+    currency: item.currency || 'USD',
+    value: item.price || 0,
+    items: [{ item_id: item.id, item_name: item.name, price: item.price || 0, quantity: 1 }],
+  });
+}
+
+export function trackAddToCart(item: { id: string; name: string; price?: number; currency?: string; quantity?: number }) {
+  trackEvent('add_to_cart', {
+    currency: item.currency || 'USD',
+    value: (item.price || 0) * (item.quantity || 1),
+    items: [{ item_id: item.id, item_name: item.name, price: item.price || 0, quantity: item.quantity || 1 }],
+  });
+}
+
+export function trackBeginCheckout(value: number, currency: string, itemCount: number) {
+  trackEvent('begin_checkout', { currency, value, items: [{ item_id: 'cart', item_name: 'Cart', quantity: itemCount }] });
+}
+
+export function trackPurchase(opts: { orderNumber: string; value: number; currency: string }) {
+  trackEvent('purchase', {
+    transaction_id: opts.orderNumber,
+    currency: opts.currency,
+    value: opts.value,
+  });
+}
+
+export function gaMeasurementId(): string {
+  return GA_ID;
+}

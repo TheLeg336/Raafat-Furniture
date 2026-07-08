@@ -176,6 +176,16 @@ export async function updateOrderStatus(
   await updateDoc(doc(db, 'orders', id), patch);
 }
 
+/** Admin: email the customer and store the message on the order thread. */
+export async function sendOrderCustomerMessage(orderId: string, body: string): Promise<{ emailed: boolean }> {
+  return apiFetch(`/api/admin/orders/${orderId}/message`, { body });
+}
+
+/** Admin: clear unread customer-reply badge. */
+export async function markOrderMessagesRead(orderId: string): Promise<void> {
+  await apiFetch(`/api/admin/orders/${orderId}/messages/read`, {});
+}
+
 export async function setAdminNotes(id: string, adminNotes: string) {
   if (!db) throw new Error('Database not configured');
   await updateDoc(doc(db, 'orders', id), { adminNotes, updatedAt: new Date().toISOString() });
