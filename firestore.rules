@@ -4,15 +4,20 @@ service cloud.firestore {
 
     // ===============================================================
     // Raafat Furniture — Firestore Security Rules
-    // Deploy: firebase deploy --only firestore:rules
+    // Paste into Firebase Console → Firestore → Rules → Publish
+    // (or: firebase deploy --only firestore:rules)
+    //
+    // Files (images, GLB, scan frames) use Cloudinary — NOT Firebase Storage.
+    // This file only governs Firestore documents / metadata.
     //
     // Money-path invariant: orders are created ONLY by the server
     // (Firebase Admin SDK bypasses these rules). Clients must never
     // create orders or reserve order numbers.
     //
     // Roles (collection admins/{email lowercase}):
-    //   developer — team management + admin_logs read + scan delete
-    //   admin     — catalog, orders, settings, reviews moderation
+    //   developer — everything admin can do + team + admin_logs + scan delete
+    //               + client_errors inbox
+    //   admin     — catalog, orders, settings, reviews moderation, scans
     //   worker    — NO Firestore admin access; uses /api/worker/* only
     //
     // Collections used by this app:
@@ -26,9 +31,11 @@ service cloud.firestore {
     //   orders/{id}                    — server-created orders
     //   orderNumbers/{num}             — server-only uniqueness locks
     //   admin_logs/{id}                — immutable audit trail
-    //   settings/{id}                  — general, payments, etc.
+    //   settings/{id}                  — general, payments, launch, etc.
     //   content/live                   — CMS strings (i18n overrides)
-    //   scans/{id}                     — 3D photogrammetry jobs (admin)
+    //   scans/{id}                     — 3D photogrammetry job metadata
+    //   client_errors/{id}             — silent reliability reports (Dev inbox)
+    //   launch_waitlist/{email}        — server-only waitlist
     // ===============================================================
 
     // ---------------------------------------------------------------
@@ -71,18 +78,25 @@ service cloud.firestore {
     }
 
     // Admins & developers — NOT workers (workers use server API only).
+    // Developers have full admin document access (same isAdmin() gate) plus
+    // developer-only collections (team writes, admin_logs read, client_errors).
     // Fail closed: only exact 'admin' / 'developer' (unknown / whitespace typos = no access).
+    // 'dev' is accepted as an alias for developer.
     function isAdmin() {
       return isAuthenticated() && (
         isBootstrapDeveloper() ||
-        (hasAdminDoc() && (adminRoleNorm() == 'admin' || adminRoleNorm() == 'developer'))
+        (hasAdminDoc() && (
+          adminRoleNorm() == 'admin' ||
+          adminRoleNorm() == 'developer' ||
+          adminRoleNorm() == 'dev'
+        ))
       );
     }
 
     function isDeveloper() {
       return isAuthenticated() && (
         isBootstrapDeveloper() ||
-        (hasAdminDoc() && adminRoleNorm() == 'developer')
+        (hasAdminDoc() && (adminRoleNorm() == 'developer' || adminRoleNorm() == 'dev'))
       );
     }
 

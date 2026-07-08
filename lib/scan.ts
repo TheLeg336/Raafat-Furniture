@@ -7,8 +7,8 @@ import {
   query,
   updateDoc,
 } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
+import { uploadCloudinaryImage } from './cloudinaryUpload';
 import type { ScanJob, ScanStatus } from '../types';
 
 /**
@@ -38,13 +38,13 @@ export async function createScanJob(createdBy: string): Promise<string> {
   return r.id;
 }
 
-/** Upload one captured frame to Storage; returns its download URL. */
+/** Upload one captured frame to Cloudinary; returns its HTTPS URL. */
 export async function uploadFrame(scanId: string, index: number, blob: Blob): Promise<string> {
-  if (!storage) throw new Error('Storage not configured');
-  const path = `scans/${scanId}/frame-${String(index).padStart(3, '0')}.jpg`;
-  const r = storageRef(storage, path);
-  await uploadBytes(r, blob, { contentType: 'image/jpeg' });
-  return getDownloadURL(r);
+  const fileName = `frame-${String(index).padStart(3, '0')}.jpg`;
+  return uploadCloudinaryImage(blob, {
+    folder: `scans/${scanId}`,
+    fileName,
+  });
 }
 
 export async function patchScan(scanId: string, patch: Partial<ScanJob>) {

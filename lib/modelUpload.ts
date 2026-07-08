@@ -1,8 +1,7 @@
 /**
- * GLB upload with light mesh optimization before Firebase Storage.
+ * GLB upload with light mesh optimization → Cloudinary (not Firebase Storage).
  */
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
+import { uploadCloudinaryRaw, cloudinaryConfigured } from './cloudinaryUpload';
 
 const MAX_INPUT_BYTES = 50 * 1024 * 1024;
 
@@ -35,27 +34,29 @@ export async function optimizeGlb(file: File): Promise<Blob> {
 export async function uploadModel(file: File): Promise<string> {
   const problem = validateModelFile(file);
   if (problem) throw new Error(problem);
-  if (!storage) throw new Error('Storage not configured');
+  if (!cloudinaryConfigured()) {
+    throw new Error(
+      'Cloudinary is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET (same as product images).',
+    );
+  }
 
   const optimized = await optimizeGlb(file);
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '') || 'model';
-  const r = storageRef(storage, `models/${Date.now()}-${safe}.glb`);
-  // Always set an explicit contentType — Windows often leaves File.type empty for .glb,
-  // and Storage rules reject empty types when they only allow model/*.
+  const fileName = `${Date.now()}-${safe}.glb`;
+  const blob =
+    optimized instanceof File
+      ? optimized
+      : new File([optimized], fileName, { type: 'model/gltf-binary' });
+
   try {
-    await uploadBytes(r, optimized, {
-      contentType: 'model/gltf-binary',
-      customMetadata: { originalName: file.name.slice(0, 120) },
-    });
+    return await uploadCloudinaryRaw(blob, { folder: 'models', fileName });
   } catch (err: any) {
-    const code = err?.code || '';
     const msg = String(err?.message || '');
-    if (code === 'storage/unauthorized' || /insufficient permissions|permission/i.test(msg)) {
+    if (/unsigned|preset|not allowed|Unauthorized/i.test(msg)) {
       throw new Error(
-        'Missing or insufficient permissions to upload 3D models. Sign in as admin or developer, and deploy the latest storage.rules (firebase deploy --only storage).',
+        'Cloudinary rejected the GLB upload. In Cloudinary → Settings → Upload → your unsigned preset, allow “Raw” (or “Auto”) resource types and formats including glb.',
       );
     }
     throw err;
   }
-  return getDownloadURL(r);
 }

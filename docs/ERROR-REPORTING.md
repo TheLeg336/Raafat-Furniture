@@ -25,8 +25,6 @@ Documented in `lib/legalContent.ts` (Privacy + Cookie policies):
 - Treated as **strictly necessary reliability diagnostics**, not consent-gated analytics advertising
 
 ## Deploy
-```bash
-firebase deploy --only firestore:rules,storage
-```
+Paste the contents of `firestore.rules` into Firebase Console → Firestore Database → Rules → Publish.
 
 Create rules allow anonymous creates with a tight schema; only developers can read/update/delete.

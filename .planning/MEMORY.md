@@ -18,11 +18,14 @@
 - Silent error inbox: `client_errors` + Dev → Errors panel
 - Home scroll "clip to section": removed ProductSection sticky snap; hero slightly under full viewport; overflow-anchor off
 
+## Files vs database
+- **Cloudinary** — product images, GLB models, scan frames (unsigned preset; allow Raw for GLB)
+- **Firestore** — all app data / metadata only. Paste `firestore.rules` in Firebase Console.
+- **Do not use Firebase Storage** for this project.
+
 ## Deploy reminders
-```bash
-firebase deploy --only firestore:rules,storage
-```
-Vercel env still needed: GA, Resend, FIREBASE_SERVICE_ACCOUNT, Stripe/Paymob
+Paste `firestore.rules` into Firebase Console → Firestore → Rules → Publish.
+Vercel env still needed: GA, Resend, FIREBASE_SERVICE_ACCOUNT, Stripe/Paymob, Cloudinary
 
 ## Graphify / MemPalace / Obsidian
 - `.planning/config.json`: graphify.enabled + mempalace.enabled (wing: raafat-furniture)
