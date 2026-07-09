@@ -40,23 +40,27 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   hint?: string;
   error?: string;
+  /** Applied to the outer Field shell (use for grid col-span). */
+  wrapperClassName?: string;
 };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, id, required, className = '', ...props }, ref) => {
+  ({ label, hint, error, id, required, className = '', wrapperClassName = '', ...props }, ref) => {
     const fieldId = id || props.name || React.useId();
     return (
-      <Field label={label} hint={hint} error={error} required={required} id={fieldId}>
-        <input
-          ref={ref}
-          id={fieldId}
-          required={required}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-          className={`${fieldBase} ${className}`}
-          {...props}
-        />
-      </Field>
+      <div className={`min-w-0 ${wrapperClassName}`}>
+        <Field label={label} hint={hint} error={error} required={required} id={fieldId}>
+          <input
+            ref={ref}
+            id={fieldId}
+            required={required}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+            className={`${fieldBase} max-w-full ${className}`}
+            {...props}
+          />
+        </Field>
+      </div>
     );
   },
 );
@@ -93,24 +97,27 @@ type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   label?: string;
   hint?: string;
   error?: string;
+  wrapperClassName?: string;
 };
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, hint, error, id, required, className = '', children, ...props }, ref) => {
+  ({ label, hint, error, id, required, className = '', wrapperClassName = '', children, ...props }, ref) => {
     const fieldId = id || props.name || React.useId();
     return (
-      <Field label={label} hint={hint} error={error} required={required} id={fieldId}>
-        <select
-          ref={ref}
-          id={fieldId}
-          required={required}
-          aria-invalid={!!error}
-          className={`${fieldBase} appearance-none cursor-pointer ${className}`}
-          {...props}
-        >
-          {children}
-        </select>
-      </Field>
+      <div className={`min-w-0 w-full ${wrapperClassName}`}>
+        <Field label={label} hint={hint} error={error} required={required} id={fieldId}>
+          <select
+            ref={ref}
+            id={fieldId}
+            required={required}
+            aria-invalid={!!error}
+            className={`${fieldBase} appearance-none cursor-pointer max-w-full ${className}`}
+            {...props}
+          >
+            {children}
+          </select>
+        </Field>
+      </div>
     );
   },
 );

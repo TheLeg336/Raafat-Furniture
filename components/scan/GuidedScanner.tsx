@@ -210,17 +210,16 @@ export const GuidedScanner: React.FC<Props> = ({
         const url = await uploadFrame(scanId, i, framesRef.current[i]);
         frameUrls.push(url);
       }
-      const realDimensions = {
-        width: dims.width ? Number(dims.width) : undefined,
-        height: dims.height ? Number(dims.height) : undefined,
-        depth: dims.depth ? Number(dims.depth) : undefined,
-        unit: dims.unit,
-      };
+      const realDimensions: ScanJob['realDimensions'] = { unit: dims.unit };
+      if (dims.width) realDimensions.width = Number(dims.width);
+      if (dims.height) realDimensions.height = Number(dims.height);
+      if (dims.depth) realDimensions.depth = Number(dims.depth);
+      const hasAnyDim = realDimensions.width != null || realDimensions.height != null || realDimensions.depth != null;
       await patchScan(scanId, {
         status: 'uploading',
         frameCount: frameUrls.length,
         frameUrls,
-        realDimensions,
+        ...(hasAnyDim ? { realDimensions } : {}),
       });
       const job: ScanJob = {
         id: scanId,
@@ -228,7 +227,7 @@ export const GuidedScanner: React.FC<Props> = ({
         status: 'uploading',
         frameCount: frameUrls.length,
         frameUrls,
-        realDimensions,
+        ...(hasAnyDim ? { realDimensions } : {}),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

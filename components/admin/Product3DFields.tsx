@@ -77,13 +77,14 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       onChange(null);
       return;
     }
-    onChange({
+    const next: Model3D = {
       url: url.trim(),
-      iosUrl: ios.trim() || undefined,
       variants: vars.filter((v) => localized(v.label).trim()).map((v) => ({ ...v, swatch: v.swatch || v.colorHex })),
       createdVia: value?.createdVia || 'upload',
-      scanId: handoffScanId || value?.scanId,
-    });
+    };
+    if (ios.trim()) next.iosUrl = ios.trim();
+    if (handoffScanId || value?.scanId) next.scanId = handoffScanId || value?.scanId;
+    onChange(next);
   };
 
   const startScan = async () => {

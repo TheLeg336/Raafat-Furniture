@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { uploadCloudinaryImage } from './cloudinaryUpload';
+import { stripUndefined } from './firestoreSanitize';
 import type { ScanJob, ScanStatus } from '../types';
 
 /**
@@ -49,7 +50,10 @@ export async function uploadFrame(scanId: string, index: number, blob: Blob): Pr
 
 export async function patchScan(scanId: string, patch: Partial<ScanJob>) {
   if (!db) throw new Error('Database not configured');
-  await updateDoc(doc(db, 'scans', scanId), { ...patch, updatedAt: new Date().toISOString() });
+  await updateDoc(
+    doc(db, 'scans', scanId),
+    stripUndefined({ ...patch, updatedAt: new Date().toISOString() }),
+  );
 }
 
 export async function setScanStatus(scanId: string, status: ScanStatus, error?: string) {

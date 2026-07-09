@@ -29,11 +29,11 @@ export const CheckoutStep: React.FC<CheckoutStepProps> = ({
   continueDisabled,
   children,
 }) => (
-  <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-[var(--shadow-sm)]">
+  <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-[var(--shadow-sm)] min-w-0 w-full">
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-3 px-4 py-4 text-start transition-colors hover:bg-[var(--color-surface-2)]/50"
+      className="w-full flex items-center gap-3 px-4 py-4 text-start transition-colors hover:bg-[var(--color-surface-2)]/50 min-w-0"
       aria-expanded={open}
     >
       <span
@@ -43,8 +43,8 @@ export const CheckoutStep: React.FC<CheckoutStepProps> = ({
       >
         {done ? <Check size={16} strokeWidth={2.5} /> : step}
       </span>
-      <span className="flex-1 min-w-0">
-        <span className="block font-heading font-bold text-[var(--color-text-primary)]">{title}</span>
+      <span className="flex-1 min-w-0 overflow-hidden">
+        <span className="block font-heading font-bold text-[var(--color-text-primary)] truncate">{title}</span>
         {!open && summary && (
           <span className="block text-xs text-[var(--color-text-secondary)] truncate mt-0.5">{summary}</span>
         )}
@@ -60,10 +60,10 @@ export const CheckoutStep: React.FC<CheckoutStepProps> = ({
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-          className="overflow-hidden"
+          className="overflow-hidden min-w-0"
         >
-          <div className="px-4 pb-4 pt-0 border-t border-[var(--color-border)]/60">
-            <div className="pt-4 space-y-4">{children}</div>
+          <div className="px-4 pb-4 pt-0 border-t border-[var(--color-border)]/60 min-w-0">
+            <div className="pt-4 space-y-4 min-w-0 w-full max-w-full">{children}</div>
             {onContinue && (
               <Button
                 type="button"

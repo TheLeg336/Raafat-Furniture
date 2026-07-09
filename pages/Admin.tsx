@@ -13,6 +13,7 @@ import { compressImage as compressImageFile, validateImageFile } from '../lib/im
 import { translateProductFields } from '../lib/translate';
 import { apiFetch } from '../lib/api';
 import { dimensionsToInputValue } from '../lib/format';
+import { stripUndefined } from '../lib/firestoreSanitize';
 import { Edit, PlusCircle } from 'lucide-react';
 import { CatalogSubNav } from '../components/admin/CatalogSubNav';
 import { Product3DFields } from '../components/admin/Product3DFields';
@@ -401,9 +402,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       const parsedEgp = priceEgp ? parseFloat(priceEgp) : null;
       const parsedUsd = priceUsd ? parseFloat(priceUsd) : null;
       const priceFields = {
-        priceEGP: parsedEgp,
-        priceUSD: parsedUsd,
-        price: parsedEgp ?? parsedUsd, // legacy base used for price sorting/fallback
+        priceEGP: Number.isFinite(parsedEgp as number) ? parsedEgp : null,
+        priceUSD: Number.isFinite(parsedUsd as number) ? parsedUsd : null,
+        price: Number.isFinite(parsedEgp as number)
+          ? parsedEgp
+          : (Number.isFinite(parsedUsd as number) ? parsedUsd : null),
       };
       const variantFields = {
         materials: splitList(materialsStr),
@@ -412,11 +415,14 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         customDimensionsEnabled,
       };
 
-      const modelField = model3d ? { model3d } : (editingListing?.model3d ? { model3d: null } : {});
+      // Never write undefined into Firestore (nested model3d.iosUrl / variants etc.).
+      const modelField = model3d
+        ? { model3d: stripUndefined(model3d) }
+        : (editingListing?.model3d ? { model3d: null } : {});
 
       if (editingListing) {
         // Update existing listing
-        await updateDoc(doc(db, 'products', editingListing.id), {
+        await updateDoc(doc(db, 'products', editingListing.id), stripUndefined({
           name: { en: finalNameEn, ar: finalNameAr },
           description: { en: finalDescEn, ar: finalDescAr },
           categoryKey: category,
@@ -426,12 +432,12 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           ...variantFields,
           ...modelField,
           updatedAt: new Date().toISOString()
-        });
+        }));
 
         await logActivity('UPDATE_LISTING', `Updated listing: ${finalNameEn}`);
       } else {
         // Create new listing
-        await addDoc(collection(db, 'products'), {
+        await addDoc(collection(db, 'products'), stripUndefined({
           name: { en: finalNameEn, ar: finalNameAr },
           description: { en: finalDescEn, ar: finalDescAr },
           categoryKey: category,
@@ -439,10 +445,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           images: finalImages,
           ...priceFields,
           ...variantFields,
-          ...(model3d ? { model3d } : {}),
+          ...(model3d ? { model3d: stripUndefined(model3d) } : {}),
           createdAt: new Date().toISOString(),
           archivedAt: null,
-        });
+        }));
 
         await logActivity('CREATE_LISTING', `Created new listing: ${finalNameEn}`);
       }
@@ -1101,10 +1107,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain"
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[min(90vh,100dvh)] flex flex-col overflow-hidden"
             data-lenis-prevent
           >
-            <div className="p-4 md:p-6 flex justify-between items-center sticky top-0 bg-[var(--color-background)] z-10">
+            <div className="p-4 md:p-6 flex justify-between items-center shrink-0 border-b border-[var(--color-border)]/40 bg-[var(--color-background)] z-10">
               <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">
                 {editingListing ? t('admin_edit_listing') || 'Edit Listing' : t('admin_create_new')}
               </h2>
@@ -1122,7 +1128,8 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-6">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto overscroll-contain flex-1 min-h-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">{t('admin_name_en')}</label>
@@ -1277,7 +1284,9 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3">
+              </div>
+
+              <div className="shrink-0 border-t border-[var(--color-border)]/40 bg-[var(--color-background)] p-4 md:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] flex justify-end gap-3">
                 <button 
                   type="button" 
                   onClick={() => {

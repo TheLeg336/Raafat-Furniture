@@ -17,7 +17,7 @@ import { getPaymentsConfig, type PaymentsConfig } from '../lib/api';
 import { countryOptions } from '../lib/countries';
 import { priceFor } from '../lib/currency';
 import { defaultCheckoutCountry } from '../lib/geo';
-import { PICKUP_LOCATIONS, pickupLabel, sortPickupByDistance, resolveEgyptHintCoords } from '../lib/pickupLocations';
+import { PICKUP_LOCATIONS, pickupLabel, sortPickupByDistance, resolveEgyptHintCoords, formatPickupDistance } from '../lib/pickupLocations';
 import { addressFieldsForCountry, isAddressComplete, type AddressFieldKey } from '../lib/addressFormats';
 import { loadSavedAddress, saveAddressForUser, persistCheckoutDraft, readCheckoutDraft, clearCheckoutDraft } from '../lib/savedAddress';
 import { useProducts } from '../hooks/useProducts';
@@ -115,6 +115,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
     applyOrigin(coords);
   };
 
+  const useImperialDistance = config?.ipCountry === 'US';
+
   useEffect(() => {
     getPaymentsConfig().then((cfg) => {
       setConfig(cfg);
@@ -170,12 +172,13 @@ const Checkout: React.FC<Props> = ({ t }) => {
 
   const cardAvailable = !!config?.cardProvider;
   const cardMethod: PaymentMethod = config?.cardProvider === 'paymob' ? 'paymob' : 'stripe';
-  const instapayAvailable = config ? (config.ipCountry === 'EG' || !config.ipCountry || form.country === 'EG') : true;
+  const methods = config?.methods || { stripe: true, paymob: true, instapay: true, bank_transfer: true };
+  const instapayAvailable = methods.instapay && (config ? (config.ipCountry === 'EG' || !config.ipCountry || form.country === 'EG') : true);
 
   const paymentOptions: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode; show: boolean }[] = [
     { id: cardMethod, label: t('pay_card') || 'Card / Apple Pay / Google Pay', icon: <CreditCard size={18} />, show: cardAvailable },
     { id: 'instapay', label: t('pay_instapay') || 'InstaPay', desc: t('pay_instapay_desc') || 'Transfer from any Egyptian bank app', icon: <Smartphone size={18} />, show: instapayAvailable },
-    { id: 'bank_transfer', label: t('pay_bank') || 'Bank transfer', icon: <Landmark size={18} />, show: true },
+    { id: 'bank_transfer', label: t('pay_bank') || 'Bank transfer', icon: <Landmark size={18} />, show: methods.bank_transfer },
   ];
   const visible = paymentOptions.filter((o) => o.show);
 
@@ -314,14 +317,14 @@ const Checkout: React.FC<Props> = ({ t }) => {
     : (t('fulfil_ship') || 'Delivery');
 
   return (
-    <div className="max-w-6xl mx-auto px-5 md:px-6 py-6 md:py-16 pb-10">
+    <div className="max-w-6xl mx-auto px-5 md:px-6 py-6 md:py-16 pb-10 overflow-x-hidden">
       <Link to="/shop" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] mb-4">
         <ArrowLeft size={16} /> {t('continue_shopping') || 'Continue shopping'}
       </Link>
       <h1 className="font-heading text-2xl md:text-4xl font-bold mb-6">{t('checkout') || 'Checkout'}</h1>
 
-      <form id="checkout-form" onSubmit={submit} className="grid lg:grid-cols-[1fr_380px] gap-6 lg:gap-10 items-start">
-        <div className="flex flex-col gap-3 order-2 lg:order-1">
+      <form id="checkout-form" onSubmit={submit} className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 lg:gap-10 items-start">
+        <div className="flex flex-col gap-3 order-2 lg:order-1 min-w-0 w-full max-w-full">
           <CheckoutStep
             step={1}
             title={t('how_to_receive') || 'How would you like to receive it?'}
@@ -346,21 +349,29 @@ const Checkout: React.FC<Props> = ({ t }) => {
               ))}
             </div>
             {fulfillment === 'pickup' && (
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-2 min-w-0">
                 <p className="text-sm font-semibold">{t('pickup_location') || 'Choose a showroom'}</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button type="button" size="sm" variant="secondary" loading={geoBusy} onClick={useMyLocation} iconLeft={<Navigation size={14} />}>
-                    {t('use_my_location') || 'Use my location'}
-                  </Button>
-                  <div className="flex flex-1 gap-2 items-end">
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  {t('pickup_sort_help') || 'Sort showrooms by how close they are to you — tap a showroom below to select it.'}
+                </p>
+                <Button type="button" size="sm" variant="secondary" loading={geoBusy} onClick={useMyLocation} iconLeft={<Navigation size={14} />} className="w-full sm:w-auto">
+                  {t('sort_by_my_location') || 'Sort by my location'}
+                </Button>
+                <div className="flex flex-col gap-2 min-w-0">
+                  <label className="text-xs font-medium text-[var(--color-text-secondary)]" htmlFor="pickup-city-hint">
+                    {t('or_type_city') || 'Or type a city / postal code'}
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
                     <input
+                      id="pickup-city-hint"
                       value={nearHint}
                       onChange={(e) => setNearHint(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyNearHint(); } }}
                       placeholder={t('near_hint_placeholder') || 'City or postal code (e.g. Cairo, 11771)'}
-                      className="flex-1 min-w-0 bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-[var(--radius-md)] px-3 py-2.5 text-sm outline-none placeholder:text-[var(--color-text-secondary)]"
+                      className="flex-1 min-w-0 w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-[var(--radius-md)] px-3 py-2.5 text-sm outline-none placeholder:text-[var(--color-text-secondary)]"
                     />
-                    <Button type="button" size="sm" variant="secondary" onClick={applyNearHint} iconLeft={<MapPin size={14} />}>
-                      {t('sort_nearest') || 'Nearest'}
+                    <Button type="button" size="sm" variant="secondary" onClick={applyNearHint} iconLeft={<MapPin size={14} />} className="shrink-0 w-full sm:w-auto">
+                      {t('sort_showrooms') || 'Sort showrooms'}
                     </Button>
                   </div>
                 </div>
@@ -370,17 +381,17 @@ const Checkout: React.FC<Props> = ({ t }) => {
                     type="button"
                     key={loc.id}
                     onClick={() => setPickupLocationId(loc.id)}
-                    className={`w-full text-start p-3 rounded-[var(--radius-md)] border transition-colors ${pickupLocationId === loc.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)]'}`}
+                    className={`w-full text-start p-3 rounded-[var(--radius-md)] border transition-colors min-w-0 ${pickupLocationId === loc.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)]'}`}
                   >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="block font-semibold text-sm">{loc.name[lang]}</span>
+                    <span className="flex items-center justify-between gap-2 min-w-0">
+                      <span className="block font-semibold text-sm truncate">{loc.name[lang]}</span>
                       {km != null && (
                         <span className="text-[10px] uppercase tracking-wide text-[var(--color-text-secondary)] shrink-0">
-                          ~{km < 10 ? km.toFixed(1) : Math.round(km)} km
+                          {formatPickupDistance(km, useImperialDistance)}
                         </span>
                       )}
                     </span>
-                    <span className="block text-xs text-[var(--color-text-secondary)] mt-0.5">{loc.street[lang]}</span>
+                    <span className="block text-xs text-[var(--color-text-secondary)] mt-0.5 break-words">{loc.street[lang]}</span>
                   </button>
                 ))}
               </div>
@@ -397,10 +408,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
             onContinue={() => detailsValid && advanceFrom('details')}
             continueDisabled={!detailsValid}
           >
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
               <Input label={t('full_name') || 'Full name'} required value={form.fullName} onChange={set('fullName')} autoComplete="name" />
               <Input label={t('login_email') || 'Email'} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
-              <Input label={t('phone') || 'Phone'} type="tel" required value={form.phone} onChange={set('phone')} autoComplete="tel" className="sm:col-span-2" />
+              <Input label={t('phone') || 'Phone'} type="tel" required value={form.phone} onChange={set('phone')} autoComplete="tel" wrapperClassName="sm:col-span-2" />
             </div>
           </CheckoutStep>
 
@@ -437,10 +448,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
                     {t('billing_for_card') || 'Card payments need a billing address (where your card is registered).'}
                   </p>
                 )}
-                <Select label={t('country') || 'Country'} value={form.country} onChange={set('country')}>
+                <Select label={t('country') || 'Country'} value={form.country} onChange={set('country')} wrapperClassName="w-full">
                   {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </Select>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
                   {addrFields.map((field) => (
                     <Input
                       key={field.key}
@@ -449,7 +460,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
                       value={form[field.key]}
                       onChange={set(field.key)}
                       autoComplete={field.autoComplete}
-                      className={field.className}
+                      wrapperClassName={field.wrapperClassName}
                     />
                   ))}
                 </div>

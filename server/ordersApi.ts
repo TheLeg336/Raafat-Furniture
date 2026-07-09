@@ -148,8 +148,28 @@ export function ordersRouter(rateLimit: (n: number) => any) {
   /** Client bootstrap: which payment rails are live + geo gate for cash. */
   r.get('/api/config', async (req: Request, res: Response) => {
     const country = ipCountry(req);
-    const stripe = !!process.env.STRIPE_SECRET_KEY;
-    const paymob = !!(process.env.PAYMOB_API_KEY && process.env.PAYMOB_INTEGRATION_ID && process.env.PAYMOB_IFRAME_ID);
+    const stripeEnv = !!process.env.STRIPE_SECRET_KEY;
+    const paymobEnv = !!(process.env.PAYMOB_API_KEY && process.env.PAYMOB_INTEGRATION_ID && process.env.PAYMOB_IFRAME_ID);
+
+    let methods = { stripe: true, paymob: true, instapay: true, bank_transfer: true };
+    try {
+      const db = await getDb();
+      if (db) {
+        const snap = await db.collection('settings').doc('payments').get();
+        const m = snap.exists ? snap.data()?.methods : null;
+        if (m && typeof m === 'object') {
+          methods = {
+            stripe: m.stripe !== false,
+            paymob: m.paymob !== false,
+            instapay: m.instapay !== false,
+            bank_transfer: m.bank_transfer !== false,
+          };
+        }
+      }
+    } catch { /* settings optional */ }
+
+    const stripe = stripeEnv && methods.stripe;
+    const paymob = paymobEnv && methods.paymob;
     res.json({
       stripe, paymob,
       cardProvider: paymob && country === 'EG' ? 'paymob' : stripe ? 'stripe' : paymob ? 'paymob' : null,
@@ -157,6 +177,8 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       // Cash on pickup is Egypt-only. Outside prod there is no geo header — allow for dev.
       cashPickupAllowed: country === 'EG' || (!country && process.env.NODE_ENV !== 'production'),
       ordersConfigured: !!(await getDb()),
+      methods,
+      env: { stripe: stripeEnv, paymob: paymobEnv },
     });
   });
 
@@ -181,7 +203,22 @@ export function ordersRouter(rateLimit: (n: number) => any) {
 
       // ---- payment-method rules (no cash — prepaid / transfer only) ----
       const geo = ipCountry(req);
-      const allowed = ['stripe', 'paymob', 'instapay', 'bank_transfer'];
+      let methodFlags = { stripe: true, paymob: true, instapay: true, bank_transfer: true };
+      try {
+        const paySnap = await db.collection('settings').doc('payments').get();
+        const m = paySnap.exists ? paySnap.data()?.methods : null;
+        if (m && typeof m === 'object') {
+          methodFlags = {
+            stripe: m.stripe !== false,
+            paymob: m.paymob !== false,
+            instapay: m.instapay !== false,
+            bank_transfer: m.bank_transfer !== false,
+          };
+        }
+      } catch { /* ignore */ }
+
+      const allowed = (['stripe', 'paymob', 'instapay', 'bank_transfer'] as const)
+        .filter((k) => methodFlags[k]) as string[];
       if (!allowed.includes(paymentMethod)) return res.status(400).json({ error: 'Payment method not available for this order' });
       if (paymentMethod === 'stripe' && !process.env.STRIPE_SECRET_KEY) return res.status(400).json({ error: 'Card payments are not configured' });
       if (paymentMethod === 'paymob' && !process.env.PAYMOB_API_KEY) return res.status(400).json({ error: 'Card payments are not configured' });

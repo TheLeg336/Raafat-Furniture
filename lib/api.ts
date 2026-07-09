@@ -27,7 +27,16 @@ export interface PaymentsConfig {
   ipCountry: string | null;
   cashPickupAllowed: boolean;
   ordersConfigured: boolean;
+  /** Dev-toggled rails (false = hidden at checkout even if env keys exist). */
+  methods: {
+    stripe: boolean;
+    paymob: boolean;
+    instapay: boolean;
+    bank_transfer: boolean;
+  };
 }
+
+const defaultMethods = { stripe: true, paymob: true, instapay: true, bank_transfer: true };
 
 let configCache: PaymentsConfig | null = null;
 export async function getPaymentsConfig(): Promise<PaymentsConfig> {
@@ -39,11 +48,23 @@ export async function getPaymentsConfig(): Promise<PaymentsConfig> {
   }
   try {
     const res = await fetch('/api/config');
-    configCache = await res.json();
+    const json = await res.json();
+    configCache = {
+      ...json,
+      methods: { ...defaultMethods, ...(json.methods || {}) },
+    };
     cacheSet(CONFIG_CACHE_KEY, configCache!);
   } catch {
     // Fail closed: do not advertise cash pickup when config cannot be verified.
-    configCache = { stripe: false, paymob: false, cardProvider: null, ipCountry: null, cashPickupAllowed: false, ordersConfigured: false };
+    configCache = {
+      stripe: false, paymob: false, cardProvider: null, ipCountry: null,
+      cashPickupAllowed: false, ordersConfigured: false, methods: { ...defaultMethods },
+    };
   }
   return configCache!;
+}
+
+/** Clear cached config after Dev toggles payment methods. */
+export function clearPaymentsConfigCache() {
+  configCache = null;
 }

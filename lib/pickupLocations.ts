@@ -97,3 +97,12 @@ export function sortPickupByDistance(
     .map((loc) => ({ loc, km: haversineKm(origin, { lat: loc.lat, lng: loc.lng }) }))
     .sort((a, b) => a.km - b.km);
 }
+
+/** US visitors see miles; everyone else sees km. */
+export function formatPickupDistance(km: number, imperial: boolean): string {
+  if (imperial) {
+    const mi = km * 0.621371;
+    return `~${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`;
+  }
+  return `~${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
+}

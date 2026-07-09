@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Rocket, Power, RefreshCw, Users, AlertTriangle, CheckCircle2, Bug } from 'lucide-react';
+import { Rocket, Power, RefreshCw, Users, AlertTriangle, CheckCircle2, Bug, CreditCard } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useLaunch } from '../contexts/LaunchContext';
-import { apiFetch } from '../lib/api';
-import { doc, setDoc } from 'firebase/firestore';
+import { apiFetch, clearPaymentsConfigCache } from '../lib/api';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
   subscribeClientErrors,
@@ -36,6 +36,8 @@ interface WaitlistEntry {
 
 type DevPanel = 'launch' | 'errors';
 
+type MethodFlags = { stripe: boolean; paymob: boolean; instapay: boolean; bank_transfer: boolean };
+
 const AdminDev: React.FC<Props> = () => {
   const { user, isDeveloper } = useAuth();
   const { status, refresh } = useLaunch();
@@ -54,6 +56,12 @@ const AdminDev: React.FC<Props> = () => {
   const [errorsLoading, setErrorsLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+
+  const [methods, setMethods] = useState<MethodFlags>({
+    stripe: true, paymob: true, instapay: true, bank_transfer: true,
+  });
+  const [envReady, setEnvReady] = useState<{ stripe: boolean; paymob: boolean }>({ stripe: false, paymob: false });
+  const [savingMethods, setSavingMethods] = useState(false);
 
   useEffect(() => {
     setComingSoon(status.comingSoon);
@@ -79,9 +87,42 @@ const AdminDev: React.FC<Props> = () => {
     }
   }, []);
 
+  const loadPaymentMethods = useCallback(async () => {
+    try {
+      if (db) {
+        const snap = await getDoc(doc(db, 'settings', 'payments'));
+        if (snap.exists()) {
+          const m = snap.data()?.methods;
+          if (m && typeof m === 'object') {
+            setMethods({
+              stripe: m.stripe !== false,
+              paymob: m.paymob !== false,
+              instapay: m.instapay !== false,
+              bank_transfer: m.bank_transfer !== false,
+            });
+          }
+        }
+      }
+      const raw = await fetch('/api/config').then((r) => r.json()).catch(() => null);
+      if (raw?.env) setEnvReady({ stripe: !!raw.env.stripe, paymob: !!raw.env.paymob });
+      else if (raw) setEnvReady({ stripe: !!raw.stripe, paymob: !!raw.paymob });
+      if (raw?.methods) {
+        setMethods({
+          stripe: raw.methods.stripe !== false,
+          paymob: raw.methods.paymob !== false,
+          instapay: raw.methods.instapay !== false,
+          bank_transfer: raw.methods.bank_transfer !== false,
+        });
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
-    if (isDeveloper) loadWaitlist();
-  }, [isDeveloper, loadWaitlist]);
+    if (isDeveloper) {
+      loadWaitlist();
+      loadPaymentMethods();
+    }
+  }, [isDeveloper, loadWaitlist, loadPaymentMethods]);
 
   useEffect(() => {
     if (!isDeveloper) return;
@@ -140,6 +181,27 @@ const AdminDev: React.FC<Props> = () => {
     } finally {
       setLaunching(false);
     }
+  };
+
+  const savePaymentMethods = async () => {
+    if (!db) {
+      toast.error('Database not configured');
+      return;
+    }
+    setSavingMethods(true);
+    try {
+      await setDoc(doc(db, 'settings', 'payments'), { methods, updatedAt: new Date().toISOString() }, { merge: true });
+      clearPaymentsConfigCache();
+      toast.success('Checkout payment options updated');
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not save');
+    } finally {
+      setSavingMethods(false);
+    }
+  };
+
+  const toggleMethod = (key: keyof MethodFlags) => {
+    setMethods((m) => ({ ...m, [key]: !m[key] }));
   };
 
   const markResolved = async (id: string) => {
@@ -346,6 +408,46 @@ const AdminDev: React.FC<Props> = () => {
               </p>
             </Card>
           </div>
+
+          <Card className="p-5 mt-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <CreditCard size={18} className="text-[var(--color-primary)]" />
+              <h2 className="font-semibold text-sm">Checkout payment options</h2>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+              Turn methods on or off for customers. Card rails still need their API keys in Vercel env —
+              disabling here only hides them at checkout. InstaPay address and bank details are edited under Team.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {([
+                { key: 'stripe' as const, label: 'Stripe (international cards)', hint: envReady.stripe ? 'Env keys present' : 'Missing STRIPE_SECRET_KEY' },
+                { key: 'paymob' as const, label: 'Paymob (Egypt cards)', hint: envReady.paymob ? 'Env keys present' : 'Missing Paymob env keys' },
+                { key: 'instapay' as const, label: 'InstaPay', hint: 'Egypt transfers' },
+                { key: 'bank_transfer' as const, label: 'Bank transfer', hint: 'Manual reference check' },
+              ]).map((row) => (
+                <label
+                  key={row.key}
+                  className={`flex items-start gap-3 p-3 rounded-[var(--radius-md)] border cursor-pointer transition-colors ${
+                    methods[row.key] ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)]'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={methods[row.key]}
+                    onChange={() => toggleMethod(row.key)}
+                    className="mt-1 w-4 h-4 accent-[var(--color-primary)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{row.label}</span>
+                    <span className="block text-[11px] text-[var(--color-text-secondary)] mt-0.5">{row.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <Button type="button" size="sm" loading={savingMethods} onClick={savePaymentMethods}>
+              Save payment options
+            </Button>
+          </Card>
 
           <Card className="p-5 mt-6">
             <h2 className="font-semibold text-sm mb-4">Recent signups</h2>
