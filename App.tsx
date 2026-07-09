@@ -39,6 +39,7 @@ const MobileScan = React.lazy(() => import('./pages/MobileScan'));
 import { CookieConsent } from './components/CookieConsent';
 import { ComingSoonOverlay } from './components/ComingSoonOverlay';
 import { SmoothScroll } from './components/SmoothScroll';
+import { OverlayScrollbar } from './components/OverlayScrollbar';
 import { initAnalytics, trackPageView } from './lib/analytics';
 import { installClientErrorReporting } from './lib/clientErrors';
 import { db } from './lib/firebase';
@@ -248,6 +249,7 @@ const AppContent: React.FC = () => {
     <div className={`${getFontClasses()} bg-[var(--color-background)] text-[var(--color-text-primary)] transition-colors duration-500 min-h-screen flex flex-col`}>
       <a href="#main-content" className="skip-link">{t('skip_to_content') || 'Skip to content'}</a>
       <SmoothScroll />
+      <OverlayScrollbar />
       <React.Suspense fallback={<PageSpinner />}>
       <Routes>
         <Route element={<AdminLayout t={t} />}>
