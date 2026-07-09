@@ -65,7 +65,7 @@ export async function placeOrder(input: NewOrderInput): Promise<PlaceOrderResult
   if (input.paymentMethod === 'stripe') {
     try {
       const json = await apiFetch<{ url?: string }>('/api/stripe/create-checkout-session', {
-        orderId: order.id, successUrl, cancelUrl,
+        orderId: order.id, successUrl, cancelUrl, email: order.contact.email,
       });
       if (json.url) {
         window.location.href = json.url;
@@ -78,7 +78,9 @@ export async function placeOrder(input: NewOrderInput): Promise<PlaceOrderResult
 
   if (input.paymentMethod === 'paymob') {
     try {
-      const json = await apiFetch<{ url?: string }>('/api/paymob/create-payment', { orderId: order.id });
+      const json = await apiFetch<{ url?: string }>('/api/paymob/create-payment', {
+        orderId: order.id, email: order.contact.email,
+      });
       if (json.url) {
         window.location.href = json.url;
         return { order, redirected: true };

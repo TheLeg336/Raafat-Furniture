@@ -40,7 +40,7 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
   void headerHeight;
 
   return (
-    <section id="shop" className="relative bg-[var(--color-background)] transition-colors duration-500" style={{ overflowAnchor: 'none' }}>
+    <section id="shop" className="relative bg-[var(--color-background)] transition-colors duration-500" style={{ overflowAnchor: 'none', scrollSnapAlign: 'none' }}>
       <div className="relative">
         <div className="container mx-auto px-5 md:px-8 lg:px-6 min-h-[5.5rem] md:min-h-[6.5rem] flex items-center py-4 md:py-5">
           <ProductSectionHeader t={t} compact={false} />

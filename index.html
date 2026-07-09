@@ -181,16 +181,24 @@
         height: 100%;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
-        scroll-snap-type: none;
-        overflow-anchor: none;
+        scroll-snap-type: none !important;
+        overflow-anchor: none !important;
+        overscroll-behavior-y: none;
       }
       body {
-        min-height: 100dvh;
+        min-height: 100%;
         transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
-        touch-action: manipulation;
+        touch-action: pan-x pan-y;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
-        scroll-snap-type: none;
+        scroll-snap-type: none !important;
+        overflow-anchor: none !important;
+        overscroll-behavior-y: none;
+      }
+      /* Never snap the document to section starts (mobile browser chrome / CSS snap). */
+      section, [id="hero"], [id="shop"], [id="visit-us"], main, #root {
+        scroll-snap-align: none !important;
+        scroll-snap-stop: normal !important;
         overflow-anchor: none;
       }
       

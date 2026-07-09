@@ -23,3 +23,8 @@ export function cacheSet<T>(key: string, value: T) {
   mem.set(key, entry);
   try { sessionStorage.setItem(key, JSON.stringify(entry)); } catch { /* quota */ }
 }
+
+export function cacheClear(key: string) {
+  mem.delete(key);
+  try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+}

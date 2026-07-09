@@ -34,10 +34,17 @@ export function paymobRouter(rateLimit: (n: number) => any) {
     if (!db) return res.status(503).json({ error: 'Ordering is not configured on the server.' });
     try {
       const orderId = String(req.body?.orderId || '');
+      const emailNorm = String(req.body?.email || '').toLowerCase().trim();
       const snap = await db.collection('orders').doc(orderId).get();
       if (!snap.exists) return res.status(404).json({ error: 'Order not found' });
       const order = snap.data() as any;
+      if (!emailNorm || emailNorm !== String(order.contact?.email || '').toLowerCase()) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
       if (order.paymentStatus === 'paid') return res.status(400).json({ error: 'Order already paid' });
+      if (order.paymentMethod !== 'paymob') {
+        return res.status(400).json({ error: 'This order is not set up for Paymob card payment' });
+      }
 
       const amountCents = Math.round(Number(order.total) * 100); // server-side total only
       const { token } = await pm('/auth/tokens', { api_key: process.env.PAYMOB_API_KEY });

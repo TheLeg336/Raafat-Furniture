@@ -192,7 +192,9 @@ const AdminDev: React.FC<Props> = () => {
     try {
       await setDoc(doc(db, 'settings', 'payments'), { methods, updatedAt: new Date().toISOString() }, { merge: true });
       clearPaymentsConfigCache();
-      toast.success('Checkout payment options updated');
+      // Bust any other open tabs' session cache by writing a bump key
+      try { sessionStorage.setItem('rf_payments_config_bump', String(Date.now())); } catch { /* ignore */ }
+      toast.success('Checkout payment options updated — open checkout (or refresh) to see the change');
     } catch (e) {
       toast.error((e as Error).message || 'Could not save');
     } finally {

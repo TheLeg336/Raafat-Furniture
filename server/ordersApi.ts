@@ -194,7 +194,11 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       if (!Array.isArray(items) || items.length === 0 || items.length > 50) return res.status(400).json({ error: 'Invalid items' });
       if (!contact?.fullName || String(contact.fullName).length > 120) return res.status(400).json({ error: 'Name is required' });
       if (!/^\S+@\S+\.\S+$/.test(contact?.email || '')) return res.status(400).json({ error: 'Valid email is required' });
-      if (!contact?.phone || String(contact.phone).trim().length < 6) return res.status(400).json({ error: 'Phone is required' });
+      const phoneRaw = String(contact?.phone || '').trim();
+      const phoneDigits = phoneRaw.replace(/\D/g, '');
+      if (phoneRaw && (phoneDigits.length < 7 || phoneDigits.length > 15)) {
+        return res.status(400).json({ error: 'Phone number looks invalid' });
+      }
       if (!['pickup', 'shipping', 'custom'].includes(fulfillment)) return res.status(400).json({ error: 'Invalid fulfillment' });
       if (fulfillment === 'pickup' && !pickupLocationId) return res.status(400).json({ error: 'Pickup location is required' });
       if (fulfillment !== 'pickup' && (!contact?.line1 || !contact?.city || !contact?.country)) {
@@ -244,6 +248,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         const snap = await db.collection('products').doc(String(it.productId)).get();
         if (!snap.exists) return res.status(400).json({ error: `Product no longer available (${it.productId})` });
         const p = snap.data() as any;
+        if (p.archivedAt) return res.status(400).json({ error: `Product no longer available (${it.productId})` });
         const raw = currency === 'EGP' ? (p.priceEGP ?? p.price) : (p.priceUSD ?? p.price);
         const price = Number(raw);
         if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Item is not available in ${currency} (${it.productId})` });
@@ -285,9 +290,9 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         contact: {
           fullName: String(contact.fullName).slice(0, 120),
           email: String(contact.email).slice(0, 254),
-          phone: String(contact.phone).slice(0, 40),
-          line1: String(contact.line1).slice(0, 200),
-          city: String(contact.city).slice(0, 80),
+          phone: phoneRaw ? phoneRaw.slice(0, 40) : '',
+          line1: String(contact.line1 || '').slice(0, 200),
+          city: String(contact.city || '').slice(0, 80),
           governorate: String(contact.governorate || '').slice(0, 80),
           country: toISO2(contact.country),
           postalCode: String(contact.postalCode || '').slice(0, 20),

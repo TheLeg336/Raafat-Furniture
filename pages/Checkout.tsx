@@ -20,6 +20,7 @@ import { defaultCheckoutCountry } from '../lib/geo';
 import { PICKUP_LOCATIONS, pickupLabel, sortPickupByDistance, resolveEgyptHintCoords, formatPickupDistance } from '../lib/pickupLocations';
 import { addressFieldsForCountry, isAddressComplete, type AddressFieldKey } from '../lib/addressFormats';
 import { loadSavedAddress, saveAddressForUser, persistCheckoutDraft, readCheckoutDraft, clearCheckoutDraft } from '../lib/savedAddress';
+import { formatPhoneDisplay, isPhoneValidOptional, normalizePhoneForStorage } from '../lib/phoneFormat';
 import { useProducts } from '../hooks/useProducts';
 import { LOGIN_PATH } from '../lib/paths';
 import { MapPin, Navigation } from 'lucide-react';
@@ -118,12 +119,19 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const useImperialDistance = config?.ipCountry === 'US';
 
   useEffect(() => {
-    getPaymentsConfig().then((cfg) => {
-      setConfig(cfg);
-      if (!draft?.form?.country) {
-        setForm((f) => ({ ...f, country: defaultCheckoutCountry(cfg.ipCountry) }));
-      }
-    });
+    const load = (force = false) => {
+      getPaymentsConfig({ force }).then((cfg) => {
+        setConfig(cfg);
+        if (!draft?.form?.country) {
+          setForm((f) => ({ ...f, country: defaultCheckoutCountry(cfg.ipCountry) }));
+        }
+      });
+    };
+    load(false);
+    const onVis = () => { if (document.visibilityState === 'visible') load(true); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -194,7 +202,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   }, []);
 
   const fulfillmentValid = fulfillment === 'shipping' || !!pickupLocationId;
-  const detailsValid = form.fullName.trim().length > 1 && /\S+@\S+\.\S+/.test(form.email) && form.phone.trim().length >= 6;
+  const detailsValid = form.fullName.trim().length > 1 && /\S+@\S+\.\S+/.test(form.email) && isPhoneValidOptional(form.phone);
   const addressValues: Record<AddressFieldKey, string> = {
     line1: form.line1, city: form.city, governorate: form.governorate, postalCode: form.postalCode,
   };
@@ -202,7 +210,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const addressValid = needsBillingAddress
     ? isAddressComplete(form.country, addressValues)
     : true;
-  const allValid = fulfillmentValid && detailsValid && addressValid;
+  const allValid = fulfillmentValid && detailsValid && addressValid && visible.length > 0;
 
   const markDone = (step: StepId) => setDoneSteps((s) => new Set([...s, step]));
 
@@ -231,7 +239,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const confirmSaveAddress = async (save: boolean) => {
     if (save && user) {
       const contact: OrderContact = {
-        fullName: form.fullName.trim(), email: form.email.trim(), phone: form.phone.trim(),
+        fullName: form.fullName.trim(), email: form.email.trim(), phone: normalizePhoneForStorage(form.phone),
         line1: form.line1.trim(), city: form.city.trim(),
         governorate: form.governorate.trim() || undefined,
         country: form.country, postalCode: form.postalCode.trim() || undefined,
@@ -271,7 +279,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
       const { order, redirected, paymentError } = await placeOrder({
         items,
         contact: {
-          fullName: form.fullName.trim(), email: form.email.trim(), phone: form.phone.trim(),
+          fullName: form.fullName.trim(), email: form.email.trim(), phone: normalizePhoneForStorage(form.phone),
           ...(useCustomerAddress
             ? {
                 line1: form.line1.trim(), city: form.city.trim(),
@@ -411,7 +419,16 @@ const Checkout: React.FC<Props> = ({ t }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
               <Input label={t('full_name') || 'Full name'} required value={form.fullName} onChange={set('fullName')} autoComplete="name" />
               <Input label={t('login_email') || 'Email'} type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
-              <Input label={t('phone') || 'Phone'} type="tel" required value={form.phone} onChange={set('phone')} autoComplete="tel" wrapperClassName="sm:col-span-2" />
+              <Input
+                label={t('phone') || 'Phone'}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: formatPhoneDisplay(e.target.value) }))}
+                hint={t('phone_optional_hint') || 'Optional — helps us reach you about your order'}
+                wrapperClassName="sm:col-span-2"
+              />
             </div>
           </CheckoutStep>
 
@@ -500,7 +517,11 @@ const Checkout: React.FC<Props> = ({ t }) => {
             onToggle={() => setOpenStep('payment')}
           >
             <div className="grid grid-cols-1 gap-3">
-              {visible.map((o) => (
+              {visible.length === 0 ? (
+                <p className="text-sm text-[var(--color-danger)]">
+                  {t('no_payment_methods') || 'No payment methods are available right now. Please contact the store or try again later.'}
+                </p>
+              ) : visible.map((o) => (
                 <button type="button" key={o.id} onClick={() => setPayment(o.id)}
                   className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border-2 transition-colors text-start ${payment === o.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)]'}`}>
                   <span className="text-[var(--color-primary)]">{o.icon}</span>

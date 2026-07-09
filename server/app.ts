@@ -159,11 +159,22 @@ export function createApiApp() {
     const db = await getDb();
     if (!db) return res.status(503).json({ error: 'Payments are not configured on the server (FIREBASE_SERVICE_ACCOUNT missing).' });
     try {
-      const { orderId, successUrl, cancelUrl } = req.body || {};
+      const { orderId, successUrl, cancelUrl, email } = req.body || {};
       const snap = await db.collection('orders').doc(String(orderId || '')).get();
       if (!snap.exists) return res.status(404).json({ error: 'Order not found' });
       const order = snap.data() as any;
+      // Guest-safe ownership check: must know the email on the order (same as /track).
+      const emailNorm = String(email || '').toLowerCase().trim();
+      if (!emailNorm || emailNorm !== String(order.contact?.email || '').toLowerCase()) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
       if (order.paymentStatus === 'paid') return res.status(400).json({ error: 'Order already paid' });
+      if (order.paymentMethod !== 'stripe') {
+        return res.status(400).json({ error: 'This order is not set up for Stripe card payment' });
+      }
+      if (!['pending_payment', 'payment_verification'].includes(order.status) && order.paymentStatus !== 'unpaid') {
+        return res.status(400).json({ error: 'This order cannot accept payment' });
+      }
 
       // Build redirect URLs from our own SITE_URL when set, so a tampered request
       // body can't point Stripe's post-payment redirect at an attacker domain.
