@@ -13,7 +13,7 @@ export function smoothScrollTo(target: number | HTMLElement, _offset = 0) {
 
 /**
  * Hash navigation helpers only — native document scroll everywhere so mouse
- * wheel and trackpad work reliably on desktop.
+ * wheel and trackpad work reliably on desktop. Never attach wheel listeners.
  */
 export const SmoothScroll: React.FC = () => {
   const location = useLocation();

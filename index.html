@@ -176,27 +176,34 @@
         );
       }
 
-      /* Global Theme Transition */
+      /* Document scroll must stay on html/body — never lock height to 100% or
+         wheel/trackpad scrolling breaks on desktop. */
       html {
-        height: 100%;
+        height: auto;
+        min-height: 100%;
         overflow-x: hidden;
+        overflow-y: scroll;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: none !important;
         overflow-anchor: none !important;
-        overscroll-behavior-y: none;
       }
       body {
         min-height: 100%;
-        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
-        touch-action: pan-x pan-y;
+        height: auto;
         overflow-x: hidden;
+        overflow-y: visible;
+        transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: none !important;
         overflow-anchor: none !important;
-        overscroll-behavior-y: none;
+      }
+      #root {
+        min-height: 100%;
+        height: auto;
+        overflow: visible;
       }
       /* Never snap the document to section starts (mobile browser chrome / CSS snap). */
-      section, [id="hero"], [id="shop"], [id="visit-us"], main, #root {
+      section, [id="hero"], [id="shop"], [id="visit-us"], main {
         scroll-snap-align: none !important;
         scroll-snap-stop: normal !important;
         overflow-anchor: none;
@@ -205,16 +212,6 @@
       /* Ensure smooth transitions for all themed elements */
       .transition-theme {
         transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
-      }
-
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-        width: 0;
-        height: 0;
-      }
-      .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
       }
     </style>
     <!-- Structured data (JSON-LD) — helps Google, Bing and AI assistants understand

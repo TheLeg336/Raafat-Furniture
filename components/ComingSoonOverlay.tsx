@@ -30,16 +30,22 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
   /** Signed-in customer (not team) still sees coming soon — offer Log out, not "Team sign in". */
   const showLogout = !!user && !isAdmin && !isWorker;
 
-  useEffect(() => {
-    if (blocked) {
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = ''; };
-    }
-    return undefined;
-  }, [blocked]);
-
   // Never cover allowlisted money-path / sign-in routes.
-  if (loading || !blocked || allowlisted) return null;
+  const showOverlay = !loading && blocked && !allowlisted;
+
+  useEffect(() => {
+    if (!showOverlay) return undefined;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [showOverlay]);
+
+  if (!showOverlay) return null;
 
   const scheduledLabel = status.scheduledAt
     ? new Date(status.scheduledAt).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
