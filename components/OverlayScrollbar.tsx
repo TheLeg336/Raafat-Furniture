@@ -28,9 +28,9 @@ export const OverlayScrollbar: React.FC = () => {
         setMetrics({ top: 0, height: 0, show: false });
         return;
       }
-      const trackPad = 8;
+      const trackPad = 12;
       const trackH = viewH - trackPad * 2;
-      const thumbH = Math.max(40, (viewH / docH) * trackH);
+      const thumbH = Math.max(48, (viewH / docH) * trackH);
       const maxTop = trackH - thumbH;
       const thumbTop = trackPad + (scrollTop / (docH - viewH)) * maxTop;
       setMetrics({ top: thumbTop, height: thumbH, show: true });
@@ -44,7 +44,7 @@ export const OverlayScrollbar: React.FC = () => {
       hideTimer.current = window.setTimeout(() => {
         setVisible(false);
         hideTimer.current = null;
-      }, 900);
+      }, 1100);
     };
 
     const onScroll = () => flash();
@@ -71,16 +71,18 @@ export const OverlayScrollbar: React.FC = () => {
         document.documentElement.scrollHeight,
         document.body.scrollHeight,
       );
-      const trackPad = 8;
+      const trackPad = 12;
       const trackH = viewH - trackPad * 2;
-      const thumbH = Math.max(40, (viewH / docH) * trackH);
+      const thumbH = Math.max(48, (viewH / docH) * trackH);
       const maxTop = trackH - thumbH;
       const delta = e.clientY - drag.current.startY;
       const scrollRange = docH - viewH;
       const next = drag.current.startScroll + (delta / maxTop) * scrollRange;
       window.scrollTo({ top: Math.max(0, Math.min(scrollRange, next)), behavior: 'auto' });
     };
-    const onUp = () => { drag.current = null; };
+    const onUp = () => {
+      drag.current = null;
+    };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => {

@@ -63,10 +63,11 @@
   --shadow-2xl: 0 28px 64px rgba(20, 33, 61, 0.18);
   --gold-glow: 0 10px 22px hsla(var(--color-primary-hsl-values), 0.28);
   --gold-glow-strong: 0 14px 30px hsla(var(--color-primary-hsl-values), 0.38);
-  --scrollbar-size: 5px;
-  --scrollbar-thumb: color-mix(in srgb, var(--color-primary) 28%, transparent);
-  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 62%, transparent);
-  --scrollbar-thumb-active: color-mix(in srgb, var(--color-primary) 88%, transparent);
+  --scrollbar-size: 3px;
+  /* Soft ink — not gold (gold reads as a highlighter on scroll) */
+  --scrollbar-thumb: color-mix(in srgb, var(--color-secondary) 32%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-secondary) 48%, transparent);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--color-secondary) 58%, transparent);
 }
 
 :root.dark {
@@ -81,9 +82,9 @@
   --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.30);
   --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.45);
   --shadow-2xl: 0 28px 64px rgba(0, 0, 0, 0.55);
-  --scrollbar-thumb: color-mix(in srgb, var(--color-primary) 35%, transparent);
-  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 70%, transparent);
-  --scrollbar-thumb-active: color-mix(in srgb, var(--color-primary) 92%, transparent);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.36);
+  --scrollbar-thumb-active: rgba(255, 255, 255, 0.48);
 }
 
 /* ---- Base accessibility & polish ---- */
@@ -289,7 +290,7 @@ body::-webkit-scrollbar,
   height: 0 !important;
 }
 
-/* Desktop overlay document scrollbar (no reserved space) */
+/* Desktop overlay document scrollbar — quiet ink rail, not a gold highlighter */
 .rf-overlay-scrollbar {
   display: none;
 }
@@ -301,38 +302,59 @@ body::-webkit-scrollbar,
     top: 0;
     right: 0;
     bottom: 0;
-    width: 12px;
+    width: 14px;
     z-index: 9998;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .rf-overlay-scrollbar[data-visible='true'] {
     opacity: 1;
+  }
+
+  /* Keep hit area while fading so drag doesn't feel sticky */
+  .rf-overlay-scrollbar[data-visible='true'],
+  .rf-overlay-scrollbar:hover {
     pointer-events: auto;
   }
 
   .rf-overlay-scrollbar__thumb {
     position: absolute;
-    right: 3px;
-    width: 5px;
+    right: 4px;
+    width: 3px;
     padding: 0;
     margin: 0;
     border: 0;
     border-radius: 999px;
     cursor: grab;
     background: var(--scrollbar-thumb);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
-    transition: background-color 0.15s ease, width 0.15s ease, right 0.15s ease;
+    box-shadow: none;
+    outline: none;
+    transition:
+      background-color 0.2s ease,
+      width 0.2s ease,
+      right 0.2s ease,
+      opacity 0.2s ease;
     pointer-events: auto;
   }
 
-  .rf-overlay-scrollbar__thumb:hover,
-  .rf-overlay-scrollbar__thumb:active {
-    width: 7px;
-    right: 2px;
+  .rf-overlay-scrollbar__thumb:focus,
+  .rf-overlay-scrollbar__thumb:focus-visible {
+    outline: none;
+  }
+
+  .rf-overlay-scrollbar:hover .rf-overlay-scrollbar__thumb,
+  .rf-overlay-scrollbar__thumb:hover {
+    width: 4px;
+    right: 3px;
     background: var(--scrollbar-thumb-hover);
+  }
+
+  .rf-overlay-scrollbar__thumb:active {
+    width: 4px;
+    right: 3px;
+    background: var(--scrollbar-thumb-active);
     cursor: grabbing;
   }
 }
@@ -344,10 +366,11 @@ html[dir='rtl'] .rf-overlay-scrollbar {
 
 html[dir='rtl'] .rf-overlay-scrollbar__thumb {
   right: auto;
-  left: 3px;
+  left: 4px;
 }
 
+html[dir='rtl'] .rf-overlay-scrollbar:hover .rf-overlay-scrollbar__thumb,
 html[dir='rtl'] .rf-overlay-scrollbar__thumb:hover,
 html[dir='rtl'] .rf-overlay-scrollbar__thumb:active {
-  left: 2px;
+  left: 3px;
 }
