@@ -2,14 +2,18 @@ import React, { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { TFunction } from '../types';
-import { LEGAL_DOCS, type LegalDoc } from '../lib/legalContent';
+import { getLegalDocs, type LegalDoc } from '../lib/legalContent';
 import { useSeo } from '../lib/seo';
 
-interface Props { t: TFunction; }
+interface Props {
+  t: TFunction;
+  language: string;
+}
 
-const Legal: React.FC<Props> = ({ t }) => {
+const Legal: React.FC<Props> = ({ t, language }) => {
   const { slug } = useParams<{ slug: string }>();
-  const doc = (slug && LEGAL_DOCS[slug as LegalDoc['slug']]) || null;
+  const docs = getLegalDocs(language);
+  const doc = (slug && docs[slug as LegalDoc['slug']]) || null;
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [slug]);
   useSeo({
@@ -23,7 +27,7 @@ const Legal: React.FC<Props> = ({ t }) => {
   return (
     <article className="max-w-3xl mx-auto px-6 py-12 md:py-20">
       <nav className="flex flex-wrap gap-2 mb-8 text-sm">
-        {Object.values(LEGAL_DOCS).map((d) => (
+        {Object.values(docs).map((d) => (
           <Link
             key={d.slug}
             to={`/legal/${d.slug}`}

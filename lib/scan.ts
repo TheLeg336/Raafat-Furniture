@@ -71,7 +71,7 @@ export async function requestReconstruction(job: ScanJob): Promise<boolean> {
   }
   try {
     await setScanStatus(job.id, 'processing');
-    await fetch(PHOTOGRAMMETRY_API_URL, {
+    const res = await fetch(PHOTOGRAMMETRY_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -80,6 +80,15 @@ export async function requestReconstruction(job: ScanJob): Promise<boolean> {
         dimensions: job.realDimensions,
       }),
     });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      await setScanStatus(
+        job.id,
+        'failed',
+        `Reconstruction service returned ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
+      );
+      return false;
+    }
     return true;
   } catch (e: any) {
     await setScanStatus(job.id, 'failed', e?.message || 'Reconstruction request failed');

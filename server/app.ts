@@ -144,7 +144,11 @@ export function createApiApp() {
         if (!imageUrl.includes('cloudinary.com')) return res.json({ message: 'Not a Cloudinary URL, skipping' });
         return res.status(400).json({ error: 'Could not extract public_id from URL' });
       }
-      const result = await cloudinary.uploader.destroy(publicId);
+      // Try image first, then raw (GLB models live under resource_type=raw).
+      let result = await cloudinary.uploader.destroy(publicId);
+      if (result?.result === 'not found') {
+        result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+      }
       res.json({ result });
     } catch (error) {
       console.error('Cloudinary deletion error:', error);

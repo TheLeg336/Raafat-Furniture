@@ -83,11 +83,42 @@ export const ModelViewer3D: React.FC<Props> = ({
     } catch { /* unsupported */ }
   };
 
+  /** Scale the loaded mesh so its longest axis matches real-world dimensions (metres). */
+  const applyRealWorldScale = (mv: any) => {
+    const d = model.dimensions;
+    if (!d || !mv?.getDimensions) return;
+    const toM = (n?: number) => {
+      if (n == null || !Number.isFinite(n) || n <= 0) return null;
+      return d.unit === 'cm' ? n / 100 : n;
+    };
+    const targetW = toM(d.width);
+    const targetH = toM(d.height);
+    const targetD = toM(d.depth);
+    if (targetW == null && targetH == null && targetD == null) return;
+    try {
+      const size = mv.getDimensions();
+      const sx = Math.abs(size?.x) || 0;
+      const sy = Math.abs(size?.y) || 0;
+      const sz = Math.abs(size?.z) || 0;
+      if (sx < 1e-6 && sy < 1e-6 && sz < 1e-6) return;
+      const ratios: number[] = [];
+      if (targetW != null && sx > 1e-6) ratios.push(targetW / sx);
+      if (targetH != null && sy > 1e-6) ratios.push(targetH / sy);
+      if (targetD != null && sz > 1e-6) ratios.push(targetD / sz);
+      if (!ratios.length) return;
+      // Uniform scale from the average of known axes — keeps proportions, matches room size.
+      const factor = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+      if (!Number.isFinite(factor) || factor <= 0) return;
+      mv.scale = `${factor} ${factor} ${factor}`;
+    } catch { /* getDimensions unavailable */ }
+  };
+
   useEffect(() => {
     const mv = ref.current;
     if (!mv) return;
     const onLoad = () => {
       setLoaded(true);
+      applyRealWorldScale(mv);
       const matched = matchVariant(model.variants, preferredColor, preferredMaterial);
       const first = matched || model.variants?.find((v) => v.id === activeVariant) || model.variants?.[0];
       if (first) {
@@ -103,7 +134,7 @@ export const ModelViewer3D: React.FC<Props> = ({
     mv.addEventListener('load', onLoad);
     return () => mv.removeEventListener('load', onLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model.url, autoAr]);
+  }, [model.url, autoAr, model.dimensions?.width, model.dimensions?.height, model.dimensions?.depth, model.dimensions?.unit]);
 
   // Keep 3D/AR in sync when the customer picks a product color or material.
   useEffect(() => {
@@ -147,6 +178,8 @@ export const ModelViewer3D: React.FC<Props> = ({
         ios-src={model.iosUrl}
         poster={model.poster}
         alt={model.alt || `3D model of ${productName}`}
+        // @ts-expect-error model-viewer accepts crossorigin
+        crossorigin="anonymous"
         camera-controls
         touch-action="pan-y"
         auto-rotate
@@ -154,12 +187,13 @@ export const ModelViewer3D: React.FC<Props> = ({
         interaction-prompt="auto"
         shadow-intensity="1"
         shadow-softness="0.85"
-        exposure="1"
+        exposure="1.05"
+        environment-image="neutral"
         ar
         ar-modes="webxr scene-viewer quick-look"
         ar-scale="fixed"
         ar-placement="floor"
-        loading="lazy"
+        loading="eager"
         reveal="auto"
         style={{
           width: '100%',
@@ -171,6 +205,8 @@ export const ModelViewer3D: React.FC<Props> = ({
           '--poster-color': 'transparent',
         } as React.CSSProperties}
       >
+        {/* Hide default model-viewer AR chrome — we use our own gold CTA */}
+        <button slot="ar-button" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
         <div slot="progress-bar" />
       </model-viewer>
 

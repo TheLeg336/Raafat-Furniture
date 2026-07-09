@@ -22,6 +22,32 @@ interface Props {
   onChange: (model: Model3D | null) => void;
 }
 
+type DimState = { width: string; height: string; depth: string; unit: 'cm' | 'm' };
+
+const emptyDims = (): DimState => ({ width: '', height: '', depth: '', unit: 'cm' });
+
+function dimsFromModel(d?: Model3D['dimensions']): DimState {
+  if (!d) return emptyDims();
+  return {
+    width: d.width != null ? String(d.width) : '',
+    height: d.height != null ? String(d.height) : '',
+    depth: d.depth != null ? String(d.depth) : '',
+    unit: d.unit === 'm' ? 'm' : 'cm',
+  };
+}
+
+function parseDims(d: DimState): Model3D['dimensions'] | undefined {
+  const num = (s: string) => {
+    const n = Number(s);
+    return s.trim() && Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  const width = num(d.width);
+  const height = num(d.height);
+  const depth = num(d.depth);
+  if (width == null && height == null && depth == null) return undefined;
+  return { unit: d.unit, ...(width != null ? { width } : {}), ...(height != null ? { height } : {}), ...(depth != null ? { depth } : {}) };
+}
+
 export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
   const { user } = useAuth();
   const toast = useToast();
@@ -30,6 +56,9 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
   const [modelUrl, setModelUrl] = useState('');
   const [iosUrl, setIosUrl] = useState('');
   const [variants, setVariants] = useState<ModelVariant[]>([]);
+  const [dims, setDims] = useState<DimState>(emptyDims());
+  const [createdVia, setCreatedVia] = useState<'upload' | 'scan'>('upload');
+  const [scanId, setScanId] = useState<string | undefined>();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [handoffScanId, setHandoffScanId] = useState<string | null>(null);
@@ -43,10 +72,16 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       setModelUrl(value.url || '');
       setIosUrl(value.iosUrl || '');
       setVariants(value.variants || []);
+      setDims(dimsFromModel(value.dimensions));
+      setCreatedVia(value.createdVia || 'upload');
+      setScanId(value.scanId);
     } else {
       setModelUrl('');
       setIosUrl('');
       setVariants([]);
+      setDims(emptyDims());
+      setCreatedVia('upload');
+      setScanId(undefined);
     }
   }, [value]);
 
@@ -60,11 +95,12 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     return subscribeScan(handoffScanId, (job) => {
       if (!job) return;
       if (job.modelUrl) {
-        setModelUrl(job.modelUrl);
-        syncParent(job.modelUrl, iosUrl, variants);
+        applyScanModel(job);
         toast.success('3D scan complete — model attached');
         setHandoffOpen(false);
         setHandoffScanId(null);
+      } else if (job.status === 'queued' && job.frameCount > 0) {
+        toast.success('Frames saved on phone — attach a finished GLB when ready');
       } else if (job.status === 'failed') {
         toast.error(job.error || 'Scan failed on mobile');
       }
@@ -72,7 +108,14 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handoffScanId]);
 
-  const syncParent = (url: string, ios: string, vars: ModelVariant[]) => {
+  const syncParent = (
+    url: string,
+    ios: string,
+    vars: ModelVariant[],
+    nextDims: DimState = dims,
+    via: 'upload' | 'scan' = createdVia,
+    nextScanId: string | undefined = scanId,
+  ) => {
     if (!url.trim()) {
       onChange(null);
       return;
@@ -80,11 +123,30 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     const next: Model3D = {
       url: url.trim(),
       variants: vars.filter((v) => localized(v.label).trim()).map((v) => ({ ...v, swatch: v.swatch || v.colorHex })),
-      createdVia: value?.createdVia || 'upload',
+      createdVia: via,
     };
     if (ios.trim()) next.iosUrl = ios.trim();
-    if (handoffScanId || value?.scanId) next.scanId = handoffScanId || value?.scanId;
+    if (nextScanId) next.scanId = nextScanId;
+    const parsed = parseDims(nextDims);
+    if (parsed) next.dimensions = parsed;
     onChange(next);
+  };
+
+  const applyScanModel = (job: ScanJob) => {
+    if (!job.modelUrl) return;
+    const fromScan: DimState = job.realDimensions
+      ? {
+          width: job.realDimensions.width != null ? String(job.realDimensions.width) : '',
+          height: job.realDimensions.height != null ? String(job.realDimensions.height) : '',
+          depth: job.realDimensions.depth != null ? String(job.realDimensions.depth) : '',
+          unit: job.realDimensions.unit === 'm' ? 'm' : 'cm',
+        }
+      : dims;
+    setModelUrl(job.modelUrl);
+    setDims(fromScan);
+    setCreatedVia('scan');
+    setScanId(job.id);
+    syncParent(job.modelUrl, iosUrl, variants, fromScan, 'scan', job.id);
   };
 
   const startScan = async () => {
@@ -109,7 +171,8 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     try {
       const url = await uploadModel(file);
       setModelUrl(url);
-      syncParent(url, iosUrl, variants);
+      setCreatedVia('upload');
+      syncParent(url, iosUrl, variants, dims, 'upload', scanId);
       toast.success('Model uploaded and optimized');
     } catch (err: any) {
       toast.error(err?.message || 'Upload failed');
@@ -166,6 +229,42 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
         />
       </div>
 
+      <div className="space-y-2">
+        <span className="text-sm font-medium">Real-world size (for accurate AR)</span>
+        <p className="text-xs text-[var(--color-text-secondary)]">
+          Export the GLB so 1 unit = 1 metre. Enter the physical size here so AR matches the room. Leave blank if the file is already correctly scaled.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          <Input label="Width" inputMode="decimal" value={dims.width} onChange={(e) => {
+            const next = { ...dims, width: e.target.value };
+            setDims(next); syncParent(modelUrl, iosUrl, variants, next);
+          }} />
+          <Input label="Height" inputMode="decimal" value={dims.height} onChange={(e) => {
+            const next = { ...dims, height: e.target.value };
+            setDims(next); syncParent(modelUrl, iosUrl, variants, next);
+          }} />
+          <Input label="Depth" inputMode="decimal" value={dims.depth} onChange={(e) => {
+            const next = { ...dims, depth: e.target.value };
+            setDims(next); syncParent(modelUrl, iosUrl, variants, next);
+          }} />
+        </div>
+        <div className="flex gap-2">
+          {(['cm', 'm'] as const).map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => {
+                const next = { ...dims, unit: u };
+                setDims(next); syncParent(modelUrl, iosUrl, variants, next);
+              }}
+              className={`px-3 py-1.5 rounded-[var(--radius-pill)] border text-xs font-semibold ${dims.unit === u ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">Material / colour options</span>
@@ -185,6 +284,10 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
                   const next = variants.map((x, j) => j === i ? { ...x, label: e.target.value } : x);
                   setVariants(next); syncParent(modelUrl, iosUrl, next);
                 }} placeholder="Walnut" className="min-w-[100px]" />
+                <Input label="GLB material name (optional)" value={v.materialName || ''} onChange={(e) => {
+                  const next = variants.map((x, j) => j === i ? { ...x, materialName: e.target.value || undefined } : x);
+                  setVariants(next); syncParent(modelUrl, iosUrl, next);
+                }} placeholder="Matches glTF material" className="min-w-[120px]" />
                 <input type="color" value={v.colorHex || '#8a6a4a'} onChange={(e) => {
                   const next = variants.map((x, j) => j === i ? { ...x, colorHex: e.target.value, swatch: e.target.value } : x);
                   setVariants(next); syncParent(modelUrl, iosUrl, next);
@@ -200,7 +303,9 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       </div>
 
       {modelUrl && (
-        <button type="button" className="text-xs text-[var(--color-danger)] underline" onClick={() => { setModelUrl(''); setIosUrl(''); setVariants([]); onChange(null); }}>
+        <button type="button" className="text-xs text-[var(--color-danger)] underline" onClick={() => {
+          setModelUrl(''); setIosUrl(''); setVariants([]); setDims(emptyDims()); setCreatedVia('upload'); setScanId(undefined); onChange(null);
+        }}>
           Remove 3D model from this product
         </button>
       )}
@@ -217,7 +322,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
                 {s.status === 'ready' && <Check size={12} className="text-[#3ba55d]" />}
                 {s.status === 'failed' && <AlertTriangle size={12} className="text-[var(--color-danger)]" />}
                 {s.modelUrl && (
-                  <button type="button" className="underline text-[var(--color-primary)] ms-auto" onClick={() => { setModelUrl(s.modelUrl!); syncParent(s.modelUrl!, iosUrl, variants); }}>
+                  <button type="button" className="underline text-[var(--color-primary)] ms-auto" onClick={() => applyScanModel(s)}>
                     Use model
                   </button>
                 )}
@@ -230,7 +335,12 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       {scanning && user && (
         <GuidedScanner
           createdBy={user.email || user.uid}
-          onComplete={() => { setScanning(false); toast.success('Scan saved'); }}
+          onComplete={(id) => {
+            setScanning(false);
+            setScanId(id);
+            setCreatedVia('scan');
+            toast.success('Scan saved — upload or attach a finished GLB when ready');
+          }}
           onCancel={() => setScanning(false)}
         />
       )}
@@ -240,7 +350,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
           open={handoffOpen}
           onClose={() => { setHandoffOpen(false); }}
           title="Continue scan on your phone"
-          description="Scan this QR code with your phone to capture the object. When the scan finishes, the 3D model will appear here automatically."
+          description="Scan this QR code with your phone (sign in as admin on the phone). Frames upload to Cloudinary; attach a finished GLB here, or wait if a reconstruction service is connected."
           url={handoffUrl}
           qrLabel="Scan to open the scanner"
         />

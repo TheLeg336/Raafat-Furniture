@@ -290,7 +290,7 @@ const AppContent: React.FC = () => {
                 <Route path="/track" element={<TrackOrder t={t} />} />
                 <Route path="/contact" element={<Contact t={t} />} />
                 <Route path="/faq" element={<FAQ t={t} />} />
-                <Route path="/legal/:slug" element={<Legal t={t} />} />
+                <Route path="/legal/:slug" element={<Legal t={t} language={language} />} />
                 <Route path="*" element={<NotFound t={t} />} />
               </Routes>
             </main>

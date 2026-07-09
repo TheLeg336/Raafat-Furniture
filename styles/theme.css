@@ -64,10 +64,10 @@
   --gold-glow: 0 10px 22px hsla(var(--color-primary-hsl-values), 0.28);
   --gold-glow-strong: 0 14px 30px hsla(var(--color-primary-hsl-values), 0.38);
   --scrollbar-size: 3px;
-  /* Soft ink — not gold (gold reads as a highlighter on scroll) */
-  --scrollbar-thumb: color-mix(in srgb, var(--color-secondary) 32%, transparent);
-  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-secondary) 48%, transparent);
-  --scrollbar-thumb-active: color-mix(in srgb, var(--color-secondary) 58%, transparent);
+  /* Soft gold rail — thin + low opacity so it never reads as a highlighter */
+  --scrollbar-thumb: color-mix(in srgb, var(--color-primary) 38%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 58%, transparent);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--color-primary) 72%, transparent);
 }
 
 :root.dark {
@@ -82,9 +82,9 @@
   --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.30);
   --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.45);
   --shadow-2xl: 0 28px 64px rgba(0, 0, 0, 0.55);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.22);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.36);
-  --scrollbar-thumb-active: rgba(255, 255, 255, 0.48);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 62%, transparent);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--color-primary) 78%, transparent);
 }
 
 /* ---- Base accessibility & polish ---- */
@@ -256,15 +256,16 @@
 
 /* ============================================================
    Scrollbars
-   - Mobile / tablet: fully hidden
-   - Desktop: native bars always hidden (no layout gutter).
-     Document uses OverlayScrollbar (fixed, fades in while scrolling).
+   - Mobile / tablet (coarse pointer or <1024px): fully hidden
+   - Desktop: document uses OverlayScrollbar (soft gold, fades in).
+     Nested overflow areas get a thin soft-gold native rail.
    ============================================================ */
 
 html {
   scrollbar-gutter: auto;
 }
 
+/* Default: hide every native bar (mobile + document chrome) */
 html,
 body,
 * {
@@ -290,7 +291,51 @@ body::-webkit-scrollbar,
   height: 0 !important;
 }
 
-/* Desktop overlay document scrollbar — quiet ink rail, not a gold highlighter */
+/* Desktop nested overflow — thin soft-gold rails (not the document) */
+@media (pointer: fine) and (min-width: 1024px) {
+  *:not(html):not(body):not(.scrollbar-hide) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  *:not(html):not(body):not(.scrollbar-hide)::-webkit-scrollbar {
+    display: block;
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *:not(html):not(body):not(.scrollbar-hide)::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *:not(html):not(body):not(.scrollbar-hide)::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+  }
+
+  *:not(html):not(body):not(.scrollbar-hide)::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  *:not(html):not(body):not(.scrollbar-hide)::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Document still uses the overlay — keep native html/body bars gone */
+  html,
+  body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Desktop overlay document scrollbar — clean soft-gold rail */
 .rf-overlay-scrollbar {
   display: none;
 }
@@ -302,18 +347,17 @@ body::-webkit-scrollbar,
     top: 0;
     right: 0;
     bottom: 0;
-    width: 14px;
+    width: 12px;
     z-index: 9998;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .rf-overlay-scrollbar[data-visible='true'] {
     opacity: 1;
   }
 
-  /* Keep hit area while fading so drag doesn't feel sticky */
   .rf-overlay-scrollbar[data-visible='true'],
   .rf-overlay-scrollbar:hover {
     pointer-events: auto;
@@ -332,7 +376,7 @@ body::-webkit-scrollbar,
     box-shadow: none;
     outline: none;
     transition:
-      background-color 0.2s ease,
+      background 0.2s ease,
       width 0.2s ease,
       right 0.2s ease,
       opacity 0.2s ease;

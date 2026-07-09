@@ -109,8 +109,12 @@ export const GuidedScanner: React.FC<Props> = ({
   useEffect(() => {
     if (phase !== 'capturing' || !headingSupported) return;
     const step = 360 / targetFrames;
+    // Prefer absolute compass heading. Plain `deviceorientation` alpha on Android is
+    // screen-relative and fires at wrong angles — only auto-capture when we have a real compass.
     const onOrient = (e: DeviceOrientationEvent) => {
-      const alpha = (e as any).webkitCompassHeading ?? e.alpha;
+      const compass = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+      const absolute = (e as DeviceOrientationEvent & { absolute?: boolean }).absolute;
+      const alpha = compass ?? (absolute ? e.alpha : null);
       if (alpha == null) return;
       const h = headingRef.current;
       if (h.start == null) {
@@ -127,8 +131,10 @@ export const GuidedScanner: React.FC<Props> = ({
         setHint('Keep moving — steady and slow');
       }
     };
-    window.addEventListener('deviceorientation', onOrient as any, true);
-    return () => window.removeEventListener('deviceorientation', onOrient as any, true);
+    // iOS / some browsers: deviceorientationabsolute; fall back to deviceorientation (compass only).
+    const absType = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+    window.addEventListener(absType, onOrient as EventListener, true);
+    return () => window.removeEventListener(absType, onOrient as EventListener, true);
   }, [phase, headingSupported, targetFrames, captureFrame]);
 
   const requestCamera = async (): Promise<MediaStream> => {
@@ -161,15 +167,21 @@ export const GuidedScanner: React.FC<Props> = ({
       const stream = await requestCamera();
       streamRef.current = stream;
 
-      // Orientation permission (iOS) — never let this fail the camera start.
+      // Orientation / compass permission (iOS). Auto-capture only when we get a real compass
+      // heading — otherwise fall back to manual shutter (more accurate on Android).
       let oriented = false;
       try {
         const DOE: any = (window as any).DeviceOrientationEvent;
         if (DOE && typeof DOE.requestPermission === 'function') {
           const res = await DOE.requestPermission();
           oriented = res === 'granted';
-        } else if (DOE) {
+        } else if (DOE && 'ondeviceorientationabsolute' in window) {
           oriented = true;
+        } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          oriented = !!DOE;
+        } else {
+          // Android: prefer manual shutter — relative alpha is unreliable for 360° steps.
+          oriented = false;
         }
       } catch {
         oriented = false;
