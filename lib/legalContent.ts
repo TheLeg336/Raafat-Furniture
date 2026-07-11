@@ -3,8 +3,13 @@
  * CCPA/CPRA, and Egypt's Personal Data Protection Law (Law No. 151 of 2020),
  * since the business ships internationally with its physical base in Egypt.
  *
- * BEFORE PUBLISHING, fill the four identity blanks (search for "[" ):
- *   [BUSINESS LEGAL NAME] · [REGISTERED ADDRESS, EGYPT] · [privacy@DOMAIN] · [DOMAIN]
+ * BEFORE PUBLISHING, fill the identity blanks (search for "[" ):
+ *   [BUSINESS LEGAL NAME…] · [الاسم القانوني…] · [REGISTERED ADDRESS, EGYPT] ·
+ *   [privacy@DOMAIN] · [DOMAIN] · [COMMERCIAL REGISTRATION NO.] · [TAX REGISTRATION NO.]
+ * Registered-name rule: if the business name is registered in Arabic, the Arabic
+ * docs must state it EXACTLY as registered; the English docs use a Latin
+ * transliteration followed by the registered Arabic name in parentheses.
+ * A translation alone is not the legal name.
  * Returns policy: 14-day (owner-selected, pending business confirmation).
  * Custom orders: non-returnable + deposit (owner-selected).
  *
@@ -24,8 +29,14 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-const COMPANY = '[BUSINESS LEGAL NAME]';
+// English docs: Latin transliteration + registered Arabic name in parentheses.
+const COMPANY = '[BUSINESS LEGAL NAME — Latin transliteration] ([REGISTERED ARABIC NAME])';
+// Arabic docs: the registered Arabic name EXACTLY as it appears in the commercial register.
+const COMPANY_AR = '[الاسم القانوني المسجّل بالعربية]';
 const ADDRESS = '[REGISTERED ADDRESS, EGYPT]';
+const ADDRESS_AR = '[العنوان المسجّل، مصر]';
+const COMMERCIAL_REG = '[COMMERCIAL REGISTRATION NO.]';
+const TAX_REG = '[TAX REGISTRATION NO.]';
 const CONTACT = '[privacy@DOMAIN]';
 const SITE = '[DOMAIN]';
 const PHONE = '01010279777';
@@ -47,7 +58,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
       {
         heading: 'Who we are',
         body: [
-          `The data controller responsible for your personal data is ${COMPANY}, with its registered place of business at ${ADDRESS}.`,
+          `The data controller responsible for your personal data is ${COMPANY}, with its registered place of business at ${ADDRESS}, commercial registration no. ${COMMERCIAL_REG}, tax registration no. ${TAX_REG}.`,
           `For any privacy question or to exercise your rights, contact us at ${CONTACT} or call ${PHONE}.`,
           'If we are required to appoint a representative or data protection officer in a particular market, their contact details will be added here.',
         ],
@@ -61,6 +72,8 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
           'Technical & usage data: IP address, device and browser type, and pages viewed. We collect analytics data only where you have given consent (see our Cookie Policy).',
           'Reliability diagnostics: if the site encounters a technical error, we may silently record a short diagnostic (error message, page path, approximate destination, and browser type) so our developers can fix bugs. This does not include form contents, payment details, passwords, camera frames, or precise location, and it is not used for advertising.',
           'Communications: messages you send us (e.g. enquiries, custom-order requests) and our replies.',
+          'Launch waitlist: if you join our pre-launch waitlist, we collect your name, email, and (optionally) phone number — used only to tell you about our opening, based on your consent. You can unsubscribe at any time and we will delete your waitlist entry.',
+          'Reviews: if you post a product review, the display name and review text you submit are shown publicly on the product page after moderation. Do not include personal details you do not want public; you can ask us to remove your review at any time.',
           'We do not intentionally collect special-category (sensitive) data, and we ask that you do not send it to us.',
         ],
       },
@@ -72,6 +85,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
           'To operate, secure, and improve our website and prevent fraud — based on our legitimate interests, balanced against your rights, and on consent where the law requires it (e.g. analytics cookies).',
           'To diagnose and fix technical failures on the site (silent error reports) — based on our legitimate interests in keeping the store reliable and secure; limited to technical diagnostics described above.',
           'To understand how the site is used — based on your consent (analytics).',
+          'To tell you about our launch if you joined the waitlist — based on your consent, which you can withdraw at any time via the unsubscribe link or by contacting us.',
           'To comply with tax, accounting, consumer-protection, and other legal obligations — necessary for compliance with a legal obligation.',
           'Where we rely on consent, you can withdraw it at any time; this does not affect processing carried out before withdrawal.',
         ],
@@ -81,6 +95,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
         body: [
           'We share personal data only with service providers ("processors") that help us run the business, under contracts that require them to protect it and use it only on our instructions:',
           '• Payments — Stripe, Inc. and Paymob (process your card payment; each acts as an independent controller of the card data you enter on their pages).',
+          '• Website hosting & content delivery — Vercel, Inc. (serves the site and processes IP addresses in server logs).',
           '• Hosting, database, authentication & file storage — Google Firebase / Google Cloud.',
           '• Product image hosting & delivery — Cloudinary.',
           '• Transactional email delivery — Resend.',
@@ -190,7 +205,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
       {
         heading: 'About us & contact',
         body: [
-          `This website is operated by ${COMPANY}, registered at ${ADDRESS}. You can reach us at ${CONTACT} or ${PHONE}.`,
+          `This website is operated by ${COMPANY}, registered at ${ADDRESS}, commercial registration no. ${COMMERCIAL_REG}, tax registration no. ${TAX_REG}. You can reach us at ${CONTACT} or ${PHONE}.`,
         ],
       },
       {
@@ -225,6 +240,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Returns & cancellations',
         body: [
           'You may return most unused, undamaged standard (in-stock) items within 14 days of delivery or pickup for a refund, provided they are in their original condition and packaging. You are responsible for return shipping unless the item was faulty or incorrect. Refunds are issued to your original payment method within a reasonable period after we receive and inspect the item.',
+          'If you are a consumer in the EU or UK, you additionally have a statutory 14-day right to withdraw from a distance purchase without giving a reason, starting the day you (or your nominated recipient) receive the goods. To exercise it, tell us clearly within that period (email is enough). This right does not apply to goods made to your specifications or clearly personalised (see Custom & made-to-order items). Consumers in Egypt enjoy the return rights provided by the Consumer Protection Law No. 181 of 2018.',
           'In every case, nothing here limits your non-waivable statutory consumer rights, which always apply where an item is faulty, damaged, or not as described.',
         ],
       },
@@ -239,6 +255,13 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Warranty & faulty items',
         body: [
           'We stand behind the quality of our furniture. If an item is faulty, damaged in transit, or not as described, contact us promptly and we will repair, replace, or refund it as required by the consumer law that applies to you.',
+          'Voluntary warranty: [WARRANTY PERIOD & COVERAGE — e.g. "2-year warranty on frames and joinery; excludes normal wear, fabric, and misuse" — fill in or delete this line]. Any voluntary warranty is in addition to, and does not limit, your statutory rights.',
+        ],
+      },
+      {
+        heading: 'Events outside our control',
+        body: [
+          'We are not responsible for delay or failure to perform caused by events outside our reasonable control (e.g. natural disasters, war, strikes, transport or customs disruption). We will notify you, and if the delay is substantial you may cancel an affected order for a refund of any amount paid for undelivered goods (custom items already in production excepted, to the extent permitted by law).',
         ],
       },
       {
@@ -257,6 +280,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Governing law & disputes',
         body: [
           'These terms are governed by the laws of the Arab Republic of Egypt, and the courts of Egypt have jurisdiction — without depriving you of any protection given to you by mandatory consumer-protection laws of the country where you live.',
+          `If we cannot resolve a complaint together, consumers in Egypt may refer it to the Consumer Protection Agency (جهاز حماية المستهلك); consumers elsewhere may use the dispute-resolution bodies available in their country. Please contact us first at ${CONTACT} — most issues are resolved quickly.`,
         ],
       },
       {
@@ -275,7 +299,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
     title: 'سياسة الخصوصية',
     updated: UPDATED_AR,
     intro:
-      `${COMPANY} («رأفت للأثاث»، «نحن»، «لنا») تحترم خصوصيتكم وتلتزم بحماية بياناتكم الشخصية. ` +
+      `${COMPANY_AR} («رأفت للأثاث»، «نحن»، «لنا») تحترم خصوصيتكم وتلتزم بحماية بياناتكم الشخصية. ` +
       'توضّح هذه السياسة ما نجمعه من بيانات، وأغراض الجمع، والأسس القانونية التي نعتمد عليها، والجهات التي نشاركها معها، ' +
       'ومدد الاحتفاظ، والحقوق المقرّرة لكم. وتسري على كل من يستخدم موقعنا أو يشتري منا في أي مكان في العالم، ' +
       'بما في ذلك اللائحة العامة لحماية البيانات (GDPR) في الاتحاد الأوروبي والمملكة المتحدة، وقانون خصوصية المستهلك في كاليفورنيا (CCPA/CPRA)، وقانون حماية البيانات الشخصية المصري (رقم ١٥١ لسنة ٢٠٢٠).',
@@ -283,7 +307,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
       {
         heading: 'من نحن',
         body: [
-          `المسؤول عن معالجة بياناتكم الشخصية (مراقب البيانات) هو ${COMPANY}، ومقرّه المسجّل في ${ADDRESS}.`,
+          `المسؤول عن معالجة بياناتكم الشخصية (مراقب البيانات) هو ${COMPANY_AR}، ومقرّه المسجّل في ${ADDRESS_AR}، سجل تجاري رقم ${COMMERCIAL_REG}، وتسجيل ضريبي رقم ${TAX_REG}.`,
           `لأي استفسار يتعلق بالخصوصية أو لممارسة حقوقكم، يُرجى التواصل معنا عبر ${CONTACT} أو الاتصال على ${PHONE}.`,
           'إذا اقتضى القانون تعيين ممثل أو مسؤول حماية بيانات في سوق معيّن، فستُضاف بيانات التواصل الخاصة به هنا.',
         ],
@@ -297,6 +321,8 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
           'البيانات التقنية وبيانات الاستخدام: عنوان بروتوكول الإنترنت (IP)، ونوع الجهاز والمتصفح، والصفحات التي تمت زيارتها. ولا نجمع بيانات التحليلات إلا بموافقتكم (انظر سياسة ملفات تعريف الارتباط).',
           'تشخيص الموثوقية: إذا واجه الموقع خطأً تقنيًا، فقد نسجّل بصمت تشخيصًا موجزًا (رسالة الخطأ، ومسار الصفحة، وجهة تقريبية، ونوع المتصفح) لتمكين المطوّرين من إصلاح الأعطال. ولا يشمل ذلك محتويات النماذج، أو تفاصيل الدفع، أو كلمات المرور، أو إطارات الكاميرا، أو الموقع الجغرافي الدقيق، ولا يُستخدم لأغراض إعلانية.',
           'المراسلات: الرسائل التي ترسلونها إلينا (مثل الاستفسارات وطلبات التصنيع المخصّص) وردودنا عليها.',
+          'قائمة الانتظار قبل الافتتاح: إذا انضممتم إلى قائمة الانتظار، نجمع الاسم والبريد الإلكتروني ورقم الهاتف (اختياريًا) — وتُستخدم فقط لإبلاغكم بافتتاحنا، استنادًا إلى موافقتكم. ويمكنكم إلغاء الاشتراك في أي وقت وسنحذف قيدكم من القائمة.',
+          'المراجعات: إذا نشرتم مراجعة لمنتج، فإن الاسم المعروض ونص المراجعة اللذين تقدمونهما يُعرضان علنًا على صفحة المنتج بعد المراجعة والاعتماد. يُرجى عدم تضمين بيانات شخصية لا ترغبون في إظهارها للعامة؛ ويمكنكم طلب إزالة مراجعتكم في أي وقت.',
           'لا نجمع عمدًا بيانات من فئة خاصة (حسّاسة)، ونطلب منكم عدم إرسالها إلينا.',
         ],
       },
@@ -308,6 +334,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
           'لتشغيل موقعنا وتأمينه وتحسينه ومنع الاحتيال — استنادًا إلى مصالحنا المشروعة، مع مراعاة حقوقكم، وإلى الموافقة حيث يقتضي القانون ذلك (مثل ملفات تعريف الارتباط الخاصة بالتحليلات).',
           'لتشخيص الأعطال التقنية على الموقع وإصلاحها (تقارير أخطاء صامتة) — استنادًا إلى مصالحنا المشروعة في الحفاظ على موثوقية المتجر وأمنه؛ ومقصور على التشخيص التقني المبيّن أعلاه.',
           'لفهم كيفية استخدام الموقع — استنادًا إلى موافقتكم (التحليلات).',
+          'لإبلاغكم بافتتاحنا إذا انضممتم إلى قائمة الانتظار — استنادًا إلى موافقتكم، ويمكنكم سحبها في أي وقت عبر رابط إلغاء الاشتراك أو بالتواصل معنا.',
           'للامتثال للالتزامات الضريبية والمحاسبية وحماية المستهلك وسائر الالتزامات القانونية — وهو أمر ضروري للامتثال لالتزام قانوني.',
           'حيث نعتمد على الموافقة، يجوز لكم سحبها في أي وقت؛ ولا يؤثر ذلك على المعالجة التي جرت قبل السحب.',
         ],
@@ -317,6 +344,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
         body: [
           'نشارك البيانات الشخصية فقط مع مزوّدي خدمات («معالجين») يساعدوننا في تشغيل الأعمال، بموجب عقود تُلزمهم بحمايتها واستخدامها وفق تعليماتنا فحسب:',
           '• المدفوعات — Stripe, Inc. وPaymob (يعالجان دفع البطاقة؛ ويعمل كل منهما كمراقب مستقل لبيانات البطاقة التي تدخلونها على صفحاتهما).',
+          '• استضافة الموقع وتوصيل المحتوى — Vercel, Inc. (تخدم الموقع وتعالج عناوين IP في سجلات الخادم).',
           '• الاستضافة وقاعدة البيانات والمصادقة وتخزين الملفات — Google Firebase / Google Cloud.',
           '• استضافة صور المنتجات وتوصيلها — Cloudinary.',
           '• تسليم البريد الإلكتروني للمعاملات — Resend.',
@@ -419,13 +447,13 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
     title: 'شروط الخدمة',
     updated: UPDATED_AR,
     intro:
-      `تحكم هذه الشروط استخدامكم لموقع ${COMPANY} (${SITE}) وشراءكم لمنتجاتنا. وباستخدامكم ` +
+      `تحكم هذه الشروط استخدامكم لموقع ${COMPANY_AR} (${SITE}) وشراءكم لمنتجاتنا. وباستخدامكم ` +
       'الموقع أو تقديم طلب، فإنكم توافقون على هذه الشروط. يُرجى قراءتها بعناية.',
     sections: [
       {
         heading: 'من نحن وبيانات التواصل',
         body: [
-          `يُشغَّل هذا الموقع من قِبل ${COMPANY}، المسجّلة في ${ADDRESS}. ويمكنكم التواصل معنا عبر ${CONTACT} أو ${PHONE}.`,
+          `يُشغَّل هذا الموقع من قِبل ${COMPANY_AR}، المسجّلة في ${ADDRESS_AR}، سجل تجاري رقم ${COMMERCIAL_REG}، وتسجيل ضريبي رقم ${TAX_REG}. ويمكنكم التواصل معنا عبر ${CONTACT} أو ${PHONE}.`,
         ],
       },
       {
@@ -460,6 +488,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'الإرجاع والإلغاء',
         body: [
           'يجوز لكم إرجاع معظم المنتجات القياسية (المتوفرة في المخزون) غير المستخدمة وغير التالفة خلال ١٤ يومًا من التسليم أو الاستلام مقابل استرداد، بشرط أن تكون بحالتها وتغليفها الأصليين. وأنتم مسؤولون عن شحن الإرجاع ما لم يكن المنتج معيبًا أو غير صحيح. وتُصدر المبالغ المستردة إلى وسيلة الدفع الأصلية خلال فترة معقولة بعد استلامنا للمنتج وفحصه.',
+          'إذا كنتم مستهلكين في الاتحاد الأوروبي أو المملكة المتحدة، فلكم إضافةً إلى ذلك حق نظامي في العدول عن الشراء عن بُعد خلال ١٤ يومًا دون إبداء أسباب، تبدأ من يوم استلامكم (أو استلام من عيّنتموه) للبضاعة. ولممارسته، أبلغونا بوضوح خلال تلك المدة (يكفي البريد الإلكتروني). ولا يسري هذا الحق على البضائع المصنوعة وفق مواصفاتكم أو المخصّصة بوضوح (انظر المنتجات المخصّصة). ويتمتع المستهلكون في مصر بحقوق الإرجاع المقرّرة بقانون حماية المستهلك رقم ١٨١ لسنة ٢٠١٨.',
           'وفي جميع الأحوال، لا يقيّد أي مما ورد هنا حقوقكم النظامية غير القابلة للتنازل كمستهلكين، والتي تسري دائمًا حيث يكون المنتج معيبًا أو تالفًا أو غير مطابق للوصف.',
         ],
       },
@@ -474,6 +503,13 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'الضمان والمنتجات المعيبة',
         body: [
           'نلتزم بجودة أثاثنا. وإذا كان منتج معيبًا أو تالفًا أثناء النقل أو غير مطابق للوصف، فيُرجى التواصل معنا فورًا وسنقوم بإصلاحه أو استبداله أو رد ثمنه وفق ما يقتضيه قانون حماية المستهلك الساري عليكم.',
+          'الضمان الاختياري: [مدة الضمان ونطاقه — مثال: «ضمان سنتان على الهياكل والنجارة؛ ويستثنى البِلى الطبيعي والأقمشة وسوء الاستخدام» — أكمِلوا هذا البند أو احذفوه]. وأي ضمان اختياري يكون بالإضافة إلى حقوقكم النظامية ولا يقيّدها.',
+        ],
+      },
+      {
+        heading: 'الظروف الخارجة عن إرادتنا',
+        body: [
+          'لا نتحمل المسؤولية عن التأخير أو التعذّر في التنفيذ الناجم عن ظروف خارجة عن سيطرتنا المعقولة (مثل الكوارث الطبيعية، أو الحروب، أو الإضرابات، أو اضطراب النقل أو الجمارك). وسنُخطركم بذلك، وإذا كان التأخير جوهريًا جاز لكم إلغاء الطلب المتأثر واسترداد أي مبلغ دفعتموه عن بضاعة لم تُسلَّم (باستثناء المنتجات المخصّصة التي بدأ تصنيعها، في الحدود التي يسمح بها القانون).',
         ],
       },
       {
@@ -492,6 +528,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'القانون الحاكم وتسوية النزاعات',
         body: [
           'تخضع هذه الشروط لقوانين جمهورية مصر العربية، وتختص محاكم مصر بالنظر فيها — دون حرمانكم من أي حماية تمنحها لكم قوانين حماية المستهلك الإلزامية في البلد الذي تقيمون فيه.',
+          `إذا تعذّر علينا حل شكوى بالتراضي، يجوز للمستهلكين في مصر إحالتها إلى جهاز حماية المستهلك؛ وللمستهلكين في بلدان أخرى اللجوء إلى جهات تسوية النزاعات المتاحة في بلدهم. يُرجى التواصل معنا أولًا عبر ${CONTACT} — فمعظم المسائل تُحل سريعًا.`,
         ],
       },
       {

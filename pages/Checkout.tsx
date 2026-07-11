@@ -543,6 +543,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
             iconLeft={payment === 'stripe' || payment === 'paymob' ? <Lock size={16} /> : undefined}>
             {payment === 'stripe' || payment === 'paymob' ? (t('pay_now') || 'Pay now') : (t('place_order') || 'Place order')}
           </Button>
+          <p className="text-[11px] text-center text-[var(--color-text-secondary)] mt-3">
+            {t('checkout_terms_note') || 'By placing your order you agree to our'}{' '}
+            <Link to="/legal/terms" className="underline">{t('terms') || 'Terms'}</Link>{' '}
+            {t('checkout_terms_and') || 'and'}{' '}
+            <Link to="/legal/privacy" className="underline">{t('privacy_policy') || 'Privacy Policy'}</Link>.
+          </p>
         </Card>
       </form>
 
@@ -559,6 +565,12 @@ const Checkout: React.FC<Props> = ({ t }) => {
         </Button>
         <p className="text-[11px] text-center text-[var(--color-text-secondary)] mt-3 flex items-center justify-center gap-1">
           <Lock size={11} /> {t('secure_checkout') || 'Secure checkout'}
+        </p>
+        <p className="text-[11px] text-center text-[var(--color-text-secondary)] mt-2">
+          {t('checkout_terms_note') || 'By placing your order you agree to our'}{' '}
+          <Link to="/legal/terms" className="underline">{t('terms') || 'Terms'}</Link>{' '}
+          {t('checkout_terms_and') || 'and'}{' '}
+          <Link to="/legal/privacy" className="underline">{t('privacy_policy') || 'Privacy Policy'}</Link>.
         </p>
       </div>
     </div>

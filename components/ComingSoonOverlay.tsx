@@ -130,6 +130,9 @@ export const ComingSoonOverlay: React.FC<Props> = ({ t }) => {
             <Button type="submit" className="w-full" loading={busy}>
               {t('coming_soon_notify') || 'Notify me'}
             </Button>
+            <p className="text-[11px] text-[var(--color-text-secondary)]">
+              {t('coming_soon_privacy') || 'We will only use your details to tell you about our launch. See our Privacy Policy.'}
+            </p>
           </form>
         )}
 
