@@ -19,21 +19,16 @@ everything not explicitly allowed; orders can only be created by the server.
 - [x] **Client config** — `VITE_FIREBASE_*` env vars in Vercel. *(verified: login + catalog work live)*
 - [x] **Firestore rules deployed** — `firebase deploy --only firestore:rules` after any rules change. *(verified: admin works, guests blocked from orders)*
 - [x] **Developer account** — `admins/youssefhanna336@gmail.com` with `role: developer` (bootstrap email also hardcoded in rules). *(verified: /manage loads)*
-- [ ] **`FIREBASE_SERVICE_ACCOUNT` in Vercel** ⚠️ **THE BIG ONE — still missing in Vercel.**
-  Your key file is downloaded; Vercel rejects it because of the multi-line formatting.
-  **Fix: open `service-account.oneline.txt` in the project root** (generated for you —
-  same JSON minified to a single line, gitignored) and paste its whole content as the
-  value. Then redeploy. Without it the server cannot touch Firestore, which breaks:
-  **checkout/order creation, payment-method toggles from the Dev tab, order emails,
-  guest tracking, the worker API, and webhooks.** The Dev tab shows a red banner while
-  this is missing.
-  *Note: the raw key file + `.env` + the one-line file are all gitignored — never commit
-  them. The same key was also copied to `scan-worker/service-account.json` for the 3D worker.*
-- [x] **Order pipeline itself** — full E2E passed on 2026-07-11 with a local server using
-  this key: guest InstaPay pickup order EG127742DE → server-side EGP pricing + VAT
-  breakdown → payment reference → admin "Confirm payment received" → prepared checklist →
-  awaiting approval → ready → completed → test order deleted. Only the customer-notify
-  email couldn't run (needs this key + Resend on Vercel).
+- [x] **`FIREBASE_SERVICE_ACCOUNT` in Vercel** — added 2026-07-11 (one-line paste from
+  `service-account.oneline.txt`). *(verified live: `/api/config` reports
+  `ordersConfigured: true`; Dev-tab payment toggles now take effect at checkout.)*
+  *Key hygiene: the raw key file, `.env`, and the one-line file are all gitignored —
+  never commit them. The same key lives in `scan-worker/service-account.json` for the 3D worker.*
+- [x] **Order pipeline** — full E2E passed **on the live site** 2026-07-11
+  (`node scripts/e2e-live-order.mjs`, 11/11): guest pickup order EG259989KE → server-side
+  EGP pricing → payment reference → guest tracking (wrong email rejected) → paid →
+  production → checklist → awaiting approval → ready → completed → test order + number
+  reservation deleted, toggles restored. Emails return `{sent:false}` until Resend is set up.
 - [ ] **Add remaining team** — Admin → Team: add admins and workshop `worker` accounts (workers only see the spec-only `/workshop` checklists — no prices, no customer data; enforced server-side).
 
 ## 2. Cloudinary (all files: product photos, scan frames, 3D models)
@@ -178,13 +173,12 @@ banner gates analytics.
 
 ## Quick reference: Vercel env — confirmed against your dashboard (2026-07-11)
 
-**Present ✓:** `VITE_FIREBASE_*` (all 6) · `VITE_CLOUDINARY_CLOUD_NAME` · `VITE_CLOUDINARY_UPLOAD_PRESET` · `NVIDIA_API_KEY` · `VITE_GEMINI_API_KEY` (unused — delete it)
+**Present ✓:** `VITE_FIREBASE_*` (all 6) · `VITE_CLOUDINARY_CLOUD_NAME` · `VITE_CLOUDINARY_UPLOAD_PRESET` · `NVIDIA_API_KEY` · **`FIREBASE_SERVICE_ACCOUNT`** (added 2026-07-11, live-verified) · `VITE_GEMINI_API_KEY` (unused — delete it)
 
 **Missing — add these:**
 
 | Env var | What breaks without it |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT` — paste `service-account.oneline.txt` | checkout, payment toggles, emails, worker API, webhooks |
 | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `VITE_STRIPE_PUBLISHABLE_KEY` | card / Apple Pay / Google Pay |
 | `PAYMOB_*` (4 vars) | Egypt card payments |
 | `RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL` | order + contact emails |
