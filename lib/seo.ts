@@ -36,7 +36,9 @@ export function useSeo({ title, description, path, image, type = 'website', json
   const img = image || OG_IMAGE;
 
   useEffect(() => {
-    document.title = SITE.name;
+    // Per-page titles (callers already include the brand) — identical titles
+    // across pages hurt search snippets and AI citations.
+    document.title = title || SITE.name;
     upsertMeta('name', 'description', desc);
     upsertLink('canonical', url);
     upsertMeta('property', 'og:title', title);

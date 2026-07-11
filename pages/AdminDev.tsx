@@ -61,6 +61,7 @@ const AdminDev: React.FC<Props> = () => {
     stripe: true, paymob: true, instapay: true, bank_transfer: true,
   });
   const [envReady, setEnvReady] = useState<{ stripe: boolean; paymob: boolean }>({ stripe: false, paymob: false });
+  const [serverConfigured, setServerConfigured] = useState(true);
   const [savingMethods, setSavingMethods] = useState(false);
 
   useEffect(() => {
@@ -89,11 +90,16 @@ const AdminDev: React.FC<Props> = () => {
 
   const loadPaymentMethods = useCallback(async () => {
     try {
+      // Firestore is the source of truth for saved toggles; /api/config only
+      // supplies env readiness. (The server returns default methods when it has
+      // no service account — never let that overwrite what the dev saved.)
+      let haveSaved = false;
       if (db) {
         const snap = await getDoc(doc(db, 'settings', 'payments'));
         if (snap.exists()) {
           const m = snap.data()?.methods;
           if (m && typeof m === 'object') {
+            haveSaved = true;
             setMethods({
               stripe: m.stripe !== false,
               paymob: m.paymob !== false,
@@ -106,7 +112,8 @@ const AdminDev: React.FC<Props> = () => {
       const raw = await fetch('/api/config').then((r) => r.json()).catch(() => null);
       if (raw?.env) setEnvReady({ stripe: !!raw.env.stripe, paymob: !!raw.env.paymob });
       else if (raw) setEnvReady({ stripe: !!raw.stripe, paymob: !!raw.paymob });
-      if (raw?.methods) {
+      if (raw) setServerConfigured(raw.ordersConfigured !== false);
+      if (!haveSaved && raw?.methods) {
         setMethods({
           stripe: raw.methods.stripe !== false,
           paymob: raw.methods.paymob !== false,
@@ -420,6 +427,13 @@ const AdminDev: React.FC<Props> = () => {
               Turn methods on or off for customers. Card rails still need their API keys in Vercel env —
               disabling here only hides them at checkout. InstaPay address and bank details are edited under Team.
             </p>
+            {!serverConfigured && (
+              <p className="text-xs text-[var(--color-danger)] leading-relaxed border border-[var(--color-danger)]/40 rounded-[var(--radius-md)] p-3">
+                The server cannot read these settings: FIREBASE_SERVICE_ACCOUNT is missing in the Vercel
+                environment, so checkout ignores the toggles below (and ordering is disabled). Add the env
+                var in Vercel → Settings → Environment Variables, then redeploy.
+              </p>
+            )}
             <div className="grid sm:grid-cols-2 gap-3">
               {([
                 { key: 'stripe' as const, label: 'Stripe (international cards)', hint: envReady.stripe ? 'Env keys present' : 'Missing STRIPE_SECRET_KEY' },

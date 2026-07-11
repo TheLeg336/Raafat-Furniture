@@ -22,6 +22,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Module-level so re-renders can't reset the profile-write cooldown.
+let lastProfileWriteAt = 0;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -52,6 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const userData = userDoc.data();
               fName = userData.firstName || null;
               lName = userData.lastName || null;
+            }
+
+            // Default from Google auth when the user hasn't set a name themselves.
+            // A manually saved name (users/{uid}.firstName) always wins — it's read first.
+            if (!fName && currentUser.displayName) {
+              const parts = currentUser.displayName.trim().split(/\s+/);
+              fName = parts[0] || null;
+              lName = lName || parts.slice(1).join(' ') || null;
             }
 
             // Check role in the 'admins' collection. role 'worker' = workshop
@@ -131,14 +142,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (fName: string, lName: string) => {
     if (!user || !db) return;
+    const first = fName.trim().slice(0, 50);
+    const last = lName.trim().slice(0, 50);
+    if (!first) throw new Error('Name cannot be empty.');
+    // Light client-side rate limit so a stuck button/bot can't spam writes.
+    const now = Date.now();
+    if (now - lastProfileWriteAt < 5_000) throw new Error('Please wait a moment before saving again.');
+    lastProfileWriteAt = now;
     await setDoc(doc(db, 'users', user.uid), {
-      firstName: fName,
-      lastName: lName,
+      firstName: first,
+      lastName: last,
       email: user.email,
       updatedAt: new Date().toISOString()
     }, { merge: true });
-    setFirstName(fName);
-    setLastName(lName);
+    setFirstName(first);
+    setLastName(last);
   };
 
   const logout = async () => {

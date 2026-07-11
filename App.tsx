@@ -219,7 +219,10 @@ const AppContent: React.FC = () => {
   useEffect(() => { trackPageView(location.pathname + location.search); }, [location.pathname, location.search]);
 
   useEffect(() => {
-    document.title = 'Raafat Furniture';
+    // Default title only for routes that don't run useSeo() — this parent effect
+    // fires after child effects and would otherwise clobber per-page SEO titles.
+    const seoManaged = /^\/($|shop|product\/|faq|contact|legal\/)/.test(location.pathname);
+    if (!seoManaged) document.title = 'Raafat Furniture';
   }, [location.pathname]);
 
   const t: TFunction = useCallback((key: string): string => {

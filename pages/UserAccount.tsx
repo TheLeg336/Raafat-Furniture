@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
-import { LogOut, ArrowLeft, User, Package, ChevronRight, Heart } from 'lucide-react';
+import { LogOut, ArrowLeft, User, Package, ChevronRight, Heart, Pencil, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TFunction, type Order, type OrderStatus } from '../types';
 import { subscribeUserOrders } from '../lib/orders';
@@ -26,13 +26,17 @@ const statusTone: Record<OrderStatus, 'gold' | 'success' | 'navy' | 'danger' | '
 };
 
 const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
-  const { user, firstName, lastName, isAdmin, loading, logout } = useAuth();
+  const { user, firstName, lastName, isAdmin, loading, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { wishlist } = useStore();
   const { products } = useProducts();
   const { currency } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState({ first: '', last: '' });
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
   const wishlistProducts = products.filter((p) => wishlist.includes(String(p.id)));
 
   useEffect(() => {
@@ -60,7 +64,58 @@ const UserAccount: React.FC<UserAccountProps> = ({ t }) => {
           {user.photoURL ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" /> : <User size={30} />}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-heading text-2xl font-bold truncate">{fullName || t('account_title')}</h1>
+          {editingName ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={nameDraft.first}
+                onChange={(e) => setNameDraft((d) => ({ ...d, first: e.target.value }))}
+                placeholder={t('onboarding_first_name') || 'First name'}
+                maxLength={50}
+                className="w-32 bg-[var(--color-surface-2)] rounded-[var(--radius-md)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
+              <input
+                value={nameDraft.last}
+                onChange={(e) => setNameDraft((d) => ({ ...d, last: e.target.value }))}
+                placeholder={t('onboarding_last_name') || 'Last name'}
+                maxLength={50}
+                className="w-32 bg-[var(--color-surface-2)] rounded-[var(--radius-md)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
+              <button
+                type="button"
+                disabled={savingName}
+                onClick={async () => {
+                  setNameError('');
+                  setSavingName(true);
+                  try {
+                    await updateProfile(nameDraft.first, nameDraft.last);
+                    setEditingName(false);
+                  } catch (e: any) {
+                    setNameError(e?.message || 'Could not save name.');
+                  }
+                  setSavingName(false);
+                }}
+                className="p-2 rounded-full text-[var(--color-primary)] hover:bg-[var(--color-surface-2)]"
+                aria-label={t('save') || 'Save'}
+              ><Check size={18} /></button>
+              <button
+                type="button"
+                onClick={() => { setEditingName(false); setNameError(''); }}
+                className="p-2 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)]"
+                aria-label={t('cancel') || 'Cancel'}
+              ><X size={18} /></button>
+              {nameError && <p className="w-full text-xs text-[var(--color-danger)]">{nameError}</p>}
+            </div>
+          ) : (
+            <h1 className="font-heading text-2xl font-bold truncate flex items-center gap-2">
+              <span className="truncate">{fullName || t('account_title')}</span>
+              <button
+                type="button"
+                onClick={() => { setNameDraft({ first: firstName || '', last: lastName || '' }); setEditingName(true); }}
+                className="p-1.5 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] shrink-0"
+                aria-label={t('account_edit_name') || 'Edit name'}
+              ><Pencil size={15} /></button>
+            </h1>
+          )}
           <p className="text-[var(--color-text-secondary)] truncate">{user.email}</p>
         </div>
         <Button variant="ghost" onClick={async () => { await logout(); navigate('/'); }} iconLeft={<LogOut size={18} />} className="text-[var(--color-danger)]">

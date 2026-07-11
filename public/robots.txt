@@ -1,8 +1,8 @@
 # Raafat Furniture — robots.txt
 # https://raafat-furniture.vercel.app
 #
-# Policy: Allow major AI *search/citation* crawlers on public storefront pages.
-# Block AI *training* crawlers and all access to admin, API, and checkout flows.
+# Policy: Allow AI search/citation AND training crawlers on public storefront
+# pages (maximum AI visibility). Block all access to admin, API, and checkout flows.
 # Authoritative business facts for AI answers: /llms.txt and /llms-full.txt
 #
 # Note: robots.txt is voluntary. For enforcement when on Cloudflare, use
@@ -94,32 +94,88 @@ Disallow: /checkout
 Disallow: /order
 Disallow: /api/
 
-# --- AI training crawlers (DISALLOW — do not use our content for model training) ---
+# --- AI training crawlers (ALLOW public pages — owner wants maximum AI brand
+#     visibility: content in training data makes future models know the brand.
+#     Private/checkout paths stay blocked.) ---
 User-agent: GPTBot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: CCBot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: Bytespider
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: Meta-ExternalAgent
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: FacebookBot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: cohere-ai
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: Diffbot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: YouBot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 User-agent: Amazonbot
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /staff
+Disallow: /account
+Disallow: /checkout
+Disallow: /order
+Disallow: /api/
 
 Sitemap: https://raafat-furniture.vercel.app/sitemap.xml

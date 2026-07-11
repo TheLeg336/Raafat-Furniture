@@ -38,6 +38,8 @@ interface CheckoutDraft {
   payment?: PaymentMethod;
   form?: Partial<typeof emptyForm>;
   done?: StepId[];
+  /** The save-address / guest-account prompt was already answered this session. */
+  addressPromptDone?: boolean;
 }
 
 const emptyForm = {
@@ -73,6 +75,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const [doneSteps, setDoneSteps] = useState<Set<StepId>>(new Set(draft?.done || []));
   const [savePrompt, setSavePrompt] = useState<'none' | 'signed-in' | 'guest'>('none');
   const [guestDeclinedAccount, setGuestDeclinedAccount] = useState(false);
+  const [addressPromptDone, setAddressPromptDone] = useState(!!draft?.addressPromptDone);
   const [nearHint, setNearHint] = useState('');
   const [sortedPickup, setSortedPickup] = useState(() => PICKUP_LOCATIONS.map((loc) => ({ loc, km: null as number | null })));
   const [geoBusy, setGeoBusy] = useState(false);
@@ -154,8 +157,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
   }, [user?.uid]);
 
   useEffect(() => {
-    persistCheckoutDraft({ fulfillment, pickupLocationId, payment, form, done: [...doneSteps] });
-  }, [fulfillment, pickupLocationId, payment, form, doneSteps]);
+    persistCheckoutDraft({ fulfillment, pickupLocationId, payment, form, done: [...doneSteps], addressPromptDone });
+  }, [fulfillment, pickupLocationId, payment, form, doneSteps, addressPromptDone]);
 
   const countries = useMemo(() => countryOptions(lang), [lang]);
   const addrFields = useMemo(() => addressFieldsForCountry(form.country), [form.country]);
@@ -212,6 +215,13 @@ const Checkout: React.FC<Props> = ({ t }) => {
     : true;
   const allValid = fulfillmentValid && detailsValid && addressValid && visible.length > 0;
 
+  const stepValid: Record<StepId, boolean> = {
+    fulfillment: fulfillmentValid,
+    details: detailsValid,
+    address: addressValid,
+    payment: visible.length > 0,
+  };
+
   const markDone = (step: StepId) => setDoneSteps((s) => new Set([...s, step]));
 
   const advanceFrom = (step: StepId) => {
@@ -221,9 +231,15 @@ const Checkout: React.FC<Props> = ({ t }) => {
     if (next) setOpenStep(next);
   };
 
+  /** Header click: credit the step being left if it's complete, then open the target. */
+  const switchStep = (target: StepId) => {
+    if (openStep !== target && stepValid[openStep]) markDone(openStep);
+    setOpenStep(target);
+  };
+
   const handleAddressContinue = () => {
     if (needsBillingAddress && !addressValid) return;
-    if (!needsBillingAddress) {
+    if (!needsBillingAddress || addressPromptDone) {
       advanceFrom('address');
       return;
     }
@@ -252,6 +268,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
       }
     }
     setSavePrompt('none');
+    setAddressPromptDone(true);
     advanceFrom('address');
   };
 
@@ -263,6 +280,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
     }
     setGuestDeclinedAccount(true);
     setSavePrompt('none');
+    setAddressPromptDone(true);
     advanceFrom('address');
   };
 
@@ -338,8 +356,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
             title={t('how_to_receive') || 'How would you like to receive it?'}
             summary={fulfillmentSummary}
             open={openStep === 'fulfillment'}
-            done={doneSteps.has('fulfillment')}
-            onToggle={() => setOpenStep('fulfillment')}
+            done={doneSteps.has('fulfillment') && stepValid['fulfillment']}
+            onToggle={() => switchStep('fulfillment')}
             onContinue={() => fulfillmentValid && advanceFrom('fulfillment')}
             continueDisabled={!fulfillmentValid}
           >
@@ -411,8 +429,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
             title={t('your_details') || 'Your details'}
             summary={form.fullName ? `${form.fullName} · ${form.email}` : undefined}
             open={openStep === 'details'}
-            done={doneSteps.has('details')}
-            onToggle={() => setOpenStep('details')}
+            done={doneSteps.has('details') && stepValid['details']}
+            onToggle={() => switchStep('details')}
             onContinue={() => detailsValid && advanceFrom('details')}
             continueDisabled={!detailsValid}
           >
@@ -443,8 +461,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
               ? pickupLoc.name[lang]
               : (form.line1 ? `${form.city}, ${form.country}` : undefined)}
             open={openStep === 'address'}
-            done={doneSteps.has('address')}
-            onToggle={() => setOpenStep('address')}
+            done={doneSteps.has('address') && stepValid['address']}
+            onToggle={() => switchStep('address')}
             onContinue={savePrompt === 'none' ? handleAddressContinue : undefined}
             continueDisabled={!addressValid}
             continueLabel={savePrompt !== 'none' ? undefined : (t('continue') || 'Continue')}
@@ -513,8 +531,8 @@ const Checkout: React.FC<Props> = ({ t }) => {
             title={t('payment') || 'Payment'}
             summary={visible.find((o) => o.id === payment)?.label}
             open={openStep === 'payment'}
-            done={doneSteps.has('payment')}
-            onToggle={() => setOpenStep('payment')}
+            done={doneSteps.has('payment') && stepValid['payment']}
+            onToggle={() => switchStep('payment')}
           >
             <div className="grid grid-cols-1 gap-3">
               {visible.length === 0 ? (
