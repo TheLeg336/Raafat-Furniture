@@ -97,6 +97,18 @@ function buildOrderEmail(d) {
           </table>
         </td></tr>
 
+        ${d.transferNoteHint ? `<tr><td style="padding:20px 32px 0;">
+                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;border:1px solid ${BORDER};border-radius:12px;">
+                   <tr><td style="padding:16px 20px;font-family:Arial,sans-serif;font-size:14px;color:${INK};">
+                     <strong style="color:${NAVY};">How to pay</strong>
+                     ${d.instapayAddress ? `<br><span style="color:${MUTED};">InstaPay: <strong>${escapeHtml(d.instapayAddress)}</strong></span>` : ""}
+                     <br><span style="color:${MUTED};">In the transfer note / title, write exactly:</span>
+                     <div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed ${GOLD};border-radius:8px;font-family:Consolas,monospace;font-size:15px;font-weight:bold;color:${NAVY};">${escapeHtml(d.transferNoteHint)}</div>
+                     <div style="margin-top:8px;color:${MUTED};font-size:13px;">Amount: <strong>${money(d.total, d.currency)}</strong></div>
+                   </td></tr>
+                 </table>
+               </td></tr>` : ""}
+
         ${d.orderUrl ? `<tr><td style="padding:28px 32px 8px;text-align:center;">
                  <a href="${d.orderUrl}" style="display:inline-block;background:${GOLD};color:${NAVY};font-family:Arial,sans-serif;font-weight:bold;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:9999px;">View your order</a>
                </td></tr>` : ""}
@@ -139,10 +151,12 @@ function taxLabel(d) {
   const pct = d.taxRate ? ` ${Math.round(d.taxRate * 100)}%` : "";
   return d.taxIncluded ? `VAT${pct} (included)` : `Tax${pct}`;
 }
-function orderToEmail(order) {
+function orderToEmail(order, extras) {
+  const isTransfer = order.paymentMethod === "instapay" || order.paymentMethod === "bank_transfer";
+  const name = order.contact?.fullName || "";
   return {
     orderNumber: order.orderNumber,
-    customerName: order.contact?.fullName || "",
+    customerName: name,
     currency: order.currency || "USD",
     items: (order.items || []).map((i) => ({
       name: typeof i.name === "string" ? i.name : i.name?.en || "Item",
@@ -163,7 +177,11 @@ function orderToEmail(order) {
     contact: order.contact || {},
     storeName: "Raafat Furniture",
     siteUrl: process.env.SITE_URL || "",
-    orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : ""
+    orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : "",
+    ...isTransfer ? {
+      transferNoteHint: `${order.orderNumber} ${name}`.trim(),
+      instapayAddress: extras?.instapayAddress || ""
+    } : {}
   };
 }
 var NAVY, GOLD, INK, MUTED, BORDER, fulfillmentLabel;
@@ -183,8 +201,15 @@ var init_orderEmail = __esm({
   }
 });
 
+// server/launchEmail.ts
+var init_launchEmail = __esm({
+  "server/launchEmail.ts"() {
+    "use strict";
+  }
+});
+
 // server/email.ts
-async function send(to, subject, html, text) {
+async function send(to, subject, html, text, replyTo) {
   if (!RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY missing \u2014 would send "${subject}" to ${to}`);
     return false;
@@ -196,7 +221,14 @@ async function send(to, subject, html, text) {
         Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html, text })
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to,
+        subject,
+        html,
+        text,
+        ...replyTo || EMAIL_REPLY_TO ? { reply_to: replyTo || EMAIL_REPLY_TO } : {}
+      })
     });
     if (!res.ok) {
       console.error("[email] Resend error:", res.status, await res.text());
@@ -212,13 +244,15 @@ async function sendOrderConfirmation(to, data) {
   const { subject, html, text } = buildOrderEmail(data);
   return send(to, subject, html, text);
 }
-var RESEND_API_KEY, EMAIL_FROM;
+var RESEND_API_KEY, EMAIL_FROM, EMAIL_REPLY_TO;
 var init_email = __esm({
   "server/email.ts"() {
     "use strict";
     init_orderEmail();
+    init_launchEmail();
     RESEND_API_KEY = process.env.RESEND_API_KEY || "";
     EMAIL_FROM = process.env.EMAIL_FROM || "Raafat Furniture <orders@example.com>";
+    EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || "";
   }
 });
 
@@ -277,6 +311,10 @@ init_orderEmail();
 import { Router as Router2 } from "express";
 init_email();
 init_orderEmail();
+
+// server/launchApi.ts
+import { Router as Router3 } from "express";
+init_email();
 
 // server/app.ts
 var STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, Camera, Upload, Plus, Trash2, Loader2, AlertTriangle, Check } from 'lucide-react';
 import type { Model3D, ModelVariant, ScanJob } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeScans, subscribeScan, reconstructionConfigured, createHandoffScan } from '../../lib/scan';
+import { subscribeScans, subscribeScan, reconstructionConfigured, createScanJob, attachModelToScan } from '../../lib/scan';
 import { uploadModel } from '../../lib/modelUpload';
 import { localized } from '../../lib/format';
 import { GuidedScanner } from '../scan/GuidedScanner';
@@ -20,6 +20,8 @@ const blankVariant = (): ModelVariant => ({ id: Math.random().toString(36).slice
 interface Props {
   value: Model3D | null;
   onChange: (model: Model3D | null) => void;
+  /** Firestore id of the product being edited — lets the scan worker auto-attach the finished model. */
+  productId?: string;
 }
 
 type DimState = { width: string; height: string; depth: string; unit: 'cm' | 'm' };
@@ -48,11 +50,14 @@ function parseDims(d: DimState): Model3D['dimensions'] | undefined {
   return { unit: d.unit, ...(width != null ? { width } : {}), ...(height != null ? { height } : {}), ...(depth != null ? { depth } : {}) };
 }
 
-export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
+export const Product3DFields: React.FC<Props> = ({ value, onChange, productId }) => {
   const { user } = useAuth();
   const toast = useToast();
   const tier = useViewport();
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
+  const attachScanIdRef = useRef<string | null>(null);
+  const [attachingScanId, setAttachingScanId] = useState<string | null>(null);
   const [modelUrl, setModelUrl] = useState('');
   const [iosUrl, setIosUrl] = useState('');
   const [variants, setVariants] = useState<ModelVariant[]>([]);
@@ -156,7 +161,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       return;
     }
     try {
-      const id = await createHandoffScan(user.email || user.uid);
+      const id = await createScanJob(user.email || user.uid, { handoff: true, productId });
       setHandoffScanId(id);
       setHandoffOpen(true);
     } catch (e: any) {
@@ -179,6 +184,23 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const onAttachGlb = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const scanJobId = attachScanIdRef.current;
+    if (attachRef.current) attachRef.current.value = '';
+    if (!file || !scanJobId) return;
+    setAttachingScanId(scanJobId);
+    try {
+      const url = await attachModelToScan(scanJobId, file);
+      const job = scans.find((s) => s.id === scanJobId);
+      applyScanModel({ ...(job as ScanJob), id: scanJobId, modelUrl: url, status: 'ready' });
+      toast.success('GLB attached to scan and applied to this product');
+    } catch (err: any) {
+      toast.error(err?.message || 'Attach failed');
+    }
+    setAttachingScanId(null);
   };
 
   const scanTone: Record<string, 'gold' | 'success' | 'info' | 'danger'> = {
@@ -216,6 +238,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
             className="flex-1 min-w-[200px]"
           />
           <input ref={fileRef} type="file" accept=".glb,.gltf,model/gltf-binary" onChange={onUpload} className="hidden" id="product-glb-upload" />
+          <input ref={attachRef} type="file" accept=".glb,.gltf,model/gltf-binary" onChange={onAttachGlb} className="hidden" id="scan-glb-attach" />
           <Button type="button" variant="secondary" onClick={() => fileRef.current?.click()} loading={uploading} iconLeft={<Upload size={16} />}>
             Upload GLB
           </Button>
@@ -321,9 +344,18 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
                 {s.status === 'processing' && <Loader2 size={12} className="animate-spin" />}
                 {s.status === 'ready' && <Check size={12} className="text-[#3ba55d]" />}
                 {s.status === 'failed' && <AlertTriangle size={12} className="text-[var(--color-danger)]" />}
-                {s.modelUrl && (
+                {s.modelUrl ? (
                   <button type="button" className="underline text-[var(--color-primary)] ms-auto" onClick={() => applyScanModel(s)}>
                     Use model
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="underline text-[var(--color-primary)] ms-auto disabled:opacity-50"
+                    disabled={attachingScanId === s.id}
+                    onClick={() => { attachScanIdRef.current = s.id; attachRef.current?.click(); }}
+                  >
+                    {attachingScanId === s.id ? 'Attaching…' : 'Attach GLB'}
                   </button>
                 )}
               </div>
@@ -335,6 +367,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange }) => {
       {scanning && user && (
         <GuidedScanner
           createdBy={user.email || user.uid}
+          productId={productId}
           onComplete={(id) => {
             setScanning(false);
             setScanId(id);

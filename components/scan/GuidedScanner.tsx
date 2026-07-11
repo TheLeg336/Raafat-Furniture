@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Check, X, RotateCw, Ruler, Loader2 } from 'lucide-react';
+import { Camera, Check, X, Ruler, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import {
@@ -16,12 +16,36 @@ interface Props {
   createdBy: string;
   /** Resume an existing scan (desktop handoff). */
   scanId?: string;
-  targetFrames?: number;
+  /** Auto-attach target for the worker once reconstruction completes. */
+  productId?: string;
   onComplete: (scanId: string) => void;
   onCancel: () => void;
 }
 
 type Phase = 'intro' | 'capturing' | 'dimensions' | 'uploading' | 'done' | 'error';
+
+/**
+ * Manual guided capture plan: the admin taps the shutter at each prompted
+ * position. Passes cover the orbit at three heights plus close-up details —
+ * the coverage photogrammetry needs (~70% overlap, multiple elevations).
+ */
+const PASSES = [
+  { label: 'Eye level', instruction: 'Hold the phone level with the middle of the piece', shots: 12 },
+  { label: 'High angle', instruction: 'Raise the phone about 45° above the piece, aim down', shots: 8 },
+  { label: 'Low angle', instruction: 'Drop below the piece slightly, aim up a touch', shots: 6 },
+  { label: 'Details', instruction: 'Close-ups: joints, handles, carvings, fabric texture', shots: 4 },
+] as const;
+
+const TOTAL_SHOTS = PASSES.reduce((n, p) => n + p.shots, 0);
+const MIN_SHOTS = 8;
+
+function shotPrompt(passIdx: number, shotIdx: number): string {
+  const pass = PASSES[passIdx];
+  if (pass.label === 'Details') return `Detail shot ${shotIdx + 1} of ${pass.shots}`;
+  if (shotIdx === 0) return 'Face the front of the piece';
+  const stepDeg = Math.round(360 / pass.shots);
+  return `Move ~${stepDeg}° to your right, then shoot`;
+}
 
 /**
  * Guided object capture. Portaled to document.body so storefront/admin chrome
@@ -30,24 +54,34 @@ type Phase = 'intro' | 'capturing' | 'dimensions' | 'uploading' | 'done' | 'erro
 export const GuidedScanner: React.FC<Props> = ({
   createdBy,
   scanId: existingScanId,
-  targetFrames = 32,
+  productId,
   onComplete,
   onCancel,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const framesRef = useRef<Blob[]>([]);
-  const headingRef = useRef<{ start: number | null; last: number | null }>({ start: null, last: null });
   const startingRef = useRef(false);
+  const shutterLockRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [count, setCount] = useState(0);
-  const [headingSupported, setHeadingSupported] = useState(false);
-  const [hint, setHint] = useState('Move slowly around the object');
+  const [flash, setFlash] = useState(false);
   const [error, setError] = useState('');
   const [dims, setDims] = useState({ width: '', height: '', depth: '', unit: 'cm' as 'cm' | 'm' });
   const [progressMsg, setProgressMsg] = useState('');
   const [starting, setStarting] = useState(false);
+
+  // Where are we in the guide plan?
+  let passIdx = 0;
+  let shotIdx = count;
+  for (const p of PASSES) {
+    if (shotIdx < p.shots) break;
+    shotIdx -= p.shots;
+    passIdx++;
+  }
+  const finishedPlan = passIdx >= PASSES.length;
+  const pass = finishedPlan ? PASSES[PASSES.length - 1] : PASSES[passIdx];
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((tk) => tk.stop());
@@ -83,66 +117,40 @@ export const GuidedScanner: React.FC<Props> = ({
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
-    if (!video || video.videoWidth === 0) return;
+    if (!video || video.videoWidth === 0 || shutterLockRef.current) return;
+    shutterLockRef.current = true;
     const canvas = document.createElement('canvas');
-    const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    // Higher long edge = better reconstruction; 1920 keeps uploads reasonable.
+    const scale = Math.min(1, 1920 / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) { shutterLockRef.current = false; return; }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
+        shutterLockRef.current = false;
         if (!blob) return;
         framesRef.current.push(blob);
         setCount(framesRef.current.length);
-        if (framesRef.current.length >= targetFrames) {
+        setFlash(true);
+        setTimeout(() => setFlash(false), 140);
+        if (framesRef.current.length >= TOTAL_SHOTS) {
           setPhase('dimensions');
           stopCamera();
         }
       },
       'image/jpeg',
-      0.82,
+      0.88,
     );
-  }, [targetFrames, stopCamera]);
-
-  useEffect(() => {
-    if (phase !== 'capturing' || !headingSupported) return;
-    const step = 360 / targetFrames;
-    // Prefer absolute compass heading. Plain `deviceorientation` alpha on Android is
-    // screen-relative and fires at wrong angles — only auto-capture when we have a real compass.
-    const onOrient = (e: DeviceOrientationEvent) => {
-      const compass = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
-      const absolute = (e as DeviceOrientationEvent & { absolute?: boolean }).absolute;
-      const alpha = compass ?? (absolute ? e.alpha : null);
-      if (alpha == null) return;
-      const h = headingRef.current;
-      if (h.start == null) {
-        h.start = alpha;
-        h.last = alpha;
-        captureFrame();
-        return;
-      }
-      let delta = Math.abs(alpha - (h.last as number));
-      if (delta > 180) delta = 360 - delta;
-      if (delta >= step) {
-        h.last = alpha;
-        captureFrame();
-        setHint('Keep moving — steady and slow');
-      }
-    };
-    // iOS / some browsers: deviceorientationabsolute; fall back to deviceorientation (compass only).
-    const absType = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
-    window.addEventListener(absType, onOrient as EventListener, true);
-    return () => window.removeEventListener(absType, onOrient as EventListener, true);
-  }, [phase, headingSupported, targetFrames, captureFrame]);
+  }, [stopCamera]);
 
   const requestCamera = async (): Promise<MediaStream> => {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error('Camera API is not available in this browser. Use HTTPS (or localhost) and a supported browser.');
     }
     const attempts: MediaStreamConstraints[] = [
-      { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } },
       { audio: false, video: { facingMode: 'environment' } },
       { audio: false, video: { facingMode: 'user' } },
       { audio: false, video: true },
@@ -166,31 +174,7 @@ export const GuidedScanner: React.FC<Props> = ({
     try {
       const stream = await requestCamera();
       streamRef.current = stream;
-
-      // Orientation / compass permission (iOS). Auto-capture only when we get a real compass
-      // heading — otherwise fall back to manual shutter (more accurate on Android).
-      let oriented = false;
-      try {
-        const DOE: any = (window as any).DeviceOrientationEvent;
-        if (DOE && typeof DOE.requestPermission === 'function') {
-          const res = await DOE.requestPermission();
-          oriented = res === 'granted';
-        } else if (DOE && 'ondeviceorientationabsolute' in window) {
-          oriented = true;
-        } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          oriented = !!DOE;
-        } else {
-          // Android: prefer manual shutter — relative alpha is unreliable for 360° steps.
-          oriented = false;
-        }
-      } catch {
-        oriented = false;
-      }
-
-      setHeadingSupported(oriented);
-      setHint(oriented ? 'Walk slowly around the object — frames capture automatically' : 'Tap the shutter from each angle as you circle the object');
       framesRef.current = [];
-      headingRef.current = { start: null, last: null };
       setCount(0);
       setPhase('capturing');
     } catch (e: any) {
@@ -214,7 +198,7 @@ export const GuidedScanner: React.FC<Props> = ({
     setPhase('uploading');
     setProgressMsg('Creating scan…');
     try {
-      const scanId = existingScanId || await createScanJob(createdBy);
+      const scanId = existingScanId || await createScanJob(createdBy, { productId });
       const frameUrls: string[] = [];
       for (let i = 0; i < framesRef.current.length; i++) {
         setProgressMsg(`Uploading frame ${i + 1} of ${framesRef.current.length}…`);
@@ -231,6 +215,7 @@ export const GuidedScanner: React.FC<Props> = ({
         status: 'uploading',
         frameCount: frameUrls.length,
         frameUrls,
+        ...(productId ? { productId } : {}),
         ...(hasAnyDim ? { realDimensions } : {}),
       });
       const job: ScanJob = {
@@ -247,7 +232,7 @@ export const GuidedScanner: React.FC<Props> = ({
       setProgressMsg(
         dispatched
           ? 'Reconstruction started. The 3D model will appear here when ready.'
-          : 'Frames saved and queued. Attach the finished GLB in the scan list, or it completes automatically once a reconstruction service is connected.',
+          : 'Frames saved and queued. The scan worker will build the 3D model when it’s online — or attach a finished GLB in the scan list.',
       );
       setPhase('done');
       setTimeout(() => onComplete(scanId), 1800);
@@ -257,7 +242,11 @@ export const GuidedScanner: React.FC<Props> = ({
     }
   };
 
-  const pct = Math.min(100, Math.round((count / targetFrames) * 100));
+  // Tick ring for the current pass: filled dots for taken shots.
+  const ticks = Array.from({ length: pass.shots }, (_, i) => {
+    const a = (i / pass.shots) * 2 * Math.PI - Math.PI / 2;
+    return { x: 80 + 70 * Math.cos(a), y: 80 + 70 * Math.sin(a), done: i < shotIdx || finishedPlan };
+  });
 
   const ui = (
     <div
@@ -282,19 +271,20 @@ export const GuidedScanner: React.FC<Props> = ({
           autoPlay
           className={`absolute inset-0 w-full h-full object-cover ${phase === 'capturing' ? '' : 'opacity-0 pointer-events-none'}`}
         />
+        {flash && <div className="absolute inset-0 bg-white/60 pointer-events-none" />}
 
         {phase === 'intro' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 gap-5">
             <Camera size={48} className="text-[var(--color-primary)]" />
             <p className="max-w-sm text-white/80">
-              Place the object on the floor or a table with space to walk around it, in even light.
-              Move slowly in a full circle. {targetFrames} frames will be captured.
+              Place the object with space to walk all the way around it, in even light.
+              You&apos;ll be prompted through {TOTAL_SHOTS} photos: a full circle at eye level,
+              then high and low passes, then a few close-ups.
             </p>
             <Button onClick={startCapture} loading={starting} iconLeft={<Camera size={18} />}>Start camera</Button>
             {!reconstructionConfigured() && (
               <p className="text-xs text-white/50 max-w-xs">
-                Note: a reconstruction service isn&apos;t connected yet — frames will be saved &amp; queued, and
-                you can attach the finished 3D model afterwards.
+                Frames are saved &amp; queued for the scan worker (or attach a finished GLB afterwards).
               </p>
             )}
           </div>
@@ -302,43 +292,55 @@ export const GuidedScanner: React.FC<Props> = ({
 
         {phase === 'capturing' && (
           <div className="absolute inset-0 flex flex-col items-center justify-between p-6 pointer-events-none">
-            <div className="mt-2 px-4 py-2 rounded-[var(--radius-pill)] bg-black/50 backdrop-blur-md text-sm">{hint}</div>
-
-            <div className="relative">
-              <svg width="160" height="160" viewBox="0 0 160 160" className="-rotate-90">
-                <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
-                <circle
-                  cx="80" cy="80" r="70" fill="none" stroke="var(--color-primary)" strokeWidth="6" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 70}
-                  strokeDashoffset={2 * Math.PI * 70 * (1 - pct / 100)}
-                  style={{ transition: 'stroke-dashoffset 0.3s ease' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold">{count}</span>
-                <span className="text-xs text-white/60">/ {targetFrames}</span>
+            <div className="mt-2 flex flex-col items-center gap-1.5 text-center">
+              <div className="px-4 py-1.5 rounded-[var(--radius-pill)] bg-[var(--color-primary)] text-black text-xs font-bold uppercase tracking-wide">
+                {pass.label} — shot {Math.min(shotIdx + 1, pass.shots)} / {pass.shots}
+              </div>
+              <div className="px-4 py-2 rounded-[var(--radius-pill)] bg-black/50 backdrop-blur-md text-sm max-w-xs">
+                {shotPrompt(Math.min(passIdx, PASSES.length - 1), shotIdx)}
+              </div>
+              <div className="px-3 py-1 rounded-[var(--radius-pill)] bg-black/40 text-xs text-white/70 max-w-xs">
+                {pass.instruction}
               </div>
             </div>
 
-            {!headingSupported && (
+            <div className="relative">
+              <svg width="160" height="160" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
+                {ticks.map((t, i) => (
+                  <circle key={i} cx={t.x} cy={t.y} r="5" fill={t.done ? 'var(--color-primary)' : 'rgba(255,255,255,0.3)'} />
+                ))}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-3xl font-bold">{count}</span>
+                <span className="text-xs text-white/60">/ {TOTAL_SHOTS}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-3">
               <button
                 onClick={captureFrame}
                 className="pointer-events-auto w-[72px] h-[72px] rounded-full bg-white border-4 border-[var(--color-primary)] flex items-center justify-center active:scale-95 transition-transform"
-                aria-label="Capture frame"
+                aria-label="Capture photo"
               >
                 <Camera size={26} className="text-black" />
               </button>
-            )}
-            {headingSupported && (
-              <div className="flex items-center gap-2 text-sm text-white/70"><RotateCw size={16} /> auto-capturing</div>
-            )}
+              {count >= MIN_SHOTS && (
+                <button
+                  onClick={() => { setPhase('dimensions'); stopCamera(); }}
+                  className="pointer-events-auto text-xs underline text-white/70"
+                >
+                  Finish early with {count} photos
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {phase === 'dimensions' && (
           <div className="absolute inset-0 bg-[var(--color-background)] text-[var(--color-text-primary)] overflow-y-auto">
             <div className="max-w-md mx-auto px-6 py-8 flex flex-col gap-5">
-              <div className="flex items-center gap-2 text-[var(--color-primary)]"><Check size={20} /><span className="font-semibold">{count} frames captured</span></div>
+              <div className="flex items-center gap-2 text-[var(--color-primary)]"><Check size={20} /><span className="font-semibold">{count} photos captured</span></div>
               <div className="flex items-center gap-2"><Ruler size={18} /><h3 className="font-heading text-lg font-bold">Real-world dimensions</h3></div>
               <p className="text-sm text-[var(--color-text-secondary)] -mt-2">
                 Used so the model appears at accurate size in AR. Optional but recommended.

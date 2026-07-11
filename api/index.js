@@ -102,6 +102,18 @@ function buildOrderEmail(d) {
           </table>
         </td></tr>
 
+        ${d.transferNoteHint ? `<tr><td style="padding:20px 32px 0;">
+                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;border:1px solid ${BORDER};border-radius:12px;">
+                   <tr><td style="padding:16px 20px;font-family:Arial,sans-serif;font-size:14px;color:${INK};">
+                     <strong style="color:${NAVY};">How to pay</strong>
+                     ${d.instapayAddress ? `<br><span style="color:${MUTED};">InstaPay: <strong>${escapeHtml(d.instapayAddress)}</strong></span>` : ""}
+                     <br><span style="color:${MUTED};">In the transfer note / title, write exactly:</span>
+                     <div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed ${GOLD};border-radius:8px;font-family:Consolas,monospace;font-size:15px;font-weight:bold;color:${NAVY};">${escapeHtml(d.transferNoteHint)}</div>
+                     <div style="margin-top:8px;color:${MUTED};font-size:13px;">Amount: <strong>${money(d.total, d.currency)}</strong></div>
+                   </td></tr>
+                 </table>
+               </td></tr>` : ""}
+
         ${d.orderUrl ? `<tr><td style="padding:28px 32px 8px;text-align:center;">
                  <a href="${d.orderUrl}" style="display:inline-block;background:${GOLD};color:${NAVY};font-family:Arial,sans-serif;font-weight:bold;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:9999px;">View your order</a>
                </td></tr>` : ""}
@@ -144,10 +156,12 @@ function taxLabel(d) {
   const pct = d.taxRate ? ` ${Math.round(d.taxRate * 100)}%` : "";
   return d.taxIncluded ? `VAT${pct} (included)` : `Tax${pct}`;
 }
-function orderToEmail(order) {
+function orderToEmail(order, extras) {
+  const isTransfer = order.paymentMethod === "instapay" || order.paymentMethod === "bank_transfer";
+  const name = order.contact?.fullName || "";
   return {
     orderNumber: order.orderNumber,
-    customerName: order.contact?.fullName || "",
+    customerName: name,
     currency: order.currency || "USD",
     items: (order.items || []).map((i) => ({
       name: typeof i.name === "string" ? i.name : i.name?.en || "Item",
@@ -168,8 +182,41 @@ function orderToEmail(order) {
     contact: order.contact || {},
     storeName: "Raafat Furniture",
     siteUrl: process.env.SITE_URL || "",
-    orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : ""
+    orderUrl: process.env.SITE_URL ? `${process.env.SITE_URL}/order/confirmation?order=${order.orderNumber}` : "",
+    ...isTransfer ? {
+      transferNoteHint: `${order.orderNumber} ${name}`.trim(),
+      instapayAddress: extras?.instapayAddress || ""
+    } : {}
   };
+}
+function buildOrderMessageEmail(opts) {
+  const store = "Raafat Furniture";
+  const subject = `${store} \u2014 Message about order ${opts.orderNumber}`;
+  const replyHint = "Reply to this email to continue the conversation. Your reply will be attached to your order.";
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f6f5f2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;border:1px solid ${BORDER};">
+      <tr><td style="background:${NAVY};padding:22px 32px;border-radius:16px 16px 0 0;">
+        <span style="font-family:Georgia,serif;font-size:20px;color:${GOLD};">${store}</span>
+      </td></tr>
+      <tr><td style="padding:28px 32px;">
+        <p style="font-family:Arial,sans-serif;font-size:15px;color:${INK};margin:0 0 12px;">Hi ${escapeHtml(opts.customerName || "there")},</p>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:${MUTED};margin:0 0 16px;">Order <strong style="color:${NAVY};">${escapeHtml(opts.orderNumber)}</strong></p>
+        <div style="font-family:Arial,sans-serif;font-size:15px;color:${INK};line-height:1.6;white-space:pre-wrap;padding:16px;background:#faf8f3;border-radius:12px;border:1px solid ${BORDER};">${escapeHtml(opts.body)}</div>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:${MUTED};margin:18px 0 0;">${replyHint}</p>
+        ${opts.siteUrl ? `<p style="font-family:Arial,sans-serif;font-size:13px;margin:12px 0 0;"><a href="${escapeHtml(opts.siteUrl)}/order/confirmation?order=${escapeHtml(opts.orderNumber)}" style="color:${NAVY};">View your order</a></p>` : ""}
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`;
+  const text = `${subject}
+
+Hi ${opts.customerName},
+Order ${opts.orderNumber}
+
+${opts.body}
+
+${replyHint}`;
+  return { subject, html, text };
 }
 function buildStatusEmail(order, type) {
   const store = "Raafat Furniture";
@@ -216,18 +263,86 @@ var init_orderEmail = __esm({
   }
 });
 
+// server/launchEmail.ts
+function escapeHtml2(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function buildLaunchEmail(d) {
+  const store = d.storeName || "Raafat Furniture";
+  const siteUrl = d.siteUrl.replace(/\/$/, "");
+  const greeting = d.name.trim() ? `Hi ${d.name.trim()},` : "Hello,";
+  const subject = `${store} is now open`;
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f3ef;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f3ef;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(20,33,61,0.08);">
+        <tr><td style="background:${NAVY2};padding:22px 28px;text-align:center;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;letter-spacing:0.04em;color:#ffffff;">${escapeHtml2(store)}</div>
+        </td></tr>
+        <tr><td style="padding:0;">
+          <img src="${HERO_IMG}" alt="" width="560" style="display:block;width:100%;max-height:220px;object-fit:cover;" />
+        </td></tr>
+        <tr><td style="padding:32px 28px 8px;font-family:Arial,sans-serif;">
+          <p style="margin:0 0 12px;font-size:15px;color:${MUTED2};">${escapeHtml2(greeting)}</p>
+          <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;color:${INK2};font-weight:bold;">We're open.</h1>
+          <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:${MUTED2};">
+            You asked us to let you know when ${escapeHtml2(store)} went live. Handcrafted luxury furniture is ready to explore: browse collections, preview pieces in 3D, and order for pickup or worldwide delivery.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;"><tr><td style="border-radius:999px;background:${GOLD2};">
+            <a href="${siteUrl}" style="display:inline-block;padding:14px 32px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.08em;text-transform:uppercase;color:${NAVY2};text-decoration:none;">Explore</a>
+          </td></tr></table>
+          <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:${MUTED2};">
+            <strong style="color:${INK2};">Button not working?</strong> Copy and paste this link into your browser:
+          </p>
+          <p style="margin:0 0 20px;font-size:13px;line-height:1.5;word-break:break-all;">
+            <a href="${siteUrl}" style="color:${NAVY2};text-decoration:underline;">${siteUrl}</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 28px 24px;border-top:1px solid ${BORDER2};font-family:Arial,sans-serif;font-size:12px;color:#9ca3af;text-align:center;">
+          ${escapeHtml2(store)} \xB7 Cairo, Minya &amp; worldwide delivery
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  const text = `${subject}
+
+${greeting}
+
+${store} is now live. Explore the collection: ${siteUrl}
+
+If the link above does not open, copy and paste it into your browser's address bar.`;
+  return { subject, html, text };
+}
+var NAVY2, GOLD2, INK2, MUTED2, BORDER2, HERO_IMG;
+var init_launchEmail = __esm({
+  "server/launchEmail.ts"() {
+    "use strict";
+    NAVY2 = "#14213d";
+    GOLD2 = "#e8c547";
+    INK2 = "#1a202c";
+    MUTED2 = "#6b7280";
+    BORDER2 = "#e8e6e1";
+    HERO_IMG = "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80";
+  }
+});
+
 // server/email.ts
 var email_exports = {};
 __export(email_exports, {
   emailConfigured: () => emailConfigured,
+  sendLaunchAnnouncement: () => sendLaunchAnnouncement,
   sendOrderConfirmation: () => sendOrderConfirmation,
+  sendOrderMessage: () => sendOrderMessage,
   sendOrderStatus: () => sendOrderStatus,
   sendPlain: () => sendPlain
 });
 function emailConfigured() {
   return !!RESEND_API_KEY;
 }
-async function send(to, subject, html, text) {
+async function send(to, subject, html, text, replyTo) {
   if (!RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY missing \u2014 would send "${subject}" to ${to}`);
     return false;
@@ -239,7 +354,14 @@ async function send(to, subject, html, text) {
         Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ from: EMAIL_FROM, to, subject, html, text })
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to,
+        subject,
+        html,
+        text,
+        ...replyTo || EMAIL_REPLY_TO ? { reply_to: replyTo || EMAIL_REPLY_TO } : {}
+      })
     });
     if (!res.ok) {
       console.error("[email] Resend error:", res.status, await res.text());
@@ -257,6 +379,24 @@ async function sendOrderConfirmation(to, data) {
 }
 async function sendOrderStatus(to, order, type) {
   const { subject, html, text } = buildStatusEmail(order, type);
+  return send(to, subject, html, text);
+}
+async function sendOrderMessage(to, opts) {
+  const { subject, html, text } = buildOrderMessageEmail({
+    orderNumber: opts.orderNumber,
+    customerName: opts.customerName,
+    body: opts.body,
+    siteUrl: process.env.SITE_URL || ""
+  });
+  let replyTo = EMAIL_REPLY_TO;
+  if (EMAIL_REPLY_TO.includes("@")) {
+    const [local, domain] = EMAIL_REPLY_TO.split("@");
+    replyTo = `${local}+${opts.orderId}@${domain}`;
+  }
+  return send(to, subject, html, text, replyTo || void 0);
+}
+async function sendLaunchAnnouncement(to, data) {
+  const { subject, html, text } = buildLaunchEmail(data);
   return send(to, subject, html, text);
 }
 async function sendPlain(to, subject, text, replyTo) {
@@ -279,13 +419,15 @@ async function sendPlain(to, subject, text, replyTo) {
     return false;
   }
 }
-var RESEND_API_KEY, EMAIL_FROM;
+var RESEND_API_KEY, EMAIL_FROM, EMAIL_REPLY_TO;
 var init_email = __esm({
   "server/email.ts"() {
     "use strict";
     init_orderEmail();
+    init_launchEmail();
     RESEND_API_KEY = process.env.RESEND_API_KEY || "";
     EMAIL_FROM = process.env.EMAIL_FROM || "Raafat Furniture <orders@example.com>";
+    EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || "";
   }
 });
 
@@ -347,6 +489,22 @@ init_orderEmail();
 
 // server/ordersApi.ts
 import { Router } from "express";
+
+// lib/staff.ts
+var BOOTSTRAP_DEVELOPER_EMAIL = "youssefhanna336@gmail.com";
+function isBootstrapDeveloperEmail(email, verified) {
+  if (!email || verified === false) return false;
+  return email.toLowerCase() === BOOTSTRAP_DEVELOPER_EMAIL;
+}
+function normalizeStaffRole(role) {
+  if (typeof role !== "string" || !role.trim()) return null;
+  const r = role.trim().toLowerCase();
+  if (r === "developer" || r === "admin" || r === "worker") return r;
+  if (r === "dev") return "developer";
+  return null;
+}
+
+// server/ordersApi.ts
 init_email();
 init_orderEmail();
 var STORE_COUNTRY = "EG";
@@ -415,11 +573,16 @@ async function reserveOrderNumber(db, cc, fullName) {
 async function staffFromReq(req) {
   const db = await getDb();
   const decoded = await verifyIdToken(req.headers.authorization);
-  if (!db || !decoded?.email) return null;
+  if (!decoded?.email) return null;
   const email = decoded.email.toLowerCase();
+  if (isBootstrapDeveloperEmail(email, decoded.email_verified === true)) {
+    return { email, role: "developer" };
+  }
+  if (!db) return null;
   const snap = await db.collection("admins").doc(email).get();
   if (!snap.exists) return null;
-  const role = snap.data()?.role || "admin";
+  const role = normalizeStaffRole(snap.data()?.role);
+  if (!role) return null;
   return { email, role };
 }
 var isAdminRole = (r) => r === "admin" || r === "developer";
@@ -488,8 +651,27 @@ function ordersRouter(rateLimit2) {
   const r = Router();
   r.get("/api/config", async (req, res) => {
     const country = ipCountry(req);
-    const stripe = !!process.env.STRIPE_SECRET_KEY;
-    const paymob = !!(process.env.PAYMOB_API_KEY && process.env.PAYMOB_INTEGRATION_ID && process.env.PAYMOB_IFRAME_ID);
+    const stripeEnv = !!process.env.STRIPE_SECRET_KEY;
+    const paymobEnv = !!(process.env.PAYMOB_API_KEY && process.env.PAYMOB_INTEGRATION_ID && process.env.PAYMOB_IFRAME_ID);
+    let methods = { stripe: true, paymob: true, instapay: true, bank_transfer: true };
+    try {
+      const db = await getDb();
+      if (db) {
+        const snap = await db.collection("settings").doc("payments").get();
+        const m = snap.exists ? snap.data()?.methods : null;
+        if (m && typeof m === "object") {
+          methods = {
+            stripe: m.stripe !== false,
+            paymob: m.paymob !== false,
+            instapay: m.instapay !== false,
+            bank_transfer: m.bank_transfer !== false
+          };
+        }
+      }
+    } catch {
+    }
+    const stripe = stripeEnv && methods.stripe;
+    const paymob = paymobEnv && methods.paymob;
     res.json({
       stripe,
       paymob,
@@ -497,36 +679,68 @@ function ordersRouter(rateLimit2) {
       ipCountry: country,
       // Cash on pickup is Egypt-only. Outside prod there is no geo header — allow for dev.
       cashPickupAllowed: country === "EG" || !country && process.env.NODE_ENV !== "production",
-      ordersConfigured: !!await getDb()
+      ordersConfigured: !!await getDb(),
+      methods,
+      env: { stripe: stripeEnv, paymob: paymobEnv }
     });
   });
   r.post("/api/orders/create", rateLimit2(10), async (req, res) => {
     const db = await getDb();
     if (!db) return res.status(503).json({ error: "Ordering is not configured on the server (FIREBASE_SERVICE_ACCOUNT missing)." });
     try {
-      const { items, contact, fulfillment, paymentMethod, customerNote } = req.body || {};
+      const { items, contact, fulfillment, paymentMethod, customerNote, pickupLocationId } = req.body || {};
       const decoded = await verifyIdToken(req.headers.authorization);
       const userId = decoded?.uid ?? null;
       if (!Array.isArray(items) || items.length === 0 || items.length > 50) return res.status(400).json({ error: "Invalid items" });
       if (!contact?.fullName || String(contact.fullName).length > 120) return res.status(400).json({ error: "Name is required" });
       if (!/^\S+@\S+\.\S+$/.test(contact?.email || "")) return res.status(400).json({ error: "Valid email is required" });
-      if (!contact?.phone || String(contact.phone).trim().length < 6) return res.status(400).json({ error: "Phone is required" });
-      if (!contact?.line1 || !contact?.city || !contact?.country) return res.status(400).json({ error: "Address (street, city, country) is required" });
+      const phoneRaw = String(contact?.phone || "").trim();
+      const phoneDigits = phoneRaw.replace(/\D/g, "");
+      if (phoneRaw && (phoneDigits.length < 7 || phoneDigits.length > 15)) {
+        return res.status(400).json({ error: "Phone number looks invalid" });
+      }
       if (!["pickup", "shipping", "custom"].includes(fulfillment)) return res.status(400).json({ error: "Invalid fulfillment" });
+      if (fulfillment === "pickup" && !pickupLocationId) return res.status(400).json({ error: "Pickup location is required" });
+      if (fulfillment !== "pickup" && (!contact?.line1 || !contact?.city || !contact?.country)) {
+        return res.status(400).json({ error: "Address (street, city, country) is required" });
+      }
       const geo = ipCountry(req);
-      const cashAllowed = geo === "EG" || !geo && process.env.NODE_ENV !== "production";
-      const allowed = fulfillment === "shipping" ? ["stripe", "paymob", "instapay", "bank_transfer"] : ["stripe", "paymob", "instapay", "bank_transfer", ...cashAllowed ? ["cash_on_pickup"] : []];
+      let methodFlags = { stripe: true, paymob: true, instapay: true, bank_transfer: true };
+      try {
+        const paySnap = await db.collection("settings").doc("payments").get();
+        const m = paySnap.exists ? paySnap.data()?.methods : null;
+        if (m && typeof m === "object") {
+          methodFlags = {
+            stripe: m.stripe !== false,
+            paymob: m.paymob !== false,
+            instapay: m.instapay !== false,
+            bank_transfer: m.bank_transfer !== false
+          };
+        }
+      } catch {
+      }
+      const allowed = ["stripe", "paymob", "instapay", "bank_transfer"].filter((k) => methodFlags[k]);
       if (!allowed.includes(paymentMethod)) return res.status(400).json({ error: "Payment method not available for this order" });
       if (paymentMethod === "stripe" && !process.env.STRIPE_SECRET_KEY) return res.status(400).json({ error: "Card payments are not configured" });
       if (paymentMethod === "paymob" && !process.env.PAYMOB_API_KEY) return res.status(400).json({ error: "Card payments are not configured" });
+      if (paymentMethod === "instapay") {
+        const destPreview = fulfillment === "shipping" ? toISO2(contact.country) : STORE_COUNTRY;
+        if (destPreview !== "EG" && geo && geo !== "EG") {
+          return res.status(400).json({ error: "InstaPay is only available for Egypt orders" });
+        }
+      }
       const destination = fulfillment === "shipping" ? toISO2(contact.country) : STORE_COUNTRY;
       const currency = destination === "EG" ? "EGP" : "USD";
       const priced = [];
       for (const it of items) {
+        if ("price" in it || "total" in it || "subtotal" in it) {
+          return res.status(400).json({ error: "Invalid items payload" });
+        }
         const qty = Math.max(1, Math.min(99, Math.floor(Number(it.quantity) || 1)));
         const snap = await db.collection("products").doc(String(it.productId)).get();
         if (!snap.exists) return res.status(400).json({ error: `Product no longer available (${it.productId})` });
         const p = snap.data();
+        if (p.archivedAt) return res.status(400).json({ error: `Product no longer available (${it.productId})` });
         const raw = currency === "EGP" ? p.priceEGP ?? p.price : p.priceUSD ?? p.price;
         const price = Number(raw);
         if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Item is not available in ${currency} (${it.productId})` });
@@ -569,27 +783,36 @@ function ordersRouter(rateLimit2) {
         contact: {
           fullName: String(contact.fullName).slice(0, 120),
           email: String(contact.email).slice(0, 254),
-          phone: String(contact.phone).slice(0, 40),
-          line1: String(contact.line1).slice(0, 200),
-          city: String(contact.city).slice(0, 80),
+          phone: phoneRaw ? phoneRaw.slice(0, 40) : "",
+          line1: String(contact.line1 || "").slice(0, 200),
+          city: String(contact.city || "").slice(0, 80),
           governorate: String(contact.governorate || "").slice(0, 80),
           country: toISO2(contact.country),
           postalCode: String(contact.postalCode || "").slice(0, 20)
         },
         customerNote: String(customerNote || "").slice(0, 1e3),
+        ...fulfillment === "pickup" && pickupLocationId ? { pickupLocationId: String(pickupLocationId).slice(0, 40) } : {},
         adminNotes: "",
         prepared: [],
+        messages: [],
+        unreadCustomerReplies: 0,
         createdAt: now,
         updatedAt: now,
         ipCountry: geo || ""
       };
       const ref = await db.collection("orders").add(order);
       await db.collection("orderNumbers").doc(orderNumber).update({ orderId: ref.id });
-      if (["cash_on_pickup", "instapay", "bank_transfer"].includes(paymentMethod)) {
-        sendOrderConfirmation(order.contact.email, orderToEmail(order)).catch(() => {
+      if (["instapay", "bank_transfer"].includes(paymentMethod)) {
+        let instapayAddress = "";
+        try {
+          const paySnap = await db.collection("settings").doc("payments").get();
+          if (paySnap.exists) instapayAddress = String(paySnap.data()?.instapayAddress || "");
+        } catch {
+        }
+        sendOrderConfirmation(order.contact.email, orderToEmail(order, { instapayAddress })).catch(() => {
         });
       }
-      res.json({ order: { id: ref.id, ...order } });
+      res.json({ order: { id: ref.id, ...order, messages: [], unreadCustomerReplies: 0 } });
     } catch (e) {
       console.error("[orders/create]", e.message);
       res.status(500).json({ error: "Could not place the order. Please try again." });
@@ -638,9 +861,54 @@ function ordersRouter(rateLimit2) {
     }
     res.json({ ok: true });
   });
+  r.post("/api/admin/orders/:id/message", rateLimit2(30), async (req, res) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: "Unauthorized" });
+    const body = String(req.body?.body || "").trim().slice(0, 4e3);
+    if (!body) return res.status(400).json({ error: "Message body is required" });
+    const db = await getDb();
+    const ref = db.collection("orders").doc(String(req.params.id));
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: "Order not found" });
+    const order = snap.data();
+    const email = order.contact?.email;
+    if (!email) return res.status(400).json({ error: "Order has no customer email" });
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const msg = {
+      id: `m_${Date.now().toString(36)}`,
+      from: "admin",
+      body,
+      at: now,
+      by: staff.email,
+      emailSent: false
+    };
+    const sent = await sendOrderMessage(email, {
+      orderNumber: order.orderNumber,
+      customerName: order.contact?.fullName || "",
+      body,
+      orderId: snap.id
+    });
+    msg.emailSent = sent;
+    await ref.update({
+      messages: [...order.messages || [], msg],
+      updatedAt: now
+    });
+    res.json({ ok: true, message: msg, emailed: sent });
+  });
+  r.post("/api/admin/orders/:id/messages/read", rateLimit2(60), async (req, res) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: "Unauthorized" });
+    const db = await getDb();
+    await db.collection("orders").doc(String(req.params.id)).update({
+      unreadCustomerReplies: 0,
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    res.json({ ok: true });
+  });
   r.get("/api/worker/orders", rateLimit2(60), async (req, res) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: "Unauthorized" });
+    if (staff.role !== "worker" && !isAdminRole(staff.role)) return res.status(403).json({ error: "Forbidden" });
     const db = await getDb();
     const q = await db.collection("orders").where("status", "in", ACTIVE_STATUSES).get();
     const orders = q.docs.map((d) => workerView(d.data(), d.id)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -649,11 +917,16 @@ function ordersRouter(rateLimit2) {
   r.post("/api/worker/orders/:id/prepared", rateLimit2(120), async (req, res) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: "Unauthorized" });
+    if (staff.role !== "worker" && !isAdminRole(staff.role)) return res.status(403).json({ error: "Forbidden" });
     const db = await getDb();
     const ref = db.collection("orders").doc(String(req.params.id));
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: "Order not found" });
-    const itemCount = (snap.data().items || []).length;
+    const order = snap.data();
+    if (!ACTIVE_STATUSES.includes(order.status)) {
+      return res.status(400).json({ error: "Order is not in an active workshop status" });
+    }
+    const itemCount = (order.items || []).length;
     const prepared = Array.isArray(req.body?.prepared) ? [...new Set(req.body.prepared.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < itemCount))] : [];
     await ref.update({ prepared, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
     res.json({ ok: true, prepared });
@@ -661,11 +934,15 @@ function ordersRouter(rateLimit2) {
   r.post("/api/worker/orders/:id/complete", rateLimit2(30), async (req, res) => {
     const staff = await staffFromReq(req);
     if (!staff) return res.status(401).json({ error: "Unauthorized" });
+    if (staff.role !== "worker" && !isAdminRole(staff.role)) return res.status(403).json({ error: "Forbidden" });
     const db = await getDb();
     const ref = db.collection("orders").doc(String(req.params.id));
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: "Order not found" });
     const order = snap.data();
+    if (!ACTIVE_STATUSES.includes(order.status)) {
+      return res.status(400).json({ error: "Order is not in an active workshop status" });
+    }
     const prepared = order.prepared || [];
     if ((order.items || []).some((_, i) => !prepared.includes(i))) {
       return res.status(400).json({ error: "All items must be checked off first." });
@@ -714,10 +991,17 @@ function paymobRouter(rateLimit2) {
     if (!db) return res.status(503).json({ error: "Ordering is not configured on the server." });
     try {
       const orderId = String(req.body?.orderId || "");
+      const emailNorm = String(req.body?.email || "").toLowerCase().trim();
       const snap = await db.collection("orders").doc(orderId).get();
       if (!snap.exists) return res.status(404).json({ error: "Order not found" });
       const order = snap.data();
+      if (!emailNorm || emailNorm !== String(order.contact?.email || "").toLowerCase()) {
+        return res.status(404).json({ error: "Order not found" });
+      }
       if (order.paymentStatus === "paid") return res.status(400).json({ error: "Order already paid" });
+      if (order.paymentMethod !== "paymob") {
+        return res.status(400).json({ error: "This order is not set up for Paymob card payment" });
+      }
       const amountCents = Math.round(Number(order.total) * 100);
       const { token } = await pm("/auth/tokens", { api_key: process.env.PAYMOB_API_KEY });
       const reg = await pm("/ecommerce/orders", {
@@ -813,6 +1097,128 @@ function paymobRouter(rateLimit2) {
       }
     }
     res.json({ received: true });
+  });
+  return r;
+}
+
+// server/launchApi.ts
+import { Router as Router3 } from "express";
+init_email();
+var LAUNCH_DOC = "settings/launch";
+async function readLaunchSettings() {
+  const db = await getDb();
+  if (!db) return { comingSoon: false };
+  const snap = await db.doc(LAUNCH_DOC).get();
+  if (!snap.exists) return { comingSoon: false };
+  const d = snap.data();
+  return {
+    comingSoon: !!d.comingSoon,
+    message: d.message || "",
+    scheduledAt: d.scheduledAt || null,
+    launchedAt: d.launchedAt || null,
+    updatedAt: d.updatedAt
+  };
+}
+async function developerFromReq(req) {
+  const decoded = await verifyIdToken(req.headers.authorization);
+  if (!decoded?.email) return null;
+  const staff = await staffFromReq(req);
+  if (!staff) {
+    if (isBootstrapDeveloperEmail(decoded.email, decoded.email_verified === true)) {
+      return { email: decoded.email.toLowerCase(), role: "developer" };
+    }
+    return null;
+  }
+  if (staff.role !== "developer") return null;
+  return { email: staff.email, role: "developer" };
+}
+async function patchLaunchSettings(req, res) {
+  const dev = await developerFromReq(req);
+  if (!dev) {
+    const decoded = await verifyIdToken(req.headers.authorization);
+    if (!decoded) return res.status(401).json({ error: "Sign in required" });
+    const staff = await staffFromReq(req);
+    if (!staff) return res.status(403).json({ error: "Your account is not in the admins team list" });
+    return res.status(403).json({ error: "Developer role required for this action" });
+  }
+  const db = await getDb();
+  if (!db) return res.status(503).json({ error: "Not configured" });
+  const { comingSoon, message, scheduledAt } = req.body || {};
+  const patch = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  if (typeof comingSoon === "boolean") patch.comingSoon = comingSoon;
+  if (message !== void 0) patch.message = String(message).slice(0, 500);
+  if (scheduledAt !== void 0) patch.scheduledAt = scheduledAt ? String(scheduledAt) : null;
+  await db.doc(LAUNCH_DOC).set(patch, { merge: true });
+  const s = await readLaunchSettings();
+  res.json(s);
+}
+function launchRouter(rateLimit2) {
+  const r = Router3();
+  r.get("/api/launch/status", async (_req, res) => {
+    const s = await readLaunchSettings();
+    res.json({
+      comingSoon: s.comingSoon,
+      message: s.message || null,
+      scheduledAt: s.scheduledAt || null
+    });
+  });
+  r.post("/api/launch/waitlist", rateLimit2(8), async (req, res) => {
+    const settings = await readLaunchSettings();
+    if (!settings.comingSoon) return res.status(400).json({ error: "The store is already open." });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Not configured" });
+    const { name, email, phone } = req.body || {};
+    const em = String(email || "").toLowerCase().trim();
+    if (!/^\S+@\S+\.\S+$/.test(em)) return res.status(400).json({ error: "Valid email is required" });
+    if (!String(name || "").trim()) return res.status(400).json({ error: "Name is required" });
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    await db.collection("launch_waitlist").doc(em).set({
+      name: String(name).trim().slice(0, 80),
+      email: em,
+      ...phone ? { phone: String(phone).trim().slice(0, 30) } : {},
+      createdAt: now
+    }, { merge: true });
+    res.json({ ok: true });
+  });
+  r.get("/api/launch/waitlist", rateLimit2(30), async (req, res) => {
+    if (!await developerFromReq(req)) return res.status(401).json({ error: "Developer access required" });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Not configured" });
+    const snap = await db.collection("launch_waitlist").orderBy("createdAt", "desc").limit(500).get();
+    const entries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    res.json({ count: entries.length, entries });
+  });
+  r.patch("/api/launch/settings", rateLimit2(20), patchLaunchSettings);
+  r.post("/api/launch/settings", rateLimit2(20), patchLaunchSettings);
+  r.post("/api/launch/go-live", rateLimit2(3), async (req, res) => {
+    if (!await developerFromReq(req)) return res.status(401).json({ error: "Developer access required" });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Not configured" });
+    const siteUrl = (process.env.SITE_URL || process.env.VITE_SITE_URL || "https://raafat-furniture.vercel.app").replace(/\/$/, "");
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    await db.doc(LAUNCH_DOC).set({
+      comingSoon: false,
+      launchedAt: now,
+      updatedAt: now
+    }, { merge: true });
+    const snap = await db.collection("launch_waitlist").get();
+    let sent = 0;
+    let failed = 0;
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (data.notifiedAt) continue;
+      const ok = await sendLaunchAnnouncement(String(data.email), {
+        name: String(data.name || ""),
+        siteUrl
+      });
+      if (ok) {
+        sent++;
+        await doc.ref.update({ notifiedAt: now });
+      } else {
+        failed++;
+      }
+    }
+    res.json({ ok: true, sent, failed, total: snap.size });
   });
   return r;
 }
@@ -914,6 +1320,7 @@ function createApiApp() {
   });
   app3.use(express.json({ limit: "1mb" }));
   app3.use(ordersRouter(rateLimit));
+  app3.use(launchRouter(rateLimit));
   app3.use(paymobRouter(rateLimit));
   app3.post("/api/cloudinary/delete", rateLimit(30), async (req, res) => {
     const staff = await staffFromReq(req);
@@ -927,7 +1334,10 @@ function createApiApp() {
         if (!imageUrl.includes("cloudinary.com")) return res.json({ message: "Not a Cloudinary URL, skipping" });
         return res.status(400).json({ error: "Could not extract public_id from URL" });
       }
-      const result = await cloudinary.uploader.destroy(publicId);
+      let result = await cloudinary.uploader.destroy(publicId);
+      if (result?.result === "not found") {
+        result = await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+      }
       res.json({ result });
     } catch (error) {
       console.error("Cloudinary deletion error:", error);
@@ -940,11 +1350,21 @@ function createApiApp() {
     const db = await getDb();
     if (!db) return res.status(503).json({ error: "Payments are not configured on the server (FIREBASE_SERVICE_ACCOUNT missing)." });
     try {
-      const { orderId, successUrl, cancelUrl } = req.body || {};
+      const { orderId, successUrl, cancelUrl, email } = req.body || {};
       const snap = await db.collection("orders").doc(String(orderId || "")).get();
       if (!snap.exists) return res.status(404).json({ error: "Order not found" });
       const order = snap.data();
+      const emailNorm = String(email || "").toLowerCase().trim();
+      if (!emailNorm || emailNorm !== String(order.contact?.email || "").toLowerCase()) {
+        return res.status(404).json({ error: "Order not found" });
+      }
       if (order.paymentStatus === "paid") return res.status(400).json({ error: "Order already paid" });
+      if (order.paymentMethod !== "stripe") {
+        return res.status(400).json({ error: "This order is not set up for Stripe card payment" });
+      }
+      if (!["pending_payment", "payment_verification"].includes(order.status) && order.paymentStatus !== "unpaid") {
+        return res.status(400).json({ error: "This order cannot accept payment" });
+      }
       const base = (process.env.SITE_URL || "").replace(/\/$/, "");
       if (!base && isProd) return res.status(500).json({ error: "Server misconfigured: SITE_URL is required." });
       const httpOnly = (u) => {
@@ -1074,6 +1494,52 @@ Rules:
     }
   });
   app3.get("/api/health", (_req, res) => res.json({ ok: true }));
+  app3.post("/api/email/inbound", rateLimit(60), async (req, res) => {
+    const secret = process.env.RESEND_INBOUND_SECRET || "";
+    if (secret) {
+      const got = String(req.query.secret || req.headers["x-webhook-secret"] || "");
+      if (got !== secret) return res.status(401).json({ error: "Unauthorized" });
+    }
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Not configured" });
+    const payload = req.body || {};
+    const toRaw = String(
+      payload.to || payload.recipient || payload.data?.to?.[0] || payload.data?.to || ""
+    );
+    const fromRaw = String(payload.from || payload.sender || payload.data?.from || "");
+    const text = String(
+      payload.text || payload.plain || payload.data?.text || payload.data?.email?.text || ""
+    ).trim();
+    const html = String(payload.html || payload.data?.html || "");
+    const body = (text || html.replace(/<[^>]+>/g, " ")).trim().slice(0, 4e3);
+    if (!body) return res.status(200).json({ ok: true, ignored: "empty" });
+    const m = toRaw.match(/\+([A-Za-z0-9_-]+)@/);
+    const orderId = m?.[1];
+    if (!orderId) return res.status(200).json({ ok: true, ignored: "no-order-id" });
+    const ref = db.collection("orders").doc(orderId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(200).json({ ok: true, ignored: "unknown-order" });
+    const order = snap.data();
+    const customerEmail = String(order.contact?.email || "").toLowerCase();
+    const fromEmail = fromRaw.match(/[\w.+-]+@[\w.-]+/)?.[0]?.toLowerCase() || "";
+    if (fromEmail && customerEmail && fromEmail !== customerEmail) {
+      console.warn("[email/inbound] from mismatch", fromEmail, customerEmail);
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const msg = {
+      id: `m_${Date.now().toString(36)}`,
+      from: "customer",
+      body,
+      at: now,
+      by: fromEmail || customerEmail
+    };
+    await ref.update({
+      messages: [...order.messages || [], msg],
+      unreadCustomerReplies: Number(order.unreadCustomerReplies || 0) + 1,
+      updatedAt: now
+    });
+    res.json({ ok: true });
+  });
   return app3;
 }
 

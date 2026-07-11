@@ -1201,7 +1201,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                 </label>
               </div>
 
-              <Product3DFields value={model3d} onChange={setModel3d} />
+              <Product3DFields value={model3d} onChange={setModel3d} productId={editingListing?.id} />
 
               <div>
                 <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">

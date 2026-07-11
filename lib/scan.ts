@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -9,15 +10,21 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { uploadCloudinaryImage } from './cloudinaryUpload';
+import { uploadModel } from './modelUpload';
 import { stripUndefined } from './firestoreSanitize';
 import type { ScanJob, ScanStatus } from '../types';
 
 /**
  * Photogrammetry reconstruction backend.
- * Real multi-view-stereo cannot run in-browser to production quality, so the heavy
- * step is pluggable: set VITE_PHOTOGRAMMETRY_API_URL to a service that accepts
+ *
+ * Preferred (free) path: run `scan-worker/` on any PC with a decent GPU. It watches
+ * the `scans` collection for status == 'queued', reconstructs a GLB locally
+ * (Meshroom / RealityScan), uploads it and marks the scan 'ready' — auto-attaching
+ * to the product when the scan carries a productId.
+ *
+ * Alternative: set VITE_PHOTOGRAMMETRY_API_URL to a hosted service that accepts
  * { scanId, frameUrls, dimensions } and (async) writes back a GLB url to the scan doc.
- * Without it, the scan is queued and an admin attaches the finished GLB manually.
+ * With neither, the scan stays queued and an admin attaches the finished GLB manually.
  */
 const PHOTOGRAMMETRY_API_URL = (import.meta.env.VITE_PHOTOGRAMMETRY_API_URL as string) || '';
 
@@ -25,7 +32,11 @@ export function reconstructionConfigured(): boolean {
   return !!PHOTOGRAMMETRY_API_URL;
 }
 
-export async function createScanJob(createdBy: string): Promise<string> {
+/** Create a scan job. Pass productId so the worker can auto-attach the finished model. */
+export async function createScanJob(
+  createdBy: string,
+  opts?: { handoff?: boolean; productId?: string },
+): Promise<string> {
   if (!db) throw new Error('Database not configured');
   const now = new Date().toISOString();
   const job: Omit<ScanJob, 'id'> = {
@@ -34,6 +45,8 @@ export async function createScanJob(createdBy: string): Promise<string> {
     frameCount: 0,
     createdAt: now,
     updatedAt: now,
+    ...(opts?.handoff ? { handoffFrom: 'desktop' as const } : {}),
+    ...(opts?.productId ? { productId: opts.productId } : {}),
   };
   const r = await addDoc(collection(db, 'scans'), job);
   return r.id;
@@ -60,9 +73,17 @@ export async function setScanStatus(scanId: string, status: ScanStatus, error?: 
   await patchScan(scanId, { status, ...(error ? { error } : {}) });
 }
 
+/** Attach a finished GLB (e.g. from Polycam/Blender) directly to a queued scan job. */
+export async function attachModelToScan(scanId: string, file: File): Promise<string> {
+  const url = await uploadModel(file);
+  await patchScan(scanId, { status: 'ready', modelUrl: url });
+  return url;
+}
+
 /**
  * Hand the captured frames to the reconstruction service (if configured).
- * Returns true if a job was dispatched, false if it must be finished manually.
+ * Returns true if a job was dispatched, false if it goes to the queue
+ * (picked up by scan-worker, or finished manually).
  */
 export async function requestReconstruction(job: ScanJob): Promise<boolean> {
   if (!PHOTOGRAMMETRY_API_URL) {
@@ -98,7 +119,8 @@ export async function requestReconstruction(job: ScanJob): Promise<boolean> {
 
 export function subscribeScans(cb: (scans: ScanJob[]) => void) {
   if (!db) return () => {};
-  const q = query(collection(db, 'scans'), orderBy('createdAt', 'desc'));
+  // Bounded: the admin UI only shows recent jobs; unbounded reads grow with history.
+  const q = query(collection(db, 'scans'), orderBy('createdAt', 'desc'), limit(20));
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ScanJob))));
 }
 
@@ -108,20 +130,4 @@ export function subscribeScan(scanId: string, cb: (scan: ScanJob | null) => void
   return onSnapshot(doc(db, 'scans', scanId), (snap) => {
     cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as ScanJob) : null);
   });
-}
-
-/** Create a scan reserved for mobile handoff from desktop admin. */
-export async function createHandoffScan(createdBy: string): Promise<string> {
-  if (!db) throw new Error('Database not configured');
-  const now = new Date().toISOString();
-  const job: Omit<ScanJob, 'id'> = {
-    createdBy,
-    status: 'capturing',
-    frameCount: 0,
-    createdAt: now,
-    updatedAt: now,
-    handoffFrom: 'desktop',
-  };
-  const r = await addDoc(collection(db, 'scans'), job);
-  return r.id;
 }

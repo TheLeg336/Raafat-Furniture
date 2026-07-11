@@ -1,0 +1,17 @@
+{
+  "name": "raafat-scan-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local GPU photogrammetry worker: watches Firestore scan jobs, builds GLB/USDZ, uploads to Cloudinary, auto-attaches to products.",
+  "scripts": {
+    "start": "node worker.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.1.0",
+    "@gltf-transform/functions": "^4.1.0",
+    "cloudinary": "^2.5.0",
+    "firebase-admin": "^13.0.0",
+    "obj2gltf": "^3.1.6"
+  }
+}

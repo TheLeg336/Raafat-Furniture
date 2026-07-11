@@ -27,9 +27,21 @@ tags: [3d, ar, scan, cloudinary]
 
 - Portaled fullscreen overlay (z-index 2100, above nav)
 - Camera with getUserMedia fallbacks
+- **Manual guided capture**: 4 prompted passes — eye level (12), high angle (8), low angle (6), details (4) = 30 shots, manual shutter, 1920px JPEG
 - Frames → Cloudinary `scans/{scanId}/`
-- Metadata → Firestore `scans` collection
-- Optional: `VITE_PHOTOGRAMMETRY_API_URL` for auto reconstruction
+- Metadata → Firestore `scans` collection (carries `productId` when started from an existing product)
+- Reconstruction: local `scan-worker/` (preferred, free) or `VITE_PHOTOGRAMMETRY_API_URL`
+- Manual fallback: **Attach GLB** button per queued scan in `Product3DFields`
+
+## Scan worker (local PC, free)
+
+`scan-worker/` — Node app run on any GPU PC (see its README):
+
+- Watches Firestore `scans` for `status == 'queued'` (jobs wait until PC is on)
+- Meshroom (CUDA) → obj2gltf → gltf-transform optimize → scaled to `realDimensions`
+- Optional Blender USDZ for iPhone AR
+- Uploads to Cloudinary `models/`, sets scan `ready`, auto-attaches to `products/{productId}.model3d`
+- Dashboard with pending jobs + live log: http://localhost:8787
 
 ## Mobile handoff
 
