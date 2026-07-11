@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Check, ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Images, Box, Ruler } from 'lucide-react';
+import { Heart, Check, ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Box, Ruler, Minus, Plus } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
@@ -27,7 +27,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { categories } = useCategories();
-  const { addToCart, toggleWishlist, wishlist } = useStore();
+  const { addToCart, toggleWishlist, wishlist, cart, updateCartQuantity, setIsCartOpen } = useStore();
   const { currency } = useCurrency();
   const toast = useToast();
 
@@ -124,6 +124,10 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
   };
 
   const name = getLocalizedText(product.name, product.nameKey);
+  // Mirrors the cart-line id built in StoreContext.addToCart — lets the Add button
+  // become a quantity stepper once this exact configuration is in the cart.
+  const cartItemId = `${product.id}-${selectedColor || 'default'}-${selectedMaterial || 'default'}-${customDims.trim()}`;
+  const cartLine = cart.find((c) => c.id === cartItemId);
   const getCategoryObj = (catId?: string) => {
     if (!catId) return null;
     for (const cat of categories) {
@@ -174,22 +178,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 lg:gap-14 items-start">
         {/* MEDIA */}
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }} className="md:sticky md:top-24">
-          {/* media toggle */}
-          {has3D && (
-            <div className="inline-flex gap-1 p-1 mb-3 rounded-[var(--radius-pill)] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-              {(['3d', 'photos'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMediaMode(m)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[var(--radius-pill)] text-sm font-semibold transition-colors ${mediaMode === m ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]' : 'text-[var(--color-text-secondary)]'}`}
-                >
-                  {m === '3d' ? <Box size={15} /> : <Images size={15} />}
-                  {m === '3d' ? (t('view_3d') || '3D & AR') : (t('view_photos') || 'Photos')}
-                </button>
-              ))}
-            </div>
-          )}
-
           {mediaMode === '3d' && has3D ? (
             <div className="rounded-[var(--radius-lg)] overflow-hidden border border-[var(--color-border)] aspect-square">
               <ModelViewer3D
@@ -230,6 +218,38 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
               </button>
             </div>
           )}
+
+          {/* Amazon-style thumbnail strip: photos + a "3D" tile — one gallery, no tabs. */}
+          {(images.length > 1 || has3D) && (
+            <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide py-0.5">
+              {has3D && (
+                <button
+                  onClick={() => setMediaMode('3d')}
+                  aria-label={t('view_3d') || 'View in 3D'}
+                  aria-pressed={mediaMode === '3d'}
+                  className={`relative w-16 h-16 shrink-0 rounded-[var(--radius-md)] border-2 flex flex-col items-center justify-center gap-0.5 bg-[var(--color-surface-2)] transition-colors ${mediaMode === '3d' ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}
+                >
+                  <Box size={20} className="text-[var(--color-primary)]" />
+                  <span className="text-[9px] font-bold tracking-wider text-[var(--color-text-secondary)]">3D · AR</span>
+                </button>
+              )}
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setMediaMode('photos');
+                    setCurrentImageIndex(idx);
+                    setTimeout(() => scrollToImage(idx), 60);
+                  }}
+                  aria-label={`${t('view_photos') || 'Photo'} ${idx + 1}`}
+                  aria-pressed={mediaMode === 'photos' && currentImageIndex === idx}
+                  className={`w-16 h-16 shrink-0 rounded-[var(--radius-md)] border-2 overflow-hidden transition-colors ${mediaMode === 'photos' && currentImageIndex === idx ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* INFO */}
@@ -268,15 +288,50 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mt-2">
-            <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1 md:flex-none" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
-              <AnimatePresence mode="wait" initial={false}>
-                {isAdding ? (
-                  <motion.span key="added" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="inline-flex items-center gap-2"><Check size={18} /> {t('added') || 'Added'}</motion.span>
-                ) : (
-                  <motion.span key="add" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{t('add_to_cart') || 'Add to Cart'}</motion.span>
-                )}
-              </AnimatePresence>
-            </Button>
+            {cartLine ? (
+              /* This configuration is in the cart — Add button becomes a quantity stepper. */
+              <motion.div
+                key="stepper"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex-1 md:flex-none flex items-stretch gap-3"
+              >
+                <div className="inline-flex items-center rounded-[var(--radius-pill)] border-2 border-[var(--color-primary)] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity - 1)}
+                    aria-label={t('decrease_quantity') || 'Decrease quantity'}
+                    className="px-4 self-stretch flex items-center text-[var(--color-primary)] hover:bg-[hsla(var(--color-primary-hsl-values),0.1)] transition-colors"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="min-w-[3.5rem] text-center font-bold text-lg py-3" aria-live="polite">
+                    {cartLine.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity + 1)}
+                    aria-label={t('increase_quantity') || 'Increase quantity'}
+                    className="px-4 self-stretch flex items-center text-[var(--color-primary)] hover:bg-[hsla(var(--color-primary-hsl-values),0.1)] transition-colors"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                <Button size="lg" onClick={() => setIsCartOpen(true)} iconLeft={<Check size={18} />} className="flex-1">
+                  {t('in_cart_view') || 'In cart — view'}
+                </Button>
+              </motion.div>
+            ) : (
+              <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1 md:flex-none" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>
+                <AnimatePresence mode="wait" initial={false}>
+                  {isAdding ? (
+                    <motion.span key="added" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="inline-flex items-center gap-2"><Check size={18} /> {t('added') || 'Added'}</motion.span>
+                  ) : (
+                    <motion.span key="add" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{t('add_to_cart') || 'Add to Cart'}</motion.span>
+                  )}
+                </AnimatePresence>
+              </Button>
+            )}
             <Button variant="secondary" size="lg" onClick={() => toggleWishlist(product.id)} iconLeft={<Heart size={18} className={isWishlisted ? 'fill-current' : ''} />}>
               {isWishlisted ? (t('saved') || 'Saved') : (t('save') || 'Save')}
             </Button>

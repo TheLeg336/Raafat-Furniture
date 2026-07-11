@@ -27,6 +27,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
   const { categories: visibleCategories, allCategories, productCategoryIds, loading: categoriesLoading } = useVisibleCategories();
   const loading = productsLoading || categoriesLoading;
   const { wishlist, toggleWishlist, addToCart } = useStore();
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const { currency } = useCurrency();
   useSeo({
     title: 'Shop Luxury Furniture — Sofas, Bedroom, Dining & Custom | Raafat Furniture',
@@ -853,10 +854,19 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                             color: product.colors?.[0],
                             material: product.materials?.[0],
                           });
+                          setJustAdded(String(product.id));
+                          window.clearTimeout((window as any).__rfAddedTimer);
+                          (window as any).__rfAddedTimer = window.setTimeout(() => setJustAdded(null), 1600);
                         }}
-                        className="w-full mt-auto pt-3 md:pt-4 py-2.5 bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+                        className={`w-full mt-auto pt-3 md:pt-4 py-2.5 rounded-xl font-bold text-sm transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0 ${
+                          justAdded === String(product.id)
+                            ? 'bg-[#3ba55d] text-white md:opacity-100 md:translate-y-0'
+                            : 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] hover:bg-opacity-90'
+                        }`}
                       >
-                        {t('add_to_cart') || 'Add to Cart'}
+                        {justAdded === String(product.id)
+                          ? `✓ ${t('added_to_cart') || 'Added to cart'}`
+                          : (t('add_to_cart') || 'Add to Cart')}
                       </button>
                     </div>
                   </motion.div>
