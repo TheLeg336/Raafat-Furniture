@@ -19,12 +19,21 @@ everything not explicitly allowed; orders can only be created by the server.
 - [x] **Client config** — `VITE_FIREBASE_*` env vars in Vercel. *(verified: login + catalog work live)*
 - [x] **Firestore rules deployed** — `firebase deploy --only firestore:rules` after any rules change. *(verified: admin works, guests blocked from orders)*
 - [x] **Developer account** — `admins/youssefhanna336@gmail.com` with `role: developer` (bootstrap email also hardcoded in rules). *(verified: /manage loads)*
-- [ ] **`FIREBASE_SERVICE_ACCOUNT` in Vercel** ⚠️ **THE BIG ONE — currently missing.**
-  Firebase Console → Project settings → Service accounts → Generate new private key →
-  paste the whole JSON as one line into Vercel → Settings → Environment Variables → redeploy.
-  Without it the server cannot touch Firestore, which breaks: **checkout/order creation,
-  payment-method toggles from the Dev tab, order emails, guest tracking, the worker API,
-  and webhooks.** The Dev tab now shows a red banner while this is missing.
+- [ ] **`FIREBASE_SERVICE_ACCOUNT` in Vercel** ⚠️ **THE BIG ONE — still missing in Vercel.**
+  Your key file is downloaded; Vercel rejects it because of the multi-line formatting.
+  **Fix: open `service-account.oneline.txt` in the project root** (generated for you —
+  same JSON minified to a single line, gitignored) and paste its whole content as the
+  value. Then redeploy. Without it the server cannot touch Firestore, which breaks:
+  **checkout/order creation, payment-method toggles from the Dev tab, order emails,
+  guest tracking, the worker API, and webhooks.** The Dev tab shows a red banner while
+  this is missing.
+  *Note: the raw key file + `.env` + the one-line file are all gitignored — never commit
+  them. The same key was also copied to `scan-worker/service-account.json` for the 3D worker.*
+- [x] **Order pipeline itself** — full E2E passed on 2026-07-11 with a local server using
+  this key: guest InstaPay pickup order EG127742DE → server-side EGP pricing + VAT
+  breakdown → payment reference → admin "Confirm payment received" → prepared checklist →
+  awaiting approval → ready → completed → test order deleted. Only the customer-notify
+  email couldn't run (needs this key + Resend on Vercel).
 - [ ] **Add remaining team** — Admin → Team: add admins and workshop `worker` accounts (workers only see the spec-only `/workshop` checklists — no prices, no customer data; enforced server-side).
 
 ## 2. Cloudinary (all files: product photos, scan frames, 3D models)
@@ -35,7 +44,7 @@ everything not explicitly allowed; orders can only be created by the server.
 
 - [x] **Cloud name + unsigned preset** (`VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`). *(verified live)*
 - [x] **Preset allows Raw/GLB uploads.** *(verified: uploaded a 1.9 MB test GLB via the preset)*
-- [ ] **Server delete keys** — `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` in Vercel (admin "delete image/model" buttons call `/api/cloudinary/delete`). Can't be verified from outside — check Vercel env.
+- [ ] **Server delete keys** — `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` in Vercel (admin "delete image/model" buttons call `/api/cloudinary/delete`). ⚠️ *Confirmed missing (your env screenshot, 2026-07-11).* Cloudinary Dashboard → API Keys.
 
 ## 3. Payments
 
@@ -58,7 +67,7 @@ updates, and contact-form messages send through Resend from the server; the cust
 reply-to goes to your `CONTACT_EMAIL`. Message bodies are built from the order in
 Firestore — request bodies are never trusted.
 
-- [ ] **`RESEND_API_KEY`**, **`EMAIL_FROM`** (verified domain sender), **`CONTACT_EMAIL`** in Vercel. Can't be probed from outside — verify in Vercel env. Resend → Domains: add + DNS-verify your sending domain.
+- [ ] **`RESEND_API_KEY`**, **`EMAIL_FROM`** (verified domain sender), **`CONTACT_EMAIL`** in Vercel. ⚠️ *Confirmed missing (your env screenshot, 2026-07-11).* Resend → Domains: add + DNS-verify your sending domain, then create an API key.
 - [ ] Optional inbound replies: `RESEND_INBOUND_SECRET` + Resend inbound webhook → `/api/email/inbound`.
 
 ## 5. 3D & AR — how the whole pipeline works
@@ -92,6 +101,7 @@ orbit works, real-size scaling applied, AR modes + QR sheet all present)*
    - Dashboard at **http://localhost:8787** shows pending jobs, current step, live log.
 
 - [x] Customer 3D viewer + AR + desktop QR handoff. *(verified live)*
+- [x] In-AR branding: on Android Chrome (WebXR) shoppers see a slim RAAFAT FURNITURE bar with the product name + price and an **Add to Cart** button inside the AR view; on iPhone Quick Look the USDZ gets an Apple banner (brand subtitle + Add-to-Cart tap-through). Native Scene Viewer can't host site UI — it shows a link back to the site instead.
 - [x] Admin GLB upload path + Cloudinary raw storage. *(verified live)*
 - [x] Guided manual scanner + scan queue. *(code shipped; do a real phone scan to try it)*
 - [ ] **Scan worker one-time setup on your PC** (see `scan-worker/README.md`):
@@ -152,6 +162,7 @@ banner gates analytics.
 - [x] Admin translation helper (`NVIDIA_API_KEY`). *(verified: endpoint responds as configured)*
 - [ ] `VITE_STORE_CURRENCY` if you ever want a different display default (currently EGP/USD by destination).
 - [ ] Optional hosted reconstruction service (`VITE_PHOTOGRAMMETRY_API_URL`) — NOT needed; the free scan-worker covers it.
+- [ ] **`VITE_GEMINI_API_KEY` in Vercel is unused** — no code reads it (translation uses the server-side `NVIDIA_API_KEY`). Safe to delete from Vercel; `VITE_` vars ship to every visitor's browser, so an unused AI key there is pure exposure.
 
 ## Roles & key routes
 
@@ -165,16 +176,20 @@ banner gates analytics.
 
 ---
 
-## Quick reference: current Vercel env gaps (found 2026-07-11)
+## Quick reference: Vercel env — confirmed against your dashboard (2026-07-11)
 
-| Missing env var | What breaks without it |
+**Present ✓:** `VITE_FIREBASE_*` (all 6) · `VITE_CLOUDINARY_CLOUD_NAME` · `VITE_CLOUDINARY_UPLOAD_PRESET` · `NVIDIA_API_KEY` · `VITE_GEMINI_API_KEY` (unused — delete it)
+
+**Missing — add these:**
+
+| Env var | What breaks without it |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | checkout, payment toggles, emails, worker API, webhooks |
+| `FIREBASE_SERVICE_ACCOUNT` — paste `service-account.oneline.txt` | checkout, payment toggles, emails, worker API, webhooks |
 | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `VITE_STRIPE_PUBLISHABLE_KEY` | card / Apple Pay / Google Pay |
 | `PAYMOB_*` (4 vars) | Egypt card payments |
+| `RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL` | order + contact emails |
+| `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` | admin asset deletes |
 | `VITE_GA_MEASUREMENT_ID` | analytics |
-| `RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL` | order + contact emails (verify — not externally testable) |
-| `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` | admin asset deletes (verify — not externally testable) |
 | `SITE_URL` | safe payment redirects + email links |
 
 After adding env vars in Vercel you must **redeploy** for them to take effect.

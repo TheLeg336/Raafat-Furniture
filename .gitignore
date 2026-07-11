@@ -14,6 +14,14 @@ dist-ssr
 graphify-out/
 .planning/graphs/
 
+# Env files & Firebase service-account keys — NEVER commit
+.env
+.env.*
+!.env.example
+*firebase-adminsdk*.json
+service-account*.json
+service-account.oneline.txt
+
 # scan-worker secrets & scratch
 scan-worker/.env
 scan-worker/service-account.json

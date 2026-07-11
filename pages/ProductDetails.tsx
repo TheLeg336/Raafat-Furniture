@@ -187,6 +187,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
                 autoAr={searchParams.get('ar') === '1'}
                 preferredColor={selectedColor || undefined}
                 preferredMaterial={selectedMaterial || undefined}
+                priceLabel={priceFor(product, currency) != null ? formatMoney(priceFor(product, currency), { currency }) : undefined}
+                onAddToCart={handleAddToCart}
                 t={t}
                 className="h-full"
               />

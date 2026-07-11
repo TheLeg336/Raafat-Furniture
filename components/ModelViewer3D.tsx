@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { View, Box, RotateCcw, Move3d } from 'lucide-react';
+import { View, Box, RotateCcw, Move3d, ShoppingCart, Check } from 'lucide-react';
 import type { Model3D, ModelVariant, TFunction } from '../types';
 import { localized } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
@@ -17,6 +17,10 @@ interface Props {
   /** Product color/material selectors — matched to model variants when possible. */
   preferredColor?: string;
   preferredMaterial?: string;
+  /** Shown in the in-AR overlay and used for the Quick Look banner. */
+  priceLabel?: string;
+  /** Enables the in-AR "Add to cart" action (WebXR overlay + Quick Look banner tap-through). */
+  onAddToCart?: () => void;
   t?: TFunction;
   className?: string;
 }
@@ -53,11 +57,14 @@ function matchVariant(
 }
 
 export const ModelViewer3D: React.FC<Props> = ({
-  model, productName, productPageUrl, autoAr, preferredColor, preferredMaterial, t, className = '',
+  model, productName, productPageUrl, autoAr, preferredColor, preferredMaterial, priceLabel, onAddToCart, t, className = '',
 }) => {
   const ref = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
   const [arQrOpen, setArQrOpen] = useState(false);
+  // WebXR AR session state — model-viewer children become the DOM overlay while presenting.
+  const [arActive, setArActive] = useState(false);
+  const [arAdded, setArAdded] = useState(false);
   const initial = matchVariant(model.variants, preferredColor, preferredMaterial);
   const [activeVariant, setActiveVariant] = useState<string | null>(initial?.id ?? model.variants?.[0]?.id ?? null);
   const tr = (k: string, fallback: string) => (t ? t(k) : fallback);
@@ -132,7 +139,16 @@ export const ModelViewer3D: React.FC<Props> = ({
       }
     };
     mv.addEventListener('load', onLoad);
-    return () => mv.removeEventListener('load', onLoad);
+    const onArStatus = (e: any) => {
+      const s = e?.detail?.status;
+      setArActive(s === 'session-started' || s === 'object-placed');
+      if (s === 'not-presenting' || s === 'failed') setArAdded(false);
+    };
+    mv.addEventListener('ar-status', onArStatus);
+    return () => {
+      mv.removeEventListener('load', onLoad);
+      mv.removeEventListener('ar-status', onArStatus);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model.url, autoAr, model.dimensions?.width, model.dimensions?.height, model.dimensions?.depth, model.dimensions?.unit]);
 
@@ -169,13 +185,34 @@ export const ModelViewer3D: React.FC<Props> = ({
     if (mv) mv.cameraOrbit = '0deg 75deg 105%';
   };
 
+  const arAddToCart = () => {
+    if (!onAddToCart) return;
+    onAddToCart();
+    setArAdded(true);
+    window.setTimeout(() => setArAdded(false), 2000);
+  };
+
+  // iPhone Quick Look: native AR is an OS view (no web UI possible), but Apple
+  // supports a branded banner via URL fragment — title, subtitle, call-to-action.
+  // Tapping the banner returns the shopper to this product page.
+  const iosSrc = (() => {
+    if (!model.iosUrl) return undefined;
+    if (model.iosUrl.includes('#')) return model.iosUrl;
+    const p = new URLSearchParams();
+    p.set('checkoutTitle', productName);
+    p.set('checkoutSubtitle', 'Raafat Furniture — handcrafted in Egypt');
+    p.set('callToAction', (t && t('add_to_cart')) || 'Add to Cart');
+    if (productPageUrl) p.set('canonicalWebPageURL', productPageUrl);
+    return `${model.iosUrl}#${p.toString()}`;
+  })();
+
   return (
     <div className={`relative w-full ${className}`}>
       {/* @ts-ignore — web component */}
       <model-viewer
         ref={ref}
         src={model.url}
-        ios-src={model.iosUrl}
+        ios-src={iosSrc}
         poster={model.poster}
         alt={model.alt || `3D model of ${productName}`}
         // @ts-expect-error model-viewer accepts crossorigin
@@ -208,6 +245,40 @@ export const ModelViewer3D: React.FC<Props> = ({
         {/* Hide default model-viewer AR chrome — we use our own gold CTA */}
         <button slot="ar-button" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
         <div slot="progress-bar" />
+
+        {/* In-AR branded overlay (WebXR only — native Scene Viewer / Quick Look
+            cannot host site UI). Children of <model-viewer> are shown as the DOM
+            overlay while an AR session presents. */}
+        {arActive && (
+          <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-between">
+            {/* top brand bar — quiet, unintrusive */}
+            <div className="mx-auto mt-[max(0.75rem,env(safe-area-inset-top))] flex items-center gap-2 rounded-[var(--radius-pill)] bg-black/45 backdrop-blur-md px-4 py-2">
+              <span className="font-heading text-sm font-bold tracking-[0.18em] text-white">RAAFAT</span>
+              <span className="text-[10px] tracking-[0.3em] text-[#E8C547] font-semibold">FURNITURE</span>
+              <span className="mx-1 h-3 w-px bg-white/25" />
+              <span className="text-xs text-white/85 max-w-[38vw] truncate">{productName}</span>
+              {priceLabel && <span className="text-xs font-semibold text-[#E8C547]">{priceLabel}</span>}
+            </div>
+
+            {/* bottom actions */}
+            <div className="mb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-2">
+              {onAddToCart && (
+                <button
+                  onClick={arAddToCart}
+                  className={`pointer-events-auto inline-flex items-center gap-2 rounded-[var(--radius-pill)] px-6 py-3 font-bold shadow-lg transition-colors ${
+                    arAdded ? 'bg-[#3ba55d] text-white' : 'bg-[#E8C547] text-[#14213D]'
+                  }`}
+                >
+                  {arAdded ? <Check size={18} /> : <ShoppingCart size={18} />}
+                  {arAdded ? (tr('added_to_cart', 'Added to cart')) : (tr('add_to_cart', 'Add to Cart'))}
+                </button>
+              )}
+              <span className="text-[11px] text-white/60 bg-black/35 rounded-full px-3 py-1">
+                {tr('ar_exit_hint', 'Swipe back to return to the product')}
+              </span>
+            </div>
+          </div>
+        )}
       </model-viewer>
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 sm:p-4">
