@@ -291,37 +291,40 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
 
           <div className="flex flex-col sm:flex-row gap-3 mt-2">
             {cartLine ? (
-              /* This configuration is in the cart — Add button becomes a quantity stepper. */
+              /* This configuration is in the cart — the Add button itself becomes a
+                 quantity stepper (− qty +), same pill, same footprint. Tapping the
+                 number opens the cart. */
               <motion.div
                 key="stepper"
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex-1 md:flex-none flex items-stretch gap-3"
+                className="flex-1 md:flex-none flex items-stretch rounded-[var(--radius-pill)] bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] shadow-[var(--gold-glow)] overflow-hidden"
               >
-                <div className="inline-flex items-center rounded-[var(--radius-pill)] border-2 border-[var(--color-primary)] overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity - 1)}
-                    aria-label={t('decrease_quantity') || 'Decrease quantity'}
-                    className="px-4 self-stretch flex items-center text-[var(--color-primary)] hover:bg-[hsla(var(--color-primary-hsl-values),0.1)] transition-colors"
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span className="min-w-[3.5rem] text-center font-bold text-lg py-3" aria-live="polite">
-                    {cartLine.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity + 1)}
-                    aria-label={t('increase_quantity') || 'Increase quantity'}
-                    className="px-4 self-stretch flex items-center text-[var(--color-primary)] hover:bg-[hsla(var(--color-primary-hsl-values),0.1)] transition-colors"
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-                <Button size="lg" onClick={() => setIsCartOpen(true)} iconLeft={<Check size={18} />} className="flex-1">
-                  {t('in_cart_view') || 'In cart — view'}
-                </Button>
+                <button
+                  type="button"
+                  onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity - 1)}
+                  aria-label={t('decrease_quantity') || 'Decrease quantity'}
+                  className="px-5 self-stretch flex items-center hover:bg-black/10 transition-colors"
+                >
+                  <Minus size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCartOpen(true)}
+                  aria-label={t('in_cart_view') || 'In cart — view'}
+                  className="flex-1 py-4 text-center font-bold text-base hover:bg-black/5 transition-colors"
+                  aria-live="polite"
+                >
+                  {cartLine.quantity} {t('in_cart') || 'in cart'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateCartQuantity(cartLine.id, cartLine.quantity + 1)}
+                  aria-label={t('increase_quantity') || 'Increase quantity'}
+                  className="px-5 self-stretch flex items-center hover:bg-black/10 transition-colors"
+                >
+                  <Plus size={18} />
+                </button>
               </motion.div>
             ) : (
               <Button onClick={handleAddToCart} loading={isAdding} size="lg" className="flex-1 md:flex-none" iconLeft={!isAdding ? <ShoppingCart size={18} /> : undefined}>

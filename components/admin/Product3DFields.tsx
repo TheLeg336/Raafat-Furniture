@@ -342,7 +342,7 @@ export const Product3DFields: React.FC<Props> = ({ value, onChange, productId })
                 <Badge tone={scanTone[s.status] || 'neutral'}>{s.status}</Badge>
                 <span className="text-[var(--color-text-secondary)]">{s.frameCount} frames</span>
                 {s.status === 'processing' && <Loader2 size={12} className="animate-spin" />}
-                {s.status === 'ready' && <Check size={12} className="text-[#3ba55d]" />}
+                {s.status === 'ready' && <Check size={12} className="text-[var(--color-primary)]" />}
                 {s.status === 'failed' && <AlertTriangle size={12} className="text-[var(--color-danger)]" />}
                 {s.modelUrl ? (
                   <button type="button" className="underline text-[var(--color-primary)] ms-auto" onClick={() => applyScanModel(s)}>

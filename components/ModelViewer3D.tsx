@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { View, Box, RotateCcw, Move3d, ShoppingCart, Check } from 'lucide-react';
+import { View, Box, RotateCcw, Move3d, ShoppingCart, Check, ArrowLeft } from 'lucide-react';
 import type { Model3D, ModelVariant, TFunction } from '../types';
 import { localized } from '../lib/format';
 import { trackEvent } from '../lib/analytics';
@@ -57,7 +57,7 @@ function matchVariant(
 }
 
 export const ModelViewer3D: React.FC<Props> = ({
-  model, productName, productPageUrl, autoAr, preferredColor, preferredMaterial, priceLabel, onAddToCart, t, className = '',
+  model, productName, productPageUrl, autoAr, preferredColor, preferredMaterial, onAddToCart, t, className = '',
 }) => {
   const ref = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
@@ -255,30 +255,51 @@ export const ModelViewer3D: React.FC<Props> = ({
             <div className="mx-auto mt-[max(0.75rem,env(safe-area-inset-top))] flex items-center gap-2 rounded-[var(--radius-pill)] bg-black/45 backdrop-blur-md px-4 py-2">
               <span className="font-heading text-sm font-bold tracking-[0.18em] text-white">RAAFAT</span>
               <span className="text-[10px] tracking-[0.3em] text-[#E8C547] font-semibold">FURNITURE</span>
-              <span className="mx-1 h-3 w-px bg-white/25" />
-              <span className="text-xs text-white/85 max-w-[38vw] truncate">{productName}</span>
-              {priceLabel && <span className="text-xs font-semibold text-[#E8C547]">{priceLabel}</span>}
             </div>
 
-            {/* bottom actions */}
-            <div className="mb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-2">
+            {/* bottom actions — back (liquid glass) + add to cart */}
+            <div className="mb-[max(1.25rem,env(safe-area-inset-bottom))] px-5 flex items-center justify-center gap-3">
               {onAddToCart && (
                 <button
                   onClick={arAddToCart}
-                  className={`pointer-events-auto inline-flex items-center gap-2 rounded-[var(--radius-pill)] px-6 py-3 font-bold shadow-lg transition-colors ${
-                    arAdded ? 'bg-[#3ba55d] text-white' : 'bg-[#E8C547] text-[#14213D]'
-                  }`}
+                  className="pointer-events-auto inline-flex items-center gap-2 rounded-[var(--radius-pill)] px-6 py-3 font-bold shadow-lg transition-all bg-[#E8C547] text-[#14213D]"
                 >
                   {arAdded ? <Check size={18} /> : <ShoppingCart size={18} />}
                   {arAdded ? (tr('added_to_cart', 'Added to cart')) : (tr('add_to_cart', 'Add to Cart'))}
                 </button>
               )}
-              <span className="text-[11px] text-white/60 bg-black/35 rounded-full px-3 py-1">
-                {tr('ar_exit_hint', 'Swipe back to return to the product')}
-              </span>
             </div>
           </div>
         )}
+
+        {/* Liquid-glass back button — slotted so model-viewer wires it to end the
+            WebXR session. Fixed bottom-left, beside the centered Add to Cart. */}
+        <button
+          slot="exit-webxr-ar-button"
+          aria-label={tr('ar_back', 'Back')}
+          style={{
+            position: 'fixed',
+            insetInlineStart: '1.25rem',
+            bottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+            zIndex: 101,
+            display: arActive ? 'inline-flex' : 'none',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1.25rem',
+            borderRadius: '999px',
+            background: 'rgba(255,255,255,0.14)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            backdropFilter: 'blur(18px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(18px) saturate(160%)',
+            color: '#fff',
+            fontWeight: 700,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)',
+            pointerEvents: 'auto',
+          }}
+        >
+          <ArrowLeft size={18} />
+          {tr('ar_back', 'Back')}
+        </button>
       </model-viewer>
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 sm:p-4">

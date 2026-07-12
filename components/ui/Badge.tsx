@@ -6,7 +6,7 @@ const tones: Record<Tone, string> = {
   neutral: 'bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]',
   gold: 'bg-[hsla(var(--color-primary-hsl-values),0.18)] text-[var(--color-ink-on-gold)] dark:text-[var(--color-primary)]',
   navy: 'bg-[var(--color-secondary)] text-white',
-  success: 'bg-[rgba(46,125,50,0.16)] text-[#2e7d32] dark:text-[#7fd18a]',
+  success: 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)]',
   danger: 'bg-[var(--color-danger-bg)] text-[var(--color-danger)]',
   info: 'bg-[rgba(20,33,61,0.10)] text-[var(--color-secondary)] dark:text-[#9db4e0] dark:bg-[rgba(157,180,224,0.14)]',
 };

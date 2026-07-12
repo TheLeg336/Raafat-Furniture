@@ -860,7 +860,7 @@ const Shop: React.FC<ShopProps> = ({ t }) => {
                         }}
                         className={`w-full mt-auto pt-3 md:pt-4 py-2.5 rounded-xl font-bold text-sm transition-all max-md:opacity-100 max-md:translate-y-0 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0 ${
                           justAdded === String(product.id)
-                            ? 'bg-[#3ba55d] text-white md:opacity-100 md:translate-y-0'
+                            ? 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] md:opacity-100 md:translate-y-0'
                             : 'bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] hover:bg-opacity-90'
                         }`}
                       >

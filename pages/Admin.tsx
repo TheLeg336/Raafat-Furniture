@@ -56,6 +56,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [listingToDelete, setListingToDelete] = useState<any | null>(null);
+  const [listingToPurge, setListingToPurge] = useState<any | null>(null);
 
   // Archived Tab State
   const [selectedArchivedCategory, setSelectedArchivedCategory] = useState<string | null>(null);
@@ -1007,7 +1008,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                               </button>
                               {isDeveloper && (
                                 <button 
-                                  onClick={() => handlePermanentDelete(listing.id)}
+                                  onClick={() => setListingToPurge(listing)}
                                   className="py-2 px-3 bg-red-500/10 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
                                   title={t('admin_delete_perm')}
                                 >
@@ -1068,7 +1069,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                           </td>
                           <td className="py-2 px-3 md:p-4 text-xs md:text-sm">
                             <span className={`px-2 py-1 rounded-full text-[10px] md:text-xs font-medium ${
-                              log.action.includes('CREATE') ? 'bg-green-500/10 text-green-500' :
+                              log.action.includes('CREATE') ? 'bg-[hsla(var(--color-primary-hsl-values),0.12)] text-[var(--color-primary)]' :
                               log.action.includes('UPDATE') ? 'bg-blue-500/10 text-blue-500' :
                               log.action.includes('DELETE') ? 'bg-red-500/10 text-red-500' :
                               log.action.includes('ARCHIVE') ? 'bg-orange-500/10 text-orange-500' :
@@ -1498,6 +1499,35 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
               </button>
               <button onClick={() => handleArchive(listingToDelete.id)} className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors">
                 {t('admin_archive')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+      {/* Permanent Delete Confirm Modal */}
+      <AnimatePresence>
+      {listingToPurge && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[var(--color-background)] rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 text-center "
+          >
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={32} />
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)] mb-3">{t('admin_delete_perm') || 'Delete permanently'}</h2>
+            <p className="text-[var(--color-text-secondary)] mb-8">{t('admin_delete_perm_warn') || 'This permanently deletes the listing and its images. This cannot be undone.'}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setListingToPurge(null)} className="flex-1 py-3 text-[var(--color-text-primary)] font-medium bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20 rounded-xl transition-colors">
+                {t('admin_cancel')}
+              </button>
+              <button onClick={() => { handlePermanentDelete(listingToPurge.id); setListingToPurge(null); }} className="flex-1 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors">
+                {t('admin_delete_perm') || 'Delete'}
               </button>
             </div>
           </motion.div>

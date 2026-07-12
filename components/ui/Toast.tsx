@@ -30,7 +30,7 @@ export const useToast = (): ToastCtx => {
 };
 
 const icons = {
-  success: <CheckCircle2 size={18} className="text-[#3ba55d]" />,
+  success: <CheckCircle2 size={18} className="text-[var(--color-primary)]" />,
   error: <AlertCircle size={18} className="text-[var(--color-danger)]" />,
   info: <Info size={18} className="text-[var(--color-primary)]" />,
 };

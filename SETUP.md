@@ -53,7 +53,7 @@ Which rails appear at checkout = **env keys present** AND **Dev-tab toggle on** 
 - [ ] **Paymob (Egypt cards)** — `PAYMOB_API_KEY`, `PAYMOB_INTEGRATION_ID`, `PAYMOB_IFRAME_ID`, `PAYMOB_HMAC_SECRET`. ⚠️ *Currently missing.* Webhook: `https://<domain>/api/paymob/webhook` (HMAC-verified).
 - [x] **Dev-tab toggles** — Dev → Checkout payment options. *(verified: your saved toggles — Stripe off, Paymob off, InstaPay on, bank transfer off — display correctly; they take EFFECT only after `FIREBASE_SERVICE_ACCOUNT` is set)*
 - [ ] **InstaPay address + bank details** — Admin → Team (shown to customers who pick those methods). Verify they're filled before launch.
-- [ ] **`SITE_URL`** in Vercel (e.g. `https://raafat-furniture.vercel.app`, later your real domain) — locks Stripe's post-payment redirect to your own domain.
+- [x] **`SITE_URL`** in Vercel — set to `https://raafat-furniture.vercel.app` on 2026-07-11 (Production + Preview). Update it when the real domain arrives.
 
 ## 4. Email (Resend)
 
@@ -184,6 +184,13 @@ banner gates analytics.
 | `RESEND_API_KEY` + `EMAIL_FROM` + `CONTACT_EMAIL` | order + contact emails |
 | `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` | admin asset deletes |
 | `VITE_GA_MEASUREMENT_ID` | analytics |
-| `SITE_URL` | safe payment redirects + email links |
+
+`SITE_URL` ✓ added 2026-07-11 (Production + Preview).
+
+> The remaining vars are **secret keys** — paste them yourself in Vercel → Settings →
+> Environment Variables (an assistant should never handle raw API keys). Sources:
+> Stripe Dashboard → Developers → API keys; Paymob Dashboard → Settings; Resend →
+> API Keys (needs your business sending domain first); Cloudinary → API Keys;
+> GA4 → Admin → Data streams.
 
 After adding env vars in Vercel you must **redeploy** for them to take effect.
