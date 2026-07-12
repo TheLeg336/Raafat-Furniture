@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { adminPath } from '../lib/paths';
-import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
-import { ShieldCheck, Hammer, Trash2, UserPlus, Code2, Smartphone } from 'lucide-react';
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { ShieldCheck, Hammer, Trash2, UserPlus, Code2 } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { normalizeStaffRole } from '../lib/staff';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { PaymentSettings } from '../components/admin/PaymentSettings';
 import { Button } from '../components/ui/Button';
-import { Input, Select, Textarea } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
@@ -115,46 +116,6 @@ const AdminTeam: React.FC<Props> = () => {
 
       <PaymentSettings toast={toast} />
     </>
-  );
-};
-
-/** InstaPay address + bank details shown to customers paying by transfer. */
-const PaymentSettings: React.FC<{ toast: ReturnType<typeof useToast> }> = ({ toast }) => {
-  const [instapayAddress, setInstapayAddress] = useState('');
-  const [bankDetails, setBankDetails] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!db) return;
-    getDoc(doc(db, 'settings', 'payments')).then((snap) => {
-      if (snap.exists()) {
-        setInstapayAddress(snap.data().instapayAddress || '');
-        setBankDetails(snap.data().bankDetails || '');
-      }
-    }).catch(() => {});
-  }, []);
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!db) return;
-    setBusy(true);
-    try {
-      await setDoc(doc(db, 'settings', 'payments'), { instapayAddress: instapayAddress.trim(), bankDetails: bankDetails.trim() }, { merge: true });
-      toast.success('Payment settings saved');
-    } catch { toast.error('Could not save (admin rights required).'); }
-    setBusy(false);
-  };
-
-  return (
-    <Card className="p-5 mt-10">
-      <div className="flex items-center gap-2 mb-3"><Smartphone size={18} className="text-[var(--color-primary)]" /><h2 className="font-heading text-lg font-bold">Payment settings</h2></div>
-      <p className="text-sm text-[var(--color-text-secondary)] mb-4">Shown to customers who choose InstaPay or bank transfer at checkout.</p>
-      <form onSubmit={save} className="flex flex-col gap-4">
-        <Input label="InstaPay address (IPA)" value={instapayAddress} onChange={(e) => setInstapayAddress(e.target.value)} placeholder="raafatfurniture@instapay" />
-        <Textarea label="Bank transfer details" rows={3} value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} placeholder={'Bank name\nAccount name\nIBAN / account number'} />
-        <div><Button type="submit" size="sm" loading={busy}>Save payment settings</Button></div>
-      </form>
-    </Card>
   );
 };
 

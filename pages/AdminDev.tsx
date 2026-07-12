@@ -13,6 +13,7 @@ import {
   type ClientErrorReport,
 } from '../lib/clientErrors';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { PaymentSettings } from '../components/admin/PaymentSettings';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -425,7 +426,7 @@ const AdminDev: React.FC<Props> = () => {
             </div>
             <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
               Turn methods on or off for customers. Card rails still need their API keys in Vercel env —
-              disabling here only hides them at checkout. InstaPay address and bank details are edited under Team.
+              disabling here only hides them at checkout. The InstaPay / bank details customers see are edited just below.
             </p>
             {!serverConfigured && (
               <p className="text-xs text-[var(--color-danger)] leading-relaxed border border-[var(--color-danger)]/40 rounded-[var(--radius-md)] p-3">
@@ -464,6 +465,8 @@ const AdminDev: React.FC<Props> = () => {
               Save payment options
             </Button>
           </Card>
+
+          <PaymentSettings toast={toast} className="p-5 mt-6" />
 
           <Card className="p-5 mt-6">
             <h2 className="font-semibold text-sm mb-4">Recent signups</h2>

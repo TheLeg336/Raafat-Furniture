@@ -211,6 +211,7 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
 const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => void }> = ({ t, order, onSubmitted }) => {
   const toast = useToast();
   const [instapayAddress, setInstapayAddress] = useState('');
+  const [instapayNotes, setInstapayNotes] = useState('');
   const [bankDetails, setBankDetails] = useState('');
   const [reference, setReference] = useState(order.payment?.reference || '');
   const [busy, setBusy] = useState(false);
@@ -222,6 +223,7 @@ const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => v
     getDoc(doc(db, 'settings', 'payments')).then((snap) => {
       const d = snap.exists() ? snap.data() : {};
       setInstapayAddress(d.instapayAddress || '');
+      setInstapayNotes(d.instapayNotes || '');
       setBankDetails(d.bankDetails || '');
     }).catch(() => {});
   }, []);
@@ -291,6 +293,14 @@ const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => v
             <li>{t('transfer_step3') || 'Paste it below so we can verify your payment.'}</li>
           </ol>
           <p className="font-heading text-xl font-bold mb-4">{formatMoney(order.total, { currency: order.currency })}</p>
+          {isInstapay && instapayNotes && (
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4 whitespace-pre-line">{instapayNotes}</p>
+          )}
+          {isInstapay && order.currency === 'EGP' && order.total > 70000 && (
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4">
+              {t('instapay_limit_hint') || 'InstaPay caps single transfers at EGP 70,000 (EGP 120,000/day) — send the total in parts with the same transfer note, or choose bank transfer.'}
+            </p>
+          )}
           <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1"><Input label={t('payment_reference') || 'Transaction reference'} value={reference} onChange={(e) => setReference(e.target.value)} required /></div>
             <div className="sm:self-end"><Button type="submit" loading={busy}>{t('submit_reference') || 'Submit'}</Button></div>

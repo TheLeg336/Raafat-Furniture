@@ -184,7 +184,10 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const cardAvailable = !!config?.cardProvider;
   const cardMethod: PaymentMethod = config?.cardProvider === 'paymob' ? 'paymob' : 'stripe';
   const methods = config?.methods || { stripe: true, paymob: true, instapay: true, bank_transfer: true };
-  const instapayAvailable = methods.instapay && (config ? (config.ipCountry === 'EG' || !config.ipCountry || form.country === 'EG') : true);
+  // Mirrors the server rule: InstaPay is refused only for non-Egypt SHIPPING from a
+  // non-Egypt IP. Pickup/custom orders are always Egypt-destined, so always eligible.
+  const instapayAvailable = methods.instapay
+    && (fulfillment !== 'shipping' || form.country === 'EG' || !config || !config.ipCountry || config.ipCountry === 'EG');
 
   const paymentOptions: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode; show: boolean }[] = [
     { id: cardMethod, label: t('pay_card') || 'Card / Apple Pay / Google Pay', icon: <CreditCard size={18} />, show: cardAvailable },
