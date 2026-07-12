@@ -256,20 +256,60 @@ const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => v
         <p className="text-sm text-[var(--color-text-secondary)]">
           {t('reference_received') || 'We received your payment reference and are verifying it. You’ll get a confirmation email once approved.'}
         </p>
+      ) : isInstapay ? (
+        <>
+          {/* One glanceable card: amount → address → note. Copy buttons everywhere. */}
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-primary)]/40 bg-[hsla(var(--color-primary-hsl-values),0.08)] p-4 text-center mb-3">
+            <span className="block text-xs text-[var(--color-text-secondary)] mb-1">{t('instapay_send') || 'Send'}</span>
+            <span className="font-heading text-2xl font-bold text-[var(--color-text-primary)]">{formatMoney(order.total, { currency: order.currency })}</span>
+            <span className="block text-xs text-[var(--color-text-secondary)] mt-2 mb-1.5">{t('instapay_to') || 'from any Egyptian bank app to'}</span>
+            {instapayAddress ? (
+              <button
+                type="button"
+                onClick={() => copy(instapayAddress)}
+                className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] px-4 py-2 font-mono font-semibold"
+              >
+                {instapayAddress} <Copy size={14} />
+              </button>
+            ) : (
+              <span className="block italic text-sm text-[var(--color-text-secondary)]">
+                {t('transfer_details_soon') || 'Our team will send you the transfer details by email shortly.'}
+              </span>
+            )}
+          </div>
+          <div className="mb-4">
+            <span className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
+              {t('instapay_note_label') || 'In the transfer note / title, write exactly:'}
+            </span>
+            <button
+              type="button"
+              onClick={() => copy(`${order.orderNumber} ${order.contact.fullName}`)}
+              className="w-full text-start rounded-[var(--radius-md)] border border-[var(--color-primary)]/40 bg-[hsla(var(--color-primary-hsl-values),0.08)] px-3 py-2 font-mono text-sm font-semibold text-[var(--color-text-primary)] inline-flex items-center justify-between gap-2"
+            >
+              <span>{order.orderNumber} {order.contact.fullName}</span>
+              <Copy size={14} className="text-[var(--color-primary)] shrink-0" />
+            </button>
+          </div>
+          {instapayNotes && (
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4 whitespace-pre-line">{instapayNotes}</p>
+          )}
+          <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Input
+                label={t('payment_reference') || 'Transaction reference'}
+                hint={t('instapay_ref_hint') || 'After sending, paste the reference number from your app so we can confirm your payment.'}
+                value={reference} onChange={(e) => setReference(e.target.value)} required />
+            </div>
+            <div className="sm:self-end"><Button type="submit" loading={busy}>{t('submit_reference') || 'Submit'}</Button></div>
+          </form>
+        </>
       ) : (
         <>
           <ol className="text-sm text-[var(--color-text-secondary)] list-decimal ms-5 flex flex-col gap-1.5 mb-4">
             <li>
-              {isInstapay
-                ? (t('instapay_step1') || 'Send the total below from any Egyptian banking app to our InstaPay address:')
-                : (t('bank_step1') || 'Transfer the total below to our bank account:')}
-              {isInstapay && instapayAddress && (
-                <button type="button" onClick={() => copy(instapayAddress)} className="inline-flex items-center gap-1 ms-2 font-semibold text-[var(--color-primary)]">
-                  {instapayAddress} <Copy size={12} />
-                </button>
-              )}
-              {!isInstapay && bankDetails && <span className="block font-medium text-[var(--color-text-primary)] mt-1 whitespace-pre-line">{bankDetails}</span>}
-              {((isInstapay && !instapayAddress) || (!isInstapay && !bankDetails)) && (
+              {t('bank_step1') || 'Transfer the total below to our bank account:'}
+              {bankDetails && <span className="block font-medium text-[var(--color-text-primary)] mt-1 whitespace-pre-line">{bankDetails}</span>}
+              {!bankDetails && (
                 <span className="block mt-1 italic">{t('transfer_details_soon') || 'Our team will send you the transfer details by email shortly.'}</span>
               )}
             </li>
@@ -293,14 +333,6 @@ const TransferPanel: React.FC<{ t: TFunction; order: Order; onSubmitted: () => v
             <li>{t('transfer_step3') || 'Paste it below so we can verify your payment.'}</li>
           </ol>
           <p className="font-heading text-xl font-bold mb-4">{formatMoney(order.total, { currency: order.currency })}</p>
-          {isInstapay && instapayNotes && (
-            <p className="text-xs text-[var(--color-text-secondary)] mb-4 whitespace-pre-line">{instapayNotes}</p>
-          )}
-          {isInstapay && order.currency === 'EGP' && order.total > 70000 && (
-            <p className="text-xs text-[var(--color-text-secondary)] mb-4">
-              {t('instapay_limit_hint') || 'InstaPay caps single transfers at EGP 70,000 (EGP 120,000/day) — send the total in parts with the same transfer note, or choose bank transfer.'}
-            </p>
-          )}
           <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1"><Input label={t('payment_reference') || 'Transaction reference'} value={reference} onChange={(e) => setReference(e.target.value)} required /></div>
             <div className="sm:self-end"><Button type="submit" loading={busy}>{t('submit_reference') || 'Submit'}</Button></div>
