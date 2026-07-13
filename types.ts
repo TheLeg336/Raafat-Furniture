@@ -62,6 +62,11 @@ export interface Product {
   colors?: string[];
   model3d?: Model3D;              // optional 3D / AR model
   customDimensionsEnabled?: boolean; // allow user-entered custom dimensions
+  // International shipping (DDP) — packed shipment data for freight estimation.
+  packedWeightKg?: number;
+  packedLengthCm?: number;
+  packedWidthCm?: number;
+  packedHeightCm?: number;
 }
 
 export type TFunction = (key: string) => string;
@@ -197,6 +202,8 @@ export interface Order {
   currency: string;
   subtotal: number;
   shipping: number;
+  /** DDP customs duties + import taxes charged at checkout (exports only). */
+  duties?: number;
   tax: number;            // VAT portion. When taxIncluded, already inside total.
   taxRate?: number;       // e.g. 0.14
   taxIncluded?: boolean;  // Egypt retail: prices are VAT-inclusive

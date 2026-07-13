@@ -32,6 +32,7 @@ const AdminDev = React.lazy(() => import('./pages/AdminDev'));
 const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
 const AdminReviews = React.lazy(() => import('./pages/AdminReviews'));
 const Contact = React.lazy(() => import('./pages/Contact'));
+const CustomOrder = React.lazy(() => import('./pages/CustomOrder'));
 const FAQ = React.lazy(() => import('./pages/FAQ'));
 const TrackOrder = React.lazy(() => import('./pages/TrackOrder'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
@@ -292,6 +293,7 @@ const AppContent: React.FC = () => {
                 <Route path="/order/confirmation" element={<OrderConfirmation t={t} />} />
                 <Route path="/track" element={<TrackOrder t={t} />} />
                 <Route path="/contact" element={<Contact t={t} />} />
+                <Route path="/custom-order" element={<CustomOrder t={t} />} />
                 <Route path="/faq" element={<FAQ t={t} />} />
                 <Route path="/legal/:slug" element={<Legal t={t} language={language} />} />
                 <Route path="*" element={<NotFound t={t} />} />

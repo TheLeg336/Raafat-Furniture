@@ -80,6 +80,7 @@ function buildOrderEmail(d) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${totalRow("Subtotal", money(d.subtotal, d.currency))}
             ${d.shipping ? totalRow("Shipping", money(d.shipping, d.currency)) : ""}
+            ${d.duties ? totalRow("Customs & duties (DDP)", money(d.duties, d.currency)) : ""}
             ${d.tax ? totalRow(taxLabel(d), money(d.tax, d.currency)) : ""}
             <tr><td colspan="2" style="padding-top:8px;border-top:2px solid ${BORDER};"></td></tr>
             ${totalRow("Total", money(d.total, d.currency), true)}
@@ -135,6 +136,7 @@ Thank you, ${d.customerName}.
 
 Subtotal: ${money(d.subtotal, d.currency)}
 ` + (d.shipping ? `Shipping: ${money(d.shipping, d.currency)}
+` : "") + (d.duties ? `Customs & duties (DDP): ${money(d.duties, d.currency)}
 ` : "") + (d.tax ? `${taxLabel(d)}: ${money(d.tax, d.currency)}
 ` : "") + `Total: ${money(d.total, d.currency)}
 
@@ -168,6 +170,7 @@ function orderToEmail(order, extras) {
     })),
     subtotal: order.subtotal,
     shipping: order.shipping,
+    duties: order.duties || 0,
     tax: order.tax,
     taxRate: order.taxRate,
     taxIncluded: order.taxIncluded,

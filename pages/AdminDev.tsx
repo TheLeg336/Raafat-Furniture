@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Rocket, Power, RefreshCw, Users, AlertTriangle, CheckCircle2, Bug, CreditCard } from 'lucide-react';
+import { Rocket, Power, RefreshCw, Users, AlertTriangle, CheckCircle2, Bug, CreditCard, Globe2, Hash } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useLaunch } from '../contexts/LaunchContext';
@@ -14,6 +14,8 @@ import {
 } from '../lib/clientErrors';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { PaymentSettings } from '../components/admin/PaymentSettings';
+import { DdpSettings } from '../components/admin/DdpSettings';
+import { OrderNumberCapacity } from '../components/admin/OrderNumberCapacity';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -35,7 +37,7 @@ interface WaitlistEntry {
   notifiedAt?: string;
 }
 
-type DevPanel = 'launch' | 'errors';
+type DevPanel = 'launch' | 'errors' | 'shipping' | 'capacity';
 
 type MethodFlags = { stripe: boolean; paymob: boolean; instapay: boolean; bank_transfer: boolean };
 
@@ -263,9 +265,35 @@ const AdminDev: React.FC<Props> = () => {
             </span>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setPanel('shipping')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
+            panel === 'shipping'
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
+          }`}
+        >
+          <Globe2 size={16} /> Shipping
+        </button>
+        <button
+          type="button"
+          onClick={() => setPanel('capacity')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
+            panel === 'capacity'
+              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
+          }`}
+        >
+          <Hash size={16} /> Capacity
+        </button>
       </div>
 
-      {panel === 'errors' ? (
+      {panel === 'shipping' ? (
+        <DdpSettings />
+      ) : panel === 'capacity' ? (
+        <OrderNumberCapacity />
+      ) : panel === 'errors' ? (
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">

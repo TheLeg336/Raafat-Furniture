@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Check, ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Box, Ruler, Minus, Plus } from 'lucide-react';
+import { Heart, Check, ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Box, Ruler, Minus, Plus, Hammer } from 'lucide-react';
 import type { TFunction } from '../types';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
@@ -279,13 +279,21 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ t }) => {
             )}
 
             {product.customDimensionsEnabled && (
-              <Input
-                label={t('custom_dimensions') || 'Custom dimensions (optional)'}
-                hint={t('custom_dimensions_hint') || 'Tell us the size you need — we make to order.'}
-                value={customDims}
-                onChange={(e) => setCustomDims(e.target.value)}
-                placeholder={t('custom_dimensions_ph') || 'e.g. 220cm W × 95cm D'}
-              />
+              <>
+                <Input
+                  label={t('custom_dimensions') || 'Custom dimensions (optional)'}
+                  hint={t('custom_dimensions_hint') || 'Tell us the size you need — we make to order.'}
+                  value={customDims}
+                  onChange={(e) => setCustomDims(e.target.value)}
+                  placeholder={t('custom_dimensions_ph') || 'e.g. 220cm W × 95cm D'}
+                />
+                <Link
+                  to={`/custom-order?item=${encodeURIComponent(name)}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:underline"
+                >
+                  <Hammer size={15} /> {t('custom_order_available') || 'Made to order — request a custom version'}
+                </Link>
+              </>
             )}
           </div>
 

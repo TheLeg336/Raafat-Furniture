@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Hammer } from 'lucide-react';
 import type { Category, TFunction } from '../types';
 import ProductSectionHeader from './ProductSectionHeader';
 import { Link } from 'react-router-dom';
@@ -68,9 +68,14 @@ const ProductSection: React.FC<{ t: TFunction; headerHeight: number }> = ({ t, h
             </motion.div>
           )}
 
-          <div className="flex justify-center pb-16 max-md:pb-20 md:pb-24 lg:pb-28">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-16 max-md:pb-20 md:pb-24 lg:pb-28">
             <Link to="/shop">
               <Button size="lg">{t('explore_collections') || 'Explore the collections'}</Button>
+            </Link>
+            <Link to="/custom-order">
+              <Button size="lg" variant="secondary" iconLeft={<Hammer size={18} />}>
+                {t('custom_order_cta') || 'Custom order'}
+              </Button>
             </Link>
           </div>
         </div>

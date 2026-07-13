@@ -13,6 +13,7 @@
 import { Router, type Request, type Response } from 'express';
 import { getDb, verifyIdToken } from './firebaseAdmin';
 import { isBootstrapDeveloperEmail, normalizeStaffRole, type StaffRole } from '../lib/staff';
+import { normalizeDdpConfig, computeDdpQuote } from '../lib/ddp';
 import { sendOrderConfirmation, sendOrderStatus, sendOrderMessage } from './email';
 import { orderToEmail } from './orderEmail';
 
@@ -98,7 +99,7 @@ function trackView(o: any, id: string) {
     orderNumber: o.orderNumber, createdAt: o.createdAt, updatedAt: o.updatedAt,
     status: o.status, statusHistory: o.statusHistory, paymentStatus: o.paymentStatus,
     paymentMethod: o.paymentMethod, fulfillment: o.fulfillment, items: o.items,
-    subtotal: o.subtotal, shipping: o.shipping, tax: o.tax, taxRate: o.taxRate,
+    subtotal: o.subtotal, shipping: o.shipping, duties: o.duties || 0, tax: o.tax, taxRate: o.taxRate,
     taxIncluded: o.taxIncluded, total: o.total, currency: o.currency,
     destinationCountry: o.destinationCountry, tracking: o.tracking || null,
     contact: { fullName: o.contact?.fullName, email: o.contact?.email },
@@ -240,6 +241,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
 
       // ---- authoritative pricing from the catalog (per-currency) ----
       const priced = [];
+      const packed: { quantity: number; packedWeightKg?: number; packedLengthCm?: number; packedWidthCm?: number; packedHeightCm?: number }[] = [];
       for (const it of items) {
         if ('price' in it || 'total' in it || 'subtotal' in it) {
           return res.status(400).json({ error: 'Invalid items payload' });
@@ -252,6 +254,11 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         const raw = currency === 'EGP' ? (p.priceEGP ?? p.price) : (p.priceUSD ?? p.price);
         const price = Number(raw);
         if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Item is not available in ${currency} (${it.productId})` });
+        packed.push({
+          quantity: qty,
+          packedWeightKg: p.packedWeightKg, packedLengthCm: p.packedLengthCm,
+          packedWidthCm: p.packedWidthCm, packedHeightCm: p.packedHeightCm,
+        });
         priced.push({
           productId: String(it.productId),
           name: p.name || p.nameKey || 'Item',
@@ -264,9 +271,22 @@ export function ordersRouter(rateLimit: (n: number) => any) {
       }
 
       const subtotal = round2(priced.reduce((s, it) => s + it.price * it.quantity, 0));
-      const shipping = 0; // quoted by the store after order; not charged online yet
+
+      // DDP freight + duties for exports (settings-driven; see lib/ddp.ts).
+      // Falls back to shipping=0 "quoted after order" when disabled or data is missing.
+      let shipping = 0;
+      let duties = 0;
+      if (fulfillment === 'shipping' && destination !== STORE_COUNTRY) {
+        try {
+          const shipSnap = await db.collection('settings').doc('shipping').get();
+          const ddpCfg = normalizeDdpConfig(shipSnap.exists ? shipSnap.data() : null);
+          const quote = computeDdpQuote(ddpCfg, packed, destination, subtotal);
+          if (quote) { shipping = quote.freightUSD; duties = quote.dutiesUSD; }
+        } catch { /* fall back to quote-after-order */ }
+      }
+
       const { tax, taxRate, taxIncluded } = computeTax(subtotal, destination);
-      const total = round2(subtotal + shipping + (taxIncluded ? 0 : tax));
+      const total = round2(subtotal + shipping + duties + (taxIncluded ? 0 : tax));
 
       const numberCountry = fulfillment === 'shipping' ? destination : toISO2(contact.country) === 'XX' ? STORE_COUNTRY : toISO2(contact.country);
       const orderNumber = await reserveOrderNumber(db, numberCountry, String(contact.fullName));
@@ -281,7 +301,7 @@ export function ordersRouter(rateLimit: (n: number) => any) {
         orderNumber, userId,
         items: priced,
         currency,
-        subtotal, shipping, tax, taxRate, taxIncluded, total,
+        subtotal, shipping, duties, tax, taxRate, taxIncluded, total,
         destinationCountry: destination,
         fulfillment, paymentMethod,
         paymentStatus: 'unpaid',
@@ -480,6 +500,44 @@ export function ordersRouter(rateLimit: (n: number) => any) {
   });
 
   /** Contact form → store inbox. */
+  /** Order-number capacity: how many CC######XN combinations are reserved. */
+  r.get('/api/admin/order-numbers/stats', rateLimit(30), async (req: Request, res: Response) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: 'Unauthorized' });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: 'Not configured' });
+    const agg = await db.collection('orderNumbers').count().get();
+    // Per country prefix: 10^6 digit blocks × 26 random letters × 26 name initials.
+    res.json({ used: agg.data().count, totalPerCountry: 1_000_000 * 26 * 26 });
+  });
+
+  /** Custom order request — public form (name, email, optional phone/dimensions, spec). */
+  r.post('/api/custom-order', rateLimit(5), async (req: Request, res: Response) => {
+    const { name, email, phone, dimensions, details } = req.body || {};
+    if (!name || !/^\S+@\S+\.\S+$/.test(email || '') || !details) {
+      return res.status(400).json({ error: 'Name, valid email and a description are required' });
+    }
+    const doc = {
+      name: String(name).slice(0, 120),
+      email: String(email).slice(0, 254),
+      phone: String(phone || '').slice(0, 40),
+      dimensions: String(dimensions || '').slice(0, 200),
+      details: String(details).slice(0, 4000),
+      status: 'new',
+      createdAt: new Date().toISOString(),
+    };
+    const db = await getDb();
+    if (db) { try { await db.collection('custom_requests').add(doc); } catch { /* email still goes out */ } }
+    const { sendPlain } = await import('./email');
+    const sent = await sendPlain(
+      process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || '',
+      `Custom order request from ${doc.name}`,
+      `From: ${doc.name} <${doc.email}>${doc.phone ? `\nPhone: ${doc.phone}` : ''}${doc.dimensions ? `\nDimensions: ${doc.dimensions}` : ''}\n\n${doc.details}`,
+      doc.email,
+    );
+    res.json({ ok: true, sent });
+  });
+
   r.post('/api/contact', rateLimit(5), async (req: Request, res: Response) => {
     const { name, email, message } = req.body || {};
     if (!name || !/^\S+@\S+\.\S+$/.test(email || '') || !message) return res.status(400).json({ error: 'Name, valid email and message are required' });

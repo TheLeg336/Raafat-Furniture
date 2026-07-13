@@ -21,6 +21,7 @@ export interface OrderEmailData {
   items: EmailItem[];
   subtotal: number;
   shipping: number;
+  duties?: number;
   tax: number;
   taxRate?: number;
   taxIncluded?: boolean;
@@ -125,6 +126,7 @@ export function buildOrderEmail(d: OrderEmailData): { subject: string; html: str
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${totalRow('Subtotal', money(d.subtotal, d.currency))}
             ${d.shipping ? totalRow('Shipping', money(d.shipping, d.currency)) : ''}
+            ${d.duties ? totalRow('Customs & duties (DDP)', money(d.duties, d.currency)) : ''}
             ${d.tax ? totalRow(taxLabel(d), money(d.tax, d.currency)) : ''}
             <tr><td colspan="2" style="padding-top:8px;border-top:2px solid ${BORDER};"></td></tr>
             ${totalRow('Total', money(d.total, d.currency), true)}
@@ -187,6 +189,7 @@ export function buildOrderEmail(d: OrderEmailData): { subject: string; html: str
     d.items.map((i) => `- ${i.name} x${i.quantity}  ${money(i.price * i.quantity, d.currency)}`).join('\n') +
     `\n\nSubtotal: ${money(d.subtotal, d.currency)}\n` +
     (d.shipping ? `Shipping: ${money(d.shipping, d.currency)}\n` : '') +
+    (d.duties ? `Customs & duties (DDP): ${money(d.duties, d.currency)}\n` : '') +
     (d.tax ? `${taxLabel(d)}: ${money(d.tax, d.currency)}\n` : '') +
     `Total: ${money(d.total, d.currency)}\n\n` +
     `Fulfillment: ${fulfillmentLabel[d.fulfillment] || d.fulfillment}\n` +
@@ -226,6 +229,7 @@ export function orderToEmail(order: any, extras?: { instapayAddress?: string }):
     })),
     subtotal: order.subtotal,
     shipping: order.shipping,
+    duties: order.duties || 0,
     tax: order.tax,
     taxRate: order.taxRate,
     taxIncluded: order.taxIncluded,

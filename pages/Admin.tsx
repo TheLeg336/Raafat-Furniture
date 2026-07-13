@@ -78,6 +78,11 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
   const [colorsStr, setColorsStr] = useState('');
   const [dimensions, setDimensions] = useState('');
   const [customDimensionsEnabled, setCustomDimensionsEnabled] = useState(false);
+  // Packed shipment data for international DDP freight estimation.
+  const [packedWeight, setPackedWeight] = useState('');
+  const [packedL, setPackedL] = useState('');
+  const [packedW, setPackedW] = useState('');
+  const [packedH, setPackedH] = useState('');
   const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
   const [isHeroModalOpen, setIsHeroModalOpen] = useState(false);
@@ -409,11 +414,16 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
           ? parsedEgp
           : (Number.isFinite(parsedUsd as number) ? parsedUsd : null),
       };
+      const parseKg = (s: string) => { const n = parseFloat(s); return Number.isFinite(n) && n > 0 ? n : null; };
       const variantFields = {
         materials: splitList(materialsStr),
         colors: splitList(colorsStr),
         dimensions: dimensions.trim() || null,
         customDimensionsEnabled,
+        packedWeightKg: parseKg(packedWeight),
+        packedLengthCm: parseKg(packedL),
+        packedWidthCm: parseKg(packedW),
+        packedHeightCm: parseKg(packedH),
       };
 
       // Never write undefined into Firestore (nested model3d.iosUrl / variants etc.).
@@ -458,6 +468,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
       setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
       setCategory(categories[0]?.id || ''); setImageFiles([]); setImageFile(null); setPriceEgp(''); setPriceUsd('');
       setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
+      setPackedWeight(''); setPackedL(''); setPackedW(''); setPackedH('');
       setModel3d(null);
       setIsCreateModalOpen(false);
       setEditingListing(null);
@@ -806,6 +817,10 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                         setColorsStr((listing.colors || []).join(', '));
                         setDimensions(dimensionsToInputValue(listing.dimensions));
                         setCustomDimensionsEnabled(!!listing.customDimensionsEnabled);
+                        setPackedWeight(listing.packedWeightKg?.toString() || '');
+                        setPackedL(listing.packedLengthCm?.toString() || '');
+                        setPackedW(listing.packedWidthCm?.toString() || '');
+                        setPackedH(listing.packedHeightCm?.toString() || '');
                         setExistingImages(listing.images || [listing.imageUrl]);
                         setModel3d(listing.model3d || null);
                         setIsCreateModalOpen(true);
@@ -1122,6 +1137,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
                   setCategory(categories[0]?.id || ''); setPriceEgp(''); setPriceUsd(''); setImageFiles([]);
                   setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
+      setPackedWeight(''); setPackedL(''); setPackedW(''); setPackedH('');
                   setModel3d(null);
                 }} 
                 className="p-2 hover:bg-[var(--color-secondary)]/10 rounded-full transition-colors text-[var(--color-text-secondary)]"
@@ -1200,6 +1216,20 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                   <input type="checkbox" checked={customDimensionsEnabled} onChange={e => setCustomDimensionsEnabled(e.target.checked)} className="w-4 h-4 accent-[var(--color-primary)]" />
                   <span className="text-sm text-[var(--color-text-primary)]">{t('admin_allow_custom_dims') || 'Allow customers to request custom dimensions (made to order)'}</span>
                 </label>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                    {t('admin_packed_shipping') || 'International shipping — packed box (optional)'}
+                  </label>
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-2">
+                    {t('admin_packed_shipping_hint') || 'Weight and box size once crated for export. With these set (and DDP rates in Dev), international checkout charges freight + duties automatically; without them, shipping is quoted after the order.'}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <input type="number" min="0" step="0.1" value={packedWeight} onChange={e => setPackedWeight(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="kg" aria-label="Packed weight (kg)" />
+                    <input type="number" min="0" step="1" value={packedL} onChange={e => setPackedL(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="L cm" aria-label="Packed length (cm)" />
+                    <input type="number" min="0" step="1" value={packedW} onChange={e => setPackedW(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="W cm" aria-label="Packed width (cm)" />
+                    <input type="number" min="0" step="1" value={packedH} onChange={e => setPackedH(e.target.value)} className="w-full bg-[var(--color-surface-2)] text-[var(--color-text-primary)] rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[var(--color-primary)] outline-none" placeholder="H cm" aria-label="Packed height (cm)" />
+                  </div>
+                </div>
               </div>
 
               <Product3DFields value={model3d} onChange={setModel3d} productId={editingListing?.id} />
@@ -1296,6 +1326,7 @@ const Admin: React.FC<AdminProps> = ({ t, language }) => {
                     setNameEn(''); setNameAr(''); setDescEn(''); setDescAr('');
                     setCategory(categories[0]?.id || ''); setPriceEgp(''); setPriceUsd(''); setImageFiles([]);
                   setMaterialsStr(''); setColorsStr(''); setDimensions(''); setCustomDimensionsEnabled(false);
+      setPackedWeight(''); setPackedL(''); setPackedW(''); setPackedH('');
                   }} 
                   className="px-4 md:px-6 py-3 text-[var(--color-text-primary)] font-medium hover:bg-[var(--color-secondary)]/10 rounded-xl transition-colors"
                 >

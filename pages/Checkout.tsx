@@ -23,6 +23,9 @@ import { loadSavedAddress, saveAddressForUser, persistCheckoutDraft, readCheckou
 import { formatPhoneDisplay, isPhoneValidOptional, normalizePhoneForStorage } from '../lib/phoneFormat';
 import { useProducts } from '../hooks/useProducts';
 import { LOGIN_PATH } from '../lib/paths';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { normalizeDdpConfig, computeDdpQuote, type DdpConfig, type DdpQuote } from '../lib/ddp';
 import { MapPin, Navigation } from 'lucide-react';
 
 interface Props { t: TFunction; }
@@ -178,7 +181,31 @@ const Checkout: React.FC<Props> = ({ t }) => {
     }),
     [cart, products, chargeCurrency],
   );
-  const totals = computeTotals(items, 0, 0);
+
+  // DDP freight + duties preview for exports (server recomputes authoritatively).
+  const [ddpCfg, setDdpCfg] = useState<DdpConfig | null>(null);
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'settings', 'shipping'))
+      .then((s) => setDdpCfg(normalizeDdpConfig(s.exists() ? s.data() : null)))
+      .catch(() => setDdpCfg(normalizeDdpConfig(null)));
+  }, []);
+  const ddp: DdpQuote | null = useMemo(() => {
+    if (fulfillment !== 'shipping' || destinationEG || !ddpCfg) return null;
+    const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+    const packed = cart.map((c) => {
+      const p = products.find((x) => String(x.id) === String(c.productId));
+      return {
+        quantity: c.quantity,
+        packedWeightKg: p?.packedWeightKg, packedLengthCm: p?.packedLengthCm,
+        packedWidthCm: p?.packedWidthCm, packedHeightCm: p?.packedHeightCm,
+      };
+    });
+    return computeDdpQuote(ddpCfg, packed, (form.country || 'XX').toUpperCase(), subtotal);
+  }, [ddpCfg, cart, products, items, fulfillment, destinationEG, form.country]);
+
+  const baseTotals = computeTotals(items, ddp?.freightUSD ?? 0, 0);
+  const totals = { ...baseTotals, total: Math.round((baseTotals.total + (ddp?.dutiesUSD ?? 0)) * 100) / 100 };
   const vatIncluded = destinationEG ? Math.round((totals.subtotal - totals.subtotal / (1 + EG_VAT)) * 100) / 100 : 0;
 
   const cardAvailable = !!config?.cardProvider;
@@ -559,7 +586,7 @@ const Checkout: React.FC<Props> = ({ t }) => {
 
         {/* Order summary — desktop sidebar */}
         <Card className="p-5 lg:sticky lg:top-24 order-1 lg:order-2 hidden lg:block">
-          <SummaryPanel t={t} cart={cart} items={items} chargeCurrency={chargeCurrency} totals={totals} vatIncluded={vatIncluded} destinationEG={destinationEG} fulfillment={fulfillment} />
+          <SummaryPanel t={t} cart={cart} items={items} chargeCurrency={chargeCurrency} totals={totals} vatIncluded={vatIncluded} destinationEG={destinationEG} fulfillment={fulfillment} ddp={ddp} />
           <Button type="submit" fullWidth size="lg" loading={submitting} disabled={!allValid} className="mt-4"
             iconLeft={payment === 'stripe' || payment === 'paymob' ? <Lock size={16} /> : undefined}>
             {payment === 'stripe' || payment === 'paymob' ? (t('pay_now') || 'Pay now') : (t('place_order') || 'Place order')}
@@ -607,7 +634,8 @@ const SummaryPanel: React.FC<{
   vatIncluded: number;
   destinationEG: boolean;
   fulfillment: FulfillmentType;
-}> = ({ t, cart, items, chargeCurrency, totals, vatIncluded, destinationEG, fulfillment }) => (
+  ddp: DdpQuote | null;
+}> = ({ t, cart, items, chargeCurrency, totals, vatIncluded, destinationEG, fulfillment, ddp }) => (
   <>
     <h2 className="font-heading text-xl font-bold mb-4">{t('order_summary') || 'Order summary'}</h2>
     <div className="flex flex-col gap-3 max-h-64 overflow-y-auto pe-1">
@@ -627,11 +655,27 @@ const SummaryPanel: React.FC<{
     <hr className="rule-gold my-4" />
     <div className="flex flex-col gap-1.5 text-sm">
       <Row label={t('subtotal') || 'Subtotal'} value={formatMoney(totals.subtotal, { currency: chargeCurrency })} />
-      <Row label={t('shipping') || 'Shipping'} value={fulfillment === 'shipping' ? (t('shipping_tbd') || 'Confirmed after order') : (t('free') || 'Free')} muted />
+      <Row
+        label={t('shipping') || 'Shipping'}
+        value={fulfillment !== 'shipping'
+          ? (t('free') || 'Free')
+          : ddp
+            ? formatMoney(ddp.freightUSD, { currency: chargeCurrency })
+            : (t('shipping_tbd') || 'Confirmed after order')}
+        muted={!ddp}
+      />
+      {ddp && (
+        <Row label={t('ddp_duties') || 'Customs & duties (DDP)'} value={formatMoney(ddp.dutiesUSD, { currency: chargeCurrency })} />
+      )}
       {destinationEG ? (
         <Row label={t('vat_included') || 'VAT 14% (included)'} value={formatMoney(vatIncluded, { currency: chargeCurrency })} muted />
-      ) : (
+      ) : !ddp ? (
         <Row label={t('tax_export') || 'Tax'} value={t('tax_export_value') || '0% (export)'} muted />
+      ) : null}
+      {ddp && (
+        <p className="text-[11px] text-[var(--color-text-secondary)] mt-1">
+          {t('ddp_note') || 'Delivered Duty Paid — customs and import taxes are included. No surprise fees at delivery.'}
+        </p>
       )}
     </div>
     <hr className="rule-gold my-4" />

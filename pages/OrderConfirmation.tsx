@@ -173,6 +173,7 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
         <div className="flex flex-col gap-2 py-4 text-sm">
           <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">{t('subtotal') || 'Subtotal'}</span><span>{formatMoney(order.subtotal, { currency: order.currency })}</span></div>
           {order.shipping > 0 && <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">{t('shipping') || 'Shipping'}</span><span>{formatMoney(order.shipping, { currency: order.currency })}</span></div>}
+          {(order.duties || 0) > 0 && <div className="flex justify-between"><span className="text-[var(--color-text-secondary)]">{t('ddp_duties') || 'Customs & duties (DDP)'}</span><span>{formatMoney(order.duties!, { currency: order.currency })}</span></div>}
           {order.tax > 0 && (
             <div className="flex justify-between">
               <span className="text-[var(--color-text-secondary)]">
@@ -188,7 +189,11 @@ const OrderConfirmation: React.FC<Props> = ({ t }) => {
             <span className="font-heading text-xl font-bold">{formatMoney(order.total, { currency: order.currency })}</span>
           </div>
           {order.fulfillment === 'shipping' && order.destinationCountry && order.destinationCountry !== 'EG' && (
-            <p className="text-[11px] text-[var(--color-text-secondary)] pt-1">{t('duties_note') || 'Import duties and taxes, if any, are collected by your country on delivery.'}</p>
+            <p className="text-[11px] text-[var(--color-text-secondary)] pt-1">
+              {(order.duties || 0) > 0
+                ? (t('ddp_note') || 'Delivered Duty Paid — customs and import taxes are included. No surprise fees at delivery.')
+                : (t('duties_note') || 'Import duties and taxes, if any, are collected by your country on delivery.')}
+            </p>
           )}
           {order.tracking?.number && (
             <p className="text-sm pt-2">

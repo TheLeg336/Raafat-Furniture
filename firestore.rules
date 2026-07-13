@@ -226,6 +226,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Custom-order requests — created by the server (/api/custom-order);
+    // admins read + update status from the dashboard.
+    match /custom_requests/{reqId} {
+      allow read, update: if isAdmin();
+      allow create, delete: if false;
+    }
+
     // ---------------------------------------------------------------
     // admin_logs — append-only audit trail
     // ---------------------------------------------------------------

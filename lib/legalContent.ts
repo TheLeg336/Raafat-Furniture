@@ -99,6 +99,7 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
           '• Hosting, database, authentication & file storage — Google Firebase / Google Cloud.',
           '• Product image hosting & delivery — Cloudinary.',
           '• Transactional email delivery — Resend.',
+          '• International shipping & customs — freight forwarders, courier companies, and the customs authorities of the destination country (for cross-border orders we share the recipient\'s name, delivery address, phone, and the order\'s contents and declared value so the shipment can be carried and cleared through customs).',
           '• Website analytics — Google Analytics 4 (only if you consent; IP anonymisation and Google Consent Mode are enabled).',
           'We may also disclose data where required by law, to enforce our terms, or to protect our rights, customers, or the public.',
           'We do NOT sell your personal information, and we do not "share" it for cross-context behavioural advertising as those terms are defined under the CCPA/CPRA.',
@@ -225,14 +226,15 @@ const LEGAL_DOCS_EN: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'Prices & payment',
         body: [
           'Prices are shown in the store currency and may change at any time, but changes do not affect orders we have already accepted. Where an item shows "Price on Request", we will confirm the price before accepting your order.',
-          'You can pay by card including Apple Pay and Google Pay (processed by Stripe or, in Egypt, Paymob), by InstaPay or bank transfer (verified against the transaction reference you provide), or — for pickup orders in Egypt — cash on pickup. Delivery orders must be paid in full when the order is placed. Prices for orders within Egypt include 14% VAT; exports are zero-rated and any import duties or taxes are your responsibility. Title to the goods passes to you only once we have received payment in full.',
-          'Prices are inclusive or exclusive of applicable taxes as indicated at checkout; you are responsible for any import duties or taxes where these apply.',
+          'You can pay by card including Apple Pay and Google Pay (processed by Stripe or, in Egypt, Paymob), by InstaPay or bank transfer (verified against the transaction reference you provide), or — for pickup orders in Egypt — cash on pickup. Delivery orders must be paid in full when the order is placed. Prices for orders within Egypt include 14% VAT. Title to the goods passes to you only once we have received payment in full.',
+          'International orders (Delivered Duty Paid): where we show a shipping and customs total at checkout, that amount is charged with your order and covers international freight and the estimated import duties and taxes for your destination, so you are not asked to pay these again on delivery. These duty and tax figures are good-faith estimates based on standard rates for furniture; we bear the difference if the actual charges are higher, and where they are materially lower we may refund the difference. If no such total is shown for your country, shipping is quoted separately after you order and any import duties or taxes are collected from you by your local customs authority.',
         ],
       },
       {
         heading: 'Delivery & pickup',
         body: [
-          'For delivery orders, delivery times and any delivery charge are confirmed after you order, based on the items and your location. For pickup orders, we will let you know when your order is ready to collect from one of our showrooms.',
+          'For delivery orders, delivery times and any delivery charge are confirmed at or after checkout, based on the items and your location. For pickup orders, we will let you know when your order is ready to collect from one of our showrooms.',
+          'International shipments may be carried by third-party freight and courier companies; to arrange delivery and clear customs we share the recipient\'s name, address, phone, order contents and value with those carriers and customs authorities. Delivery timeframes for large furniture shipped overseas are estimates and can be affected by customs clearance and transport conditions.',
           'Risk of loss or damage passes to you when the goods are delivered to you (or your nominated recipient) or collected at pickup. Please inspect your items on receipt and tell us promptly about any problem.',
         ],
       },
@@ -348,6 +350,7 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
           '• الاستضافة وقاعدة البيانات والمصادقة وتخزين الملفات — Google Firebase / Google Cloud.',
           '• استضافة صور المنتجات وتوصيلها — Cloudinary.',
           '• تسليم البريد الإلكتروني للمعاملات — Resend.',
+          '• الشحن الدولي والجمارك — شركات الشحن والبريد السريع وسلطات الجمارك في بلد الوجهة (للطلبات عبر الحدود نشارك اسم المستلم وعنوان التسليم والهاتف ومحتويات الطلب وقيمته المصرّح بها حتى يُنقل الشحن ويُخلَّص جمركيًا).',
           '• تحليلات الموقع — Google Analytics 4 (فقط بموافقتكم؛ مع تفعيل إخفاء عنوان IP ووضع موافقة جوجل).',
           'وقد نفصح عن البيانات أيضًا حيث يقتضي القانون ذلك، أو لإنفاذ شروطنا، أو لحماية حقوقنا أو عملائنا أو الجمهور.',
           'نحن لا نبيع معلوماتكم الشخصية، ولا «نشاركها» لأغراض الإعلان السلوكي عبر السياقات بالمعنى المعرّف في قانون CCPA/CPRA.',
@@ -473,14 +476,15 @@ const LEGAL_DOCS_AR: Record<LegalDoc['slug'], LegalDoc> = {
         heading: 'الأسعار والدفع',
         body: [
           'تُعرض الأسعار بعملة المتجر ويجوز تغييرها في أي وقت، غير أن التغييرات لا تؤثر على الطلبات التي قبلناها بالفعل. وحيث يظهر على المنتج «السعر عند الطلب»، فسنؤكّد السعر قبل قبول طلبكم.',
-          'يمكنكم الدفع بالبطاقة بما في ذلك Apple Pay وGoogle Pay (عبر Stripe أو، في مصر، Paymob)، أو عبر إنستاباي أو التحويل البنكي (بعد التحقق من مرجع المعاملة الذي تزودوننا به)، أو — لطلبات الاستلام في مصر — نقدًا عند الاستلام. ويجب سداد طلبات التوصيل بالكامل عند تقديم الطلب. وتشمل أسعار الطلبات داخل مصر ضريبة القيمة المضافة بنسبة ١٤٪؛ أما الصادرات فمعفاة من الضريبة (صفرية المعدل) وأي رسوم جمركية أو ضرائب استيراد تقع على عاتقكم. ولا تنتقل ملكية البضاعة إليكم إلا بعد استلامنا الدفع بالكامل.',
-          'تكون الأسعار شاملة أو غير شاملة للضرائب المعمول بها حسب ما يُبيَّن عند إتمام الشراء؛ وأنتم مسؤولون عن أي رسوم جمركية أو ضرائب استيراد حيثما تنطبق.',
+          'يمكنكم الدفع بالبطاقة بما في ذلك Apple Pay وGoogle Pay (عبر Stripe أو، في مصر، Paymob)، أو عبر إنستاباي أو التحويل البنكي (بعد التحقق من مرجع المعاملة الذي تزودوننا به)، أو — لطلبات الاستلام في مصر — نقدًا عند الاستلام. ويجب سداد طلبات التوصيل بالكامل عند تقديم الطلب. وتشمل أسعار الطلبات داخل مصر ضريبة القيمة المضافة بنسبة ١٤٪. ولا تنتقل ملكية البضاعة إليكم إلا بعد استلامنا الدفع بالكامل. وبالنسبة للطلبات الدولية (التسليم بعد دفع الرسوم — DDP): حيث نعرض إجمالي شحن وجمارك عند إتمام الشراء، يُحصَّل هذا المبلغ مع طلبكم ويشمل الشحن الدولي والرسوم والضرائب الجمركية التقديرية لوجهتكم فلا يُطلب منكم دفعها مرة أخرى عند التسليم؛ وهي تقديرات بحسن نية، نتحمل الفرق إن كانت الرسوم الفعلية أعلى. وإذا لم يُعرض هذا الإجمالي لبلدكم، يُحسب الشحن بعد الطلب وتُحصِّل الجمارك المحلية أي رسوم استيراد منكم مباشرةً.',
+          'تكون الأسعار شاملة أو غير شاملة للضرائب المعمول بها حسب ما يُبيَّن عند إتمام الشراء؛ وبالنسبة للطلبات الدولية تُطبَّق أحكام «الطلبات الدولية (التسليم بعد دفع الرسوم)» المذكورة أعلاه.',
         ],
       },
       {
         heading: 'التوصيل والاستلام',
         body: [
           'بالنسبة لطلبات التوصيل، تُؤكَّد مواعيد التوصيل وأي رسوم توصيل بعد تقديم الطلب، استنادًا إلى المنتجات وموقعكم. وبالنسبة لطلبات الاستلام، سنُعلمكم عندما يصبح طلبكم جاهزًا للاستلام من أحد معارضنا.',
+          'قد تُنقل الشحنات الدولية بواسطة شركات شحن وبريد سريع تابعة لأطراف ثالثة؛ ولترتيب التسليم والتخليص الجمركي نشارك اسم المستلم وعنوانه وهاتفه ومحتويات الطلب وقيمته مع تلك الشركات وسلطات الجمارك. ومواعيد تسليم الأثاث الكبير المشحون للخارج تقديرية وقد تتأثر بالتخليص الجمركي وظروف النقل.',
           'ينتقل خطر الفقد أو التلف إليكم عند تسليم البضاعة إليكم (أو إلى المستلم الذي عيّنتموه) أو عند استلامها من المعرض. يُرجى فحص المنتجات عند الاستلام وإبلاغنا فورًا بأي مشكلة.',
         ],
       },

@@ -85,6 +85,7 @@ function buildOrderEmail(d) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${totalRow("Subtotal", money(d.subtotal, d.currency))}
             ${d.shipping ? totalRow("Shipping", money(d.shipping, d.currency)) : ""}
+            ${d.duties ? totalRow("Customs & duties (DDP)", money(d.duties, d.currency)) : ""}
             ${d.tax ? totalRow(taxLabel(d), money(d.tax, d.currency)) : ""}
             <tr><td colspan="2" style="padding-top:8px;border-top:2px solid ${BORDER};"></td></tr>
             ${totalRow("Total", money(d.total, d.currency), true)}
@@ -140,6 +141,7 @@ Thank you, ${d.customerName}.
 
 Subtotal: ${money(d.subtotal, d.currency)}
 ` + (d.shipping ? `Shipping: ${money(d.shipping, d.currency)}
+` : "") + (d.duties ? `Customs & duties (DDP): ${money(d.duties, d.currency)}
 ` : "") + (d.tax ? `${taxLabel(d)}: ${money(d.tax, d.currency)}
 ` : "") + `Total: ${money(d.total, d.currency)}
 
@@ -173,6 +175,7 @@ function orderToEmail(order, extras) {
     })),
     subtotal: order.subtotal,
     shipping: order.shipping,
+    duties: order.duties || 0,
     tax: order.tax,
     taxRate: order.taxRate,
     taxIncluded: order.taxIncluded,
@@ -504,13 +507,108 @@ function normalizeStaffRole(role) {
   return null;
 }
 
+// lib/ddp.ts
+var DEFAULT_DDP_CONFIG = {
+  enabled: false,
+  // owner flips this on in Dev once rates are tuned
+  volumetricDivisor: 5e3,
+  zones: [
+    { id: "gcc", name: "Gulf & Middle East", countries: ["AE", "SA", "KW", "QA", "BH", "OM", "JO", "LB"], perKgUSD: 3.5, minUSD: 120 },
+    { id: "europe", name: "Europe & UK", countries: ["GB", "DE", "FR", "IT", "ES", "NL", "BE", "SE", "AT", "PT", "IE", "DK", "FI", "GR", "PL", "CZ", "CH", "NO"], perKgUSD: 4.5, minUSD: 150 },
+    { id: "north-america", name: "North America", countries: ["US", "CA"], perKgUSD: 5.5, minUSD: 180 },
+    { id: "rest", name: "Rest of world", countries: ["*"], perKgUSD: 6.5, minUSD: 200 }
+  ],
+  rates: {
+    US: { dutyPct: 10, vatPct: 0 },
+    CA: { dutyPct: 6, vatPct: 5 },
+    GB: { dutyPct: 0, vatPct: 20 },
+    DE: { dutyPct: 0, vatPct: 19 },
+    FR: { dutyPct: 0, vatPct: 20 },
+    IT: { dutyPct: 0, vatPct: 22 },
+    ES: { dutyPct: 0, vatPct: 21 },
+    NL: { dutyPct: 0, vatPct: 21 },
+    AE: { dutyPct: 5, vatPct: 5 },
+    SA: { dutyPct: 5, vatPct: 15 },
+    KW: { dutyPct: 5, vatPct: 0 },
+    QA: { dutyPct: 5, vatPct: 0 },
+    BH: { dutyPct: 5, vatPct: 10 },
+    OM: { dutyPct: 5, vatPct: 5 },
+    JO: { dutyPct: 15, vatPct: 16 },
+    AU: { dutyPct: 5, vatPct: 10 }
+  },
+  defaultRate: { dutyPct: 10, vatPct: 15 }
+};
+var round2 = (n) => Math.round(n * 100) / 100;
+var num = (v) => Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0;
+function normalizeDdpConfig(raw) {
+  if (!raw || typeof raw !== "object") return DEFAULT_DDP_CONFIG;
+  const zones = Array.isArray(raw.zones) && raw.zones.length ? raw.zones.map((z, i) => ({
+    id: String(z?.id || `zone-${i}`),
+    name: String(z?.name || `Zone ${i + 1}`),
+    countries: Array.isArray(z?.countries) ? z.countries.map((c) => String(c).trim().toUpperCase()).filter(Boolean) : [],
+    perKgUSD: num(z?.perKgUSD),
+    minUSD: num(z?.minUSD)
+  })).filter((z) => z.countries.length && z.perKgUSD > 0) : DEFAULT_DDP_CONFIG.zones;
+  const rates = {};
+  const rawRates = raw.rates && typeof raw.rates === "object" ? raw.rates : DEFAULT_DDP_CONFIG.rates;
+  for (const [cc, r] of Object.entries(rawRates)) {
+    const code = cc.trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(code)) rates[code] = { dutyPct: num(r?.dutyPct), vatPct: num(r?.vatPct) };
+  }
+  return {
+    enabled: raw.enabled === true,
+    volumetricDivisor: num(raw.volumetricDivisor) || DEFAULT_DDP_CONFIG.volumetricDivisor,
+    zones,
+    rates: Object.keys(rates).length ? rates : DEFAULT_DDP_CONFIG.rates,
+    defaultRate: {
+      dutyPct: num(raw.defaultRate?.dutyPct) || DEFAULT_DDP_CONFIG.defaultRate.dutyPct,
+      vatPct: raw.defaultRate?.vatPct != null ? num(raw.defaultRate.vatPct) : DEFAULT_DDP_CONFIG.defaultRate.vatPct
+    }
+  };
+}
+function chargeableWeightKg(item, divisor) {
+  const actual = num(item.packedWeightKg);
+  const l = num(item.packedLengthCm), w = num(item.packedWidthCm), h = num(item.packedHeightCm);
+  const volumetric = l && w && h ? l * w * h / (divisor || 5e3) : 0;
+  const per = Math.max(actual, volumetric);
+  return per > 0 ? per : null;
+}
+function zoneForCountry(cfg, iso2) {
+  const cc = iso2.toUpperCase();
+  return cfg.zones.find((z) => z.countries.includes(cc)) || cfg.zones.find((z) => z.countries.includes("*")) || null;
+}
+function computeDdpQuote(cfg, items, destinationISO2, subtotalUSD) {
+  if (!cfg.enabled || destinationISO2 === "EG" || !items.length) return null;
+  const zone = zoneForCountry(cfg, destinationISO2);
+  if (!zone) return null;
+  let totalKg = 0;
+  for (const it of items) {
+    const per = chargeableWeightKg(it, cfg.volumetricDivisor);
+    if (per == null) return null;
+    totalKg += per * Math.max(1, it.quantity);
+  }
+  const freightUSD = round2(Math.max(zone.minUSD, totalKg * zone.perKgUSD));
+  const rate = cfg.rates[destinationISO2.toUpperCase()] || cfg.defaultRate;
+  const cif = subtotalUSD + freightUSD;
+  const duty = cif * (rate.dutyPct / 100);
+  const importVat = (cif + duty) * (rate.vatPct / 100);
+  return {
+    freightUSD,
+    dutiesUSD: round2(duty + importVat),
+    chargeableKg: round2(totalKg),
+    zoneName: zone.name,
+    dutyPct: rate.dutyPct,
+    vatPct: rate.vatPct
+  };
+}
+
 // server/ordersApi.ts
 init_email();
 init_orderEmail();
 var STORE_COUNTRY = "EG";
 var EG_VAT_RATE = 0.14;
 var ACTIVE_STATUSES = ["paid", "confirmed", "in_production"];
-var round2 = (n) => Math.round(n * 100) / 100;
+var round22 = (n) => Math.round(n * 100) / 100;
 function ipCountry(req) {
   const h = req.headers["x-vercel-ip-country"] || req.headers["cf-ipcountry"];
   return h && /^[A-Z]{2}$/i.test(h) ? h.toUpperCase() : null;
@@ -549,7 +647,7 @@ function toISO2(country) {
 }
 function computeTax(subtotal, destination) {
   if (destination === STORE_COUNTRY) {
-    const tax = round2(subtotal - subtotal / (1 + EG_VAT_RATE));
+    const tax = round22(subtotal - subtotal / (1 + EG_VAT_RATE));
     return { tax, taxRate: EG_VAT_RATE, taxIncluded: true };
   }
   return { tax: 0, taxRate: 0, taxIncluded: false };
@@ -561,10 +659,10 @@ async function reserveOrderNumber(db, cc, fullName) {
   const initial = /[A-Z]/.test(initialRaw) ? initialRaw : "X";
   for (let attempt = 0; attempt < 8; attempt++) {
     const digits = String(randomInt(0, 1e6)).padStart(6, "0");
-    const num = `${cc}${digits}${letters[randomInt(26)]}${initial}`;
+    const num2 = `${cc}${digits}${letters[randomInt(26)]}${initial}`;
     try {
-      await db.collection("orderNumbers").doc(num).create({ reservedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      return num;
+      await db.collection("orderNumbers").doc(num2).create({ reservedAt: (/* @__PURE__ */ new Date()).toISOString() });
+      return num2;
     } catch {
     }
   }
@@ -600,6 +698,7 @@ function trackView(o, id) {
     items: o.items,
     subtotal: o.subtotal,
     shipping: o.shipping,
+    duties: o.duties || 0,
     tax: o.tax,
     taxRate: o.taxRate,
     taxIncluded: o.taxIncluded,
@@ -732,6 +831,7 @@ function ordersRouter(rateLimit2) {
       const destination = fulfillment === "shipping" ? toISO2(contact.country) : STORE_COUNTRY;
       const currency = destination === "EG" ? "EGP" : "USD";
       const priced = [];
+      const packed = [];
       for (const it of items) {
         if ("price" in it || "total" in it || "subtotal" in it) {
           return res.status(400).json({ error: "Invalid items payload" });
@@ -744,6 +844,13 @@ function ordersRouter(rateLimit2) {
         const raw = currency === "EGP" ? p.priceEGP ?? p.price : p.priceUSD ?? p.price;
         const price = Number(raw);
         if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: `Item is not available in ${currency} (${it.productId})` });
+        packed.push({
+          quantity: qty,
+          packedWeightKg: p.packedWeightKg,
+          packedLengthCm: p.packedLengthCm,
+          packedWidthCm: p.packedWidthCm,
+          packedHeightCm: p.packedHeightCm
+        });
         priced.push({
           productId: String(it.productId),
           name: p.name || p.nameKey || "Item",
@@ -755,10 +862,23 @@ function ordersRouter(rateLimit2) {
           ...it.customDimensions && p.customDimensionsEnabled ? { customDimensions: String(it.customDimensions).slice(0, 120) } : {}
         });
       }
-      const subtotal = round2(priced.reduce((s, it) => s + it.price * it.quantity, 0));
-      const shipping = 0;
+      const subtotal = round22(priced.reduce((s, it) => s + it.price * it.quantity, 0));
+      let shipping = 0;
+      let duties = 0;
+      if (fulfillment === "shipping" && destination !== STORE_COUNTRY) {
+        try {
+          const shipSnap = await db.collection("settings").doc("shipping").get();
+          const ddpCfg = normalizeDdpConfig(shipSnap.exists ? shipSnap.data() : null);
+          const quote = computeDdpQuote(ddpCfg, packed, destination, subtotal);
+          if (quote) {
+            shipping = quote.freightUSD;
+            duties = quote.dutiesUSD;
+          }
+        } catch {
+        }
+      }
       const { tax, taxRate, taxIncluded } = computeTax(subtotal, destination);
-      const total = round2(subtotal + shipping + (taxIncluded ? 0 : tax));
+      const total = round22(subtotal + shipping + duties + (taxIncluded ? 0 : tax));
       const numberCountry = fulfillment === "shipping" ? destination : toISO2(contact.country) === "XX" ? STORE_COUNTRY : toISO2(contact.country);
       const orderNumber = await reserveOrderNumber(db, numberCountry, String(contact.fullName));
       const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -770,6 +890,7 @@ function ordersRouter(rateLimit2) {
         currency,
         subtotal,
         shipping,
+        duties,
         tax,
         taxRate,
         taxIncluded,
@@ -949,6 +1070,48 @@ function ordersRouter(rateLimit2) {
     }
     await appendStatus(ref, order, "awaiting_approval", staff.email, "Workshop checklist complete");
     res.json({ ok: true });
+  });
+  r.get("/api/admin/order-numbers/stats", rateLimit2(30), async (req, res) => {
+    const staff = await staffFromReq(req);
+    if (!staff || !isAdminRole(staff.role)) return res.status(401).json({ error: "Unauthorized" });
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Not configured" });
+    const agg = await db.collection("orderNumbers").count().get();
+    res.json({ used: agg.data().count, totalPerCountry: 1e6 * 26 * 26 });
+  });
+  r.post("/api/custom-order", rateLimit2(5), async (req, res) => {
+    const { name, email, phone, dimensions, details } = req.body || {};
+    if (!name || !/^\S+@\S+\.\S+$/.test(email || "") || !details) {
+      return res.status(400).json({ error: "Name, valid email and a description are required" });
+    }
+    const doc = {
+      name: String(name).slice(0, 120),
+      email: String(email).slice(0, 254),
+      phone: String(phone || "").slice(0, 40),
+      dimensions: String(dimensions || "").slice(0, 200),
+      details: String(details).slice(0, 4e3),
+      status: "new",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const db = await getDb();
+    if (db) {
+      try {
+        await db.collection("custom_requests").add(doc);
+      } catch {
+      }
+    }
+    const { sendPlain: sendPlain2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+    const sent = await sendPlain2(
+      process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || "",
+      `Custom order request from ${doc.name}`,
+      `From: ${doc.name} <${doc.email}>${doc.phone ? `
+Phone: ${doc.phone}` : ""}${doc.dimensions ? `
+Dimensions: ${doc.dimensions}` : ""}
+
+${doc.details}`,
+      doc.email
+    );
+    res.json({ ok: true, sent });
   });
   r.post("/api/contact", rateLimit2(5), async (req, res) => {
     const { name, email, message } = req.body || {};
