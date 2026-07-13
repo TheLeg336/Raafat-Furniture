@@ -216,15 +216,21 @@ const Checkout: React.FC<Props> = ({ t }) => {
   const instapayAvailable = methods.instapay
     && (fulfillment !== 'shipping' || form.country === 'EG' || !config || !config.ipCountry || config.ipCountry === 'EG');
 
-  const paymentOptions: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode; show: boolean }[] = [
+  // InstaPay is the lowest-cost rail in Egypt (no card processing fee), so we
+  // recommend it for Egyptian orders and pre-select it.
+  const instapayRecommended = destinationEG;
+  const paymentOptions: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode; show: boolean; recommended?: boolean }[] = [
+    { id: 'instapay', label: t('pay_instapay') || 'InstaPay', desc: instapayRecommended ? (t('pay_instapay_reco_desc') || 'Instant transfer from any Egyptian bank app — no card fees.') : (t('pay_instapay_desc') || 'Transfer from any Egyptian bank app'), icon: <Smartphone size={18} />, show: instapayAvailable, recommended: instapayRecommended },
     { id: cardMethod, label: t('pay_card') || 'Card / Apple Pay / Google Pay', icon: <CreditCard size={18} />, show: cardAvailable },
-    { id: 'instapay', label: t('pay_instapay') || 'InstaPay', desc: t('pay_instapay_desc') || 'Transfer from any Egyptian bank app', icon: <Smartphone size={18} />, show: instapayAvailable },
     { id: 'bank_transfer', label: t('pay_bank') || 'Bank transfer', icon: <Landmark size={18} />, show: methods.bank_transfer },
   ];
   const visible = paymentOptions.filter((o) => o.show);
 
   useEffect(() => {
-    if (!visible.some((o) => o.id === payment) && visible.length > 0) setPayment(visible[0].id);
+    // Prefer the recommended method when the current selection isn't shown.
+    if (!visible.some((o) => o.id === payment) && visible.length > 0) {
+      setPayment((visible.find((o) => o.recommended) || visible[0]).id);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fulfillment, config, form.country]);
 
@@ -573,9 +579,16 @@ const Checkout: React.FC<Props> = ({ t }) => {
                 <button type="button" key={o.id} onClick={() => setPayment(o.id)}
                   className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border-2 transition-colors text-start ${payment === o.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.08)]' : 'border-[var(--color-border)]'}`}>
                   <span className="text-[var(--color-primary)]">{o.icon}</span>
-                  <span>
-                    <span className="block font-semibold">{o.label}</span>
-                    {o.desc && <span className="block text-xs text-[var(--color-text-secondary)]">{o.desc}</span>}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold">{o.label}</span>
+                      {o.recommended && (
+                        <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-primary)] text-[var(--color-ink-on-gold)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                          {t('recommended') || 'Recommended'}
+                        </span>
+                      )}
+                    </span>
+                    {o.desc && <span className="block text-xs text-[var(--color-text-secondary)] mt-0.5">{o.desc}</span>}
                   </span>
                 </button>
               ))}

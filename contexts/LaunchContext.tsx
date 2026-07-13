@@ -4,7 +4,11 @@ import { db } from '../lib/firebase';
 import { cacheGet, cacheSet } from '../lib/dataCache';
 
 export interface LaunchStatus {
+  /** Already resolved for THIS visitor's country (see server /api/launch/status). */
   comingSoon: boolean;
+  /** Underlying flag regardless of geo scope. */
+  comingSoonActive: boolean;
+  scope: 'everyone' | 'international';
   message: string | null;
   scheduledAt: string | null;
 }
@@ -16,7 +20,7 @@ interface LaunchContextValue {
 }
 
 const CACHE_KEY = 'rf_launch_status';
-const defaultStatus: LaunchStatus = { comingSoon: false, message: null, scheduledAt: null };
+const defaultStatus: LaunchStatus = { comingSoon: false, comingSoonActive: false, scope: 'everyone', message: null, scheduledAt: null };
 
 const LaunchContext = createContext<LaunchContextValue>({
   status: defaultStatus,
@@ -24,14 +28,6 @@ const LaunchContext = createContext<LaunchContextValue>({
   refresh: async () => {},
 });
 
-function parseLaunch(data: Record<string, unknown> | undefined): LaunchStatus {
-  if (!data) return defaultStatus;
-  return {
-    comingSoon: !!data.comingSoon,
-    message: (data.message as string) || null,
-    scheduledAt: (data.scheduledAt as string) || null,
-  };
-}
 
 export function LaunchProvider({ children }: { children: React.ReactNode }) {
   const cached = cacheGet<LaunchStatus>(CACHE_KEY, 60_000);
@@ -51,6 +47,8 @@ export function LaunchProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       apply({
         comingSoon: !!data.comingSoon,
+        comingSoonActive: !!data.comingSoonActive,
+        scope: data.scope === 'international' ? 'international' : 'everyone',
         message: data.message || null,
         scheduledAt: data.scheduledAt || null,
       });
@@ -65,13 +63,14 @@ export function LaunchProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(id);
   }, [refresh]);
 
-  // Real-time Firestore mirror — works even when API is stale or admin saved via client fallback.
+  // Real-time trigger: when the launch doc changes, re-fetch the server-resolved
+  // status (the server applies the geo scope for this visitor — the raw doc can't).
   useEffect(() => {
     if (!db) return;
-    return onSnapshot(doc(db, 'settings', 'launch'), (snap) => {
-      apply(parseLaunch(snap.exists() ? snap.data() : undefined));
+    return onSnapshot(doc(db, 'settings', 'launch'), () => {
+      refresh();
     }, () => { /* offline — keep cached */ });
-  }, [apply]);
+  }, [refresh]);
 
   return (
     <LaunchContext.Provider value={{ status, loading, refresh }}>

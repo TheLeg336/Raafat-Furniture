@@ -3,14 +3,20 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { getDb, verifyIdToken } from './firebaseAdmin';
-import { staffFromReq } from './ordersApi';
+import { staffFromReq, ipCountry } from './ordersApi';
 import { sendLaunchAnnouncement } from './email';
 import { isBootstrapDeveloperEmail } from '../lib/staff';
 
 const LAUNCH_DOC = 'settings/launch';
 
+/** Who sees the coming-soon screen while it is on.
+ *  'everyone'      — whole world (classic pre-launch).
+ *  'international' — only visitors OUTSIDE Egypt; Egypt is open (soft launch). */
+export type ComingSoonScope = 'everyone' | 'international';
+
 export interface LaunchSettings {
   comingSoon: boolean;
+  comingSoonScope?: ComingSoonScope;
   message?: string;
   scheduledAt?: string | null;
   updatedAt?: string;
@@ -25,6 +31,7 @@ async function readLaunchSettings(): Promise<LaunchSettings> {
   const d = snap.data() as LaunchSettings;
   return {
     comingSoon: !!d.comingSoon,
+    comingSoonScope: d.comingSoonScope === 'international' ? 'international' : 'everyone',
     message: d.message || '',
     scheduledAt: d.scheduledAt || null,
     launchedAt: d.launchedAt || null,
@@ -59,9 +66,10 @@ async function patchLaunchSettings(req: Request, res: Response) {
   const db = await getDb();
   if (!db) return res.status(503).json({ error: 'Not configured' });
 
-  const { comingSoon, message, scheduledAt } = req.body || {};
+  const { comingSoon, comingSoonScope, message, scheduledAt } = req.body || {};
   const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (typeof comingSoon === 'boolean') patch.comingSoon = comingSoon;
+  if (comingSoonScope === 'international' || comingSoonScope === 'everyone') patch.comingSoonScope = comingSoonScope;
   if (message !== undefined) patch.message = String(message).slice(0, 500);
   if (scheduledAt !== undefined) patch.scheduledAt = scheduledAt ? String(scheduledAt) : null;
 
@@ -73,10 +81,20 @@ async function patchLaunchSettings(req: Request, res: Response) {
 export function launchRouter(rateLimit: (n: number) => any) {
   const r = Router();
 
-  r.get('/api/launch/status', async (_req: Request, res: Response) => {
+  r.get('/api/launch/status', async (req: Request, res: Response) => {
     const s = await readLaunchSettings();
+    // Resolve the coming-soon screen for THIS visitor. For an 'international'
+    // soft launch, Egypt (x-vercel-ip-country === 'EG') is open; everyone else
+    // — including unknown geo — sees coming soon.
+    let comingSoonForVisitor = s.comingSoon;
+    if (s.comingSoon && s.comingSoonScope === 'international') {
+      comingSoonForVisitor = ipCountry(req) !== 'EG';
+    }
     res.json({
-      comingSoon: s.comingSoon,
+      comingSoon: comingSoonForVisitor,
+      comingSoonActive: s.comingSoon,     // underlying flag, regardless of geo (admin UI)
+      scope: s.comingSoonScope || 'everyone',
+      ipCountry: ipCountry(req),
       message: s.message || null,
       scheduledAt: s.scheduledAt || null,
     });

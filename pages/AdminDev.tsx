@@ -37,7 +37,7 @@ interface WaitlistEntry {
   notifiedAt?: string;
 }
 
-type DevPanel = 'launch' | 'errors' | 'shipping' | 'capacity';
+type DevPanel = 'access' | 'payments' | 'shipping' | 'capacity' | 'errors';
 
 type MethodFlags = { stripe: boolean; paymob: boolean; instapay: boolean; bank_transfer: boolean };
 
@@ -46,8 +46,9 @@ const AdminDev: React.FC<Props> = () => {
   const { status, refresh } = useLaunch();
   const toast = useToast();
 
-  const [panel, setPanel] = useState<DevPanel>('launch');
+  const [panel, setPanel] = useState<DevPanel>('access');
   const [comingSoon, setComingSoon] = useState(false);
+  const [comingSoonScope, setComingSoonScope] = useState<'everyone' | 'international'>('everyone');
   const [message, setMessage] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
@@ -68,7 +69,8 @@ const AdminDev: React.FC<Props> = () => {
   const [savingMethods, setSavingMethods] = useState(false);
 
   useEffect(() => {
-    setComingSoon(status.comingSoon);
+    setComingSoon(status.comingSoonActive);
+    setComingSoonScope(status.scope || 'everyone');
     setMessage(status.message || '');
     if (status.scheduledAt) {
       const d = new Date(status.scheduledAt);
@@ -153,6 +155,7 @@ const AdminDev: React.FC<Props> = () => {
     setSaving(true);
     const payload = {
       comingSoon,
+      comingSoonScope,
       message: message.trim(),
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       updatedAt: new Date().toISOString(),
@@ -161,6 +164,7 @@ const AdminDev: React.FC<Props> = () => {
       try {
         await apiFetch('/api/launch/settings', {
           comingSoon: payload.comingSoon,
+          comingSoonScope: payload.comingSoonScope,
           message: payload.message,
           scheduledAt: payload.scheduledAt,
         }, 'POST');
@@ -234,62 +238,50 @@ const AdminDev: React.FC<Props> = () => {
     <>
       <AdminPageHeader
         title="Dev"
-        description="Launch controls, waitlist, and silent client error reports."
+        description="Access & launch, payments, international shipping, order-number capacity, and error reports."
       />
 
       <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          type="button"
-          onClick={() => setPanel('launch')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
-            panel === 'launch'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
-          }`}
-        >
-          <Rocket size={16} /> Launch
-        </button>
-        <button
-          type="button"
-          onClick={() => setPanel('errors')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors relative ${
-            panel === 'errors'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
-          }`}
-        >
-          <Bug size={16} /> Errors
-          {unresolved.length > 0 && (
-            <span className="absolute -top-1.5 -end-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-[var(--color-danger)] text-white text-[10px] font-bold flex items-center justify-center">
-              {unresolved.length > 99 ? '99+' : unresolved.length}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setPanel('shipping')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
-            panel === 'shipping'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
-          }`}
-        >
-          <Globe2 size={16} /> Shipping
-        </button>
-        <button
-          type="button"
-          onClick={() => setPanel('capacity')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
-            panel === 'capacity'
-              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'
-          }`}
-        >
-          <Hash size={16} /> Capacity
-        </button>
+        {([
+          { id: 'access', label: 'Access', icon: <Rocket size={16} /> },
+          { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
+          { id: 'shipping', label: 'Shipping', icon: <Globe2 size={16} /> },
+          { id: 'capacity', label: 'Capacity', icon: <Hash size={16} /> },
+          { id: 'errors', label: 'Errors', icon: <Bug size={16} />, badge: unresolved.length },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setPanel(tab.id)}
+            className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-pill)] text-sm font-semibold border transition-colors ${
+              panel === tab.id
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'
+            }`}
+          >
+            {tab.icon} {tab.label}
+            {'badge' in tab && tab.badge > 0 && (
+              <span className="absolute -top-1.5 -end-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-[var(--color-danger)] text-white text-[10px] font-bold flex items-center justify-center">
+                {tab.badge > 99 ? '99+' : tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {panel === 'shipping' ? (
+      {panel === 'payments' ? (
+        <div className="space-y-6">
+          <PaymentMethodsCard
+            methods={methods}
+            envReady={envReady}
+            serverConfigured={serverConfigured}
+            savingMethods={savingMethods}
+            toggleMethod={toggleMethod}
+            savePaymentMethods={savePaymentMethods}
+          />
+          <PaymentSettings toast={toast} className="p-5" />
+        </div>
+      ) : panel === 'shipping' ? (
         <DdpSettings />
       ) : panel === 'capacity' ? (
         <OrderNumberCapacity />
@@ -390,6 +382,25 @@ const AdminDev: React.FC<Props> = () => {
                 <span className="text-sm">Show coming soon overlay to visitors (admins can still sign in)</span>
               </label>
 
+              {comingSoon && (
+                <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-3 space-y-2">
+                  <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Who sees it</p>
+                  {([
+                    { id: 'everyone' as const, label: 'Everyone', hint: 'Whole world sees coming soon — full pre-launch.' },
+                    { id: 'international' as const, label: 'Outside Egypt only', hint: 'Egypt is open and can shop; the rest of the world sees coming soon. Soft-launch at home first.' },
+                  ]).map((opt) => (
+                    <label key={opt.id} className={`flex items-start gap-3 p-2.5 rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${comingSoonScope === opt.id ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)]'}`}>
+                      <input type="radio" name="cs-scope" checked={comingSoonScope === opt.id} onChange={() => setComingSoonScope(opt.id)} className="mt-1 accent-[var(--color-primary)]" />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">{opt.label}</span>
+                        <span className="block text-[11px] text-[var(--color-text-secondary)] mt-0.5">{opt.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                  <p className="text-[11px] text-[var(--color-text-secondary)]">Geo is resolved by the visitor's IP country on the server. Checkout, tracking, and sign-in stay reachable for allowed visitors.</p>
+                </div>
+              )}
+
               <Input
                 label="Planned opening (optional)"
                 type="datetime-local"
@@ -447,55 +458,6 @@ const AdminDev: React.FC<Props> = () => {
             </Card>
           </div>
 
-          <Card className="p-5 mt-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <CreditCard size={18} className="text-[var(--color-primary)]" />
-              <h2 className="font-semibold text-sm">Checkout payment options</h2>
-            </div>
-            <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              Turn methods on or off for customers. Card rails still need their API keys in Vercel env —
-              disabling here only hides them at checkout. The InstaPay / bank details customers see are edited just below.
-            </p>
-            {!serverConfigured && (
-              <p className="text-xs text-[var(--color-danger)] leading-relaxed border border-[var(--color-danger)]/40 rounded-[var(--radius-md)] p-3">
-                The server cannot read these settings: FIREBASE_SERVICE_ACCOUNT is missing in the Vercel
-                environment, so checkout ignores the toggles below (and ordering is disabled). Add the env
-                var in Vercel → Settings → Environment Variables, then redeploy.
-              </p>
-            )}
-            <div className="grid sm:grid-cols-2 gap-3">
-              {([
-                { key: 'stripe' as const, label: 'Stripe (international cards)', hint: envReady.stripe ? 'Env keys present' : 'Missing STRIPE_SECRET_KEY' },
-                { key: 'paymob' as const, label: 'Paymob (Egypt cards)', hint: envReady.paymob ? 'Env keys present' : 'Missing Paymob env keys' },
-                { key: 'instapay' as const, label: 'InstaPay', hint: 'Egypt transfers' },
-                { key: 'bank_transfer' as const, label: 'Bank transfer', hint: 'Manual reference check' },
-              ]).map((row) => (
-                <label
-                  key={row.key}
-                  className={`flex items-start gap-3 p-3 rounded-[var(--radius-md)] border cursor-pointer transition-colors ${
-                    methods[row.key] ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={methods[row.key]}
-                    onChange={() => toggleMethod(row.key)}
-                    className="mt-1 w-4 h-4 accent-[var(--color-primary)]"
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{row.label}</span>
-                    <span className="block text-[11px] text-[var(--color-text-secondary)] mt-0.5">{row.hint}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            <Button type="button" size="sm" loading={savingMethods} onClick={savePaymentMethods}>
-              Save payment options
-            </Button>
-          </Card>
-
-          <PaymentSettings toast={toast} className="p-5 mt-6" />
-
           <Card className="p-5 mt-6">
             <h2 className="font-semibold text-sm mb-4">Recent signups</h2>
             {loadingList ? (
@@ -540,5 +502,62 @@ const AdminDev: React.FC<Props> = () => {
     </>
   );
 };
+
+/** Checkout payment-method toggles (Payments tab). */
+const PaymentMethodsCard: React.FC<{
+  methods: MethodFlags;
+  envReady: { stripe: boolean; paymob: boolean };
+  serverConfigured: boolean;
+  savingMethods: boolean;
+  toggleMethod: (k: keyof MethodFlags) => void;
+  savePaymentMethods: () => void;
+}> = ({ methods, envReady, serverConfigured, savingMethods, toggleMethod, savePaymentMethods }) => (
+  <Card className="p-5 space-y-4">
+    <div className="flex items-center gap-2">
+      <CreditCard size={18} className="text-[var(--color-primary)]" />
+      <h2 className="font-semibold text-sm">Checkout payment options</h2>
+    </div>
+    <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+      Turn methods on or off for customers. Card rails still need their API keys in Vercel env —
+      disabling here only hides them at checkout. The InstaPay / bank details customers see are edited just below.
+    </p>
+    {!serverConfigured && (
+      <p className="text-xs text-[var(--color-danger)] leading-relaxed border border-[var(--color-danger)]/40 rounded-[var(--radius-md)] p-3">
+        The server cannot read these settings: FIREBASE_SERVICE_ACCOUNT is missing in the Vercel
+        environment, so checkout ignores the toggles below (and ordering is disabled). Add the env
+        var in Vercel → Settings → Environment Variables, then redeploy.
+      </p>
+    )}
+    <div className="grid sm:grid-cols-2 gap-3">
+      {([
+        { key: 'stripe' as const, label: 'Stripe (international cards)', hint: envReady.stripe ? 'Env keys present' : 'Missing STRIPE_SECRET_KEY' },
+        { key: 'paymob' as const, label: 'Paymob (Egypt cards)', hint: envReady.paymob ? 'Env keys present' : 'Missing Paymob env keys' },
+        { key: 'instapay' as const, label: 'InstaPay', hint: 'Egypt transfers — lowest fees' },
+        { key: 'bank_transfer' as const, label: 'Bank transfer', hint: 'Manual reference check' },
+      ]).map((row) => (
+        <label
+          key={row.key}
+          className={`flex items-start gap-3 p-3 rounded-[var(--radius-md)] border cursor-pointer transition-colors ${
+            methods[row.key] ? 'border-[var(--color-primary)] bg-[hsla(var(--color-primary-hsl-values),0.06)]' : 'border-[var(--color-border)]'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={methods[row.key]}
+            onChange={() => toggleMethod(row.key)}
+            className="mt-1 w-4 h-4 accent-[var(--color-primary)]"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">{row.label}</span>
+            <span className="block text-[11px] text-[var(--color-text-secondary)] mt-0.5">{row.hint}</span>
+          </span>
+        </label>
+      ))}
+    </div>
+    <Button type="button" size="sm" loading={savingMethods} onClick={savePaymentMethods}>
+      Save payment options
+    </Button>
+  </Card>
+);
 
 export default AdminDev;

@@ -1276,6 +1276,7 @@ async function readLaunchSettings() {
   const d = snap.data();
   return {
     comingSoon: !!d.comingSoon,
+    comingSoonScope: d.comingSoonScope === "international" ? "international" : "everyone",
     message: d.message || "",
     scheduledAt: d.scheduledAt || null,
     launchedAt: d.launchedAt || null,
@@ -1306,9 +1307,10 @@ async function patchLaunchSettings(req, res) {
   }
   const db = await getDb();
   if (!db) return res.status(503).json({ error: "Not configured" });
-  const { comingSoon, message, scheduledAt } = req.body || {};
+  const { comingSoon, comingSoonScope, message, scheduledAt } = req.body || {};
   const patch = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
   if (typeof comingSoon === "boolean") patch.comingSoon = comingSoon;
+  if (comingSoonScope === "international" || comingSoonScope === "everyone") patch.comingSoonScope = comingSoonScope;
   if (message !== void 0) patch.message = String(message).slice(0, 500);
   if (scheduledAt !== void 0) patch.scheduledAt = scheduledAt ? String(scheduledAt) : null;
   await db.doc(LAUNCH_DOC).set(patch, { merge: true });
@@ -1317,10 +1319,18 @@ async function patchLaunchSettings(req, res) {
 }
 function launchRouter(rateLimit2) {
   const r = Router3();
-  r.get("/api/launch/status", async (_req, res) => {
+  r.get("/api/launch/status", async (req, res) => {
     const s = await readLaunchSettings();
+    let comingSoonForVisitor = s.comingSoon;
+    if (s.comingSoon && s.comingSoonScope === "international") {
+      comingSoonForVisitor = ipCountry(req) !== "EG";
+    }
     res.json({
-      comingSoon: s.comingSoon,
+      comingSoon: comingSoonForVisitor,
+      comingSoonActive: s.comingSoon,
+      // underlying flag, regardless of geo (admin UI)
+      scope: s.comingSoonScope || "everyone",
+      ipCountry: ipCountry(req),
       message: s.message || null,
       scheduledAt: s.scheduledAt || null
     });
